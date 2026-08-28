@@ -83,8 +83,13 @@ class QuizAttemptService {
     }
     final student = StudentRecord.fromJson(data);
 
+    // Normalize the lock flag ourselves rather than trusting the caller:
+    // post-test attempts always lock on submission, pre-test attempts never
+    // lock, regardless of what the caller set on the QuizAttempt.
+    final normalizedAttempt = attempt.copyWith(locked: !isPreTest);
+
     final updated = student.copyWith(
-      quizAttempts: [...student.quizAttempts, attempt],
+      quizAttempts: [...student.quizAttempts, normalizedAttempt],
       completedQuizIds: {...student.completedQuizIds, attempt.quizId}.toList(),
       scores: isPreTest
           ? student.scores
@@ -101,8 +106,8 @@ class QuizAttemptService {
     // truth `checkEligibility` reads from).
     await _studentDoc(studentId)
         .collection('quizAttempts')
-        .doc(attempt.id)
-        .set(attempt.toJson());
+        .doc(normalizedAttempt.id)
+        .set(normalizedAttempt.toJson());
   }
 
   /// Flips the latest attempt for [quizId] from locked to unlocked, allowing

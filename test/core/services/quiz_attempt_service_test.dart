@@ -183,5 +183,74 @@ void main() {
       expect(eligibility.isLocked, false);
       expect(eligibility.attemptCount, 1);
     });
+
+    test('normalizes locked regardless of what the caller passed in', () async {
+      final firestore = FakeFirebaseFirestore();
+      final studentRepo = StudentRepository(firestore: firestore);
+      final service = QuizAttemptService(firestore: firestore);
+      await studentRepo.saveStudent(_blankStudent('111111'));
+
+      // Caller wrongly passes locked: false for a post-test attempt — the
+      // service must correct this to true, not trust the caller.
+      await service.recordAttempt(
+        studentId: '111111',
+        subject: SubjectKey.chemistry,
+        attempt: QuizAttempt(
+          id: 'attempt-post-wrong-flag',
+          quizId: postQuizId,
+          studentId: '111111',
+          attemptNumber: 1,
+          score: 40,
+          totalQuestions: 5,
+          correctAnswers: 2,
+          answers: const [0, 1, 0, 1, 0],
+          timestamp: DateTime(2026, 8, 20).toIso8601String(),
+          locked: false,
+        ),
+      );
+
+      final student = await studentRepo.getStudent('111111');
+      expect(student!.quizAttempts.single.locked, true);
+
+      final subDoc = await firestore
+          .collection('students')
+          .doc('111111')
+          .collection('quizAttempts')
+          .doc('attempt-post-wrong-flag')
+          .get();
+      expect(subDoc.data()!['locked'], true);
+
+      // Caller wrongly passes locked: true for a pre-test attempt — the
+      // service must correct this to false.
+      await service.recordAttempt(
+        studentId: '111111',
+        subject: SubjectKey.chemistry,
+        attempt: QuizAttempt(
+          id: 'attempt-pre-wrong-flag',
+          quizId: preQuizId,
+          studentId: '111111',
+          attemptNumber: 1,
+          score: 60,
+          totalQuestions: 8,
+          correctAnswers: 5,
+          answers: const [0, 1, 0, 1, 0, 1, 0, 1],
+          timestamp: DateTime(2026, 8, 21).toIso8601String(),
+          locked: true,
+        ),
+      );
+
+      final updatedStudent = await studentRepo.getStudent('111111');
+      final preAttempt = updatedStudent!.quizAttempts
+          .firstWhere((a) => a.id == 'attempt-pre-wrong-flag');
+      expect(preAttempt.locked, false);
+
+      final preSubDoc = await firestore
+          .collection('students')
+          .doc('111111')
+          .collection('quizAttempts')
+          .doc('attempt-pre-wrong-flag')
+          .get();
+      expect(preSubDoc.data()!['locked'], false);
+    });
   });
 }
