@@ -53,11 +53,12 @@ as the build progresses; treat it as a living checklist, not a one-time list.
       yourself (I can't drive the Unity Editor UI), then hand me the
       resulting `unityLibrary` folder path so I can wire it into
       `android/`.
-- [ ] Verify in the Unity Editor whether the existing `SampleScene.unity`
+- [x] Verify in the Unity Editor whether the existing `SampleScene.unity`
       already has all 23 markers/models set up as separate trackable
       configurations the app can switch between at runtime, or whether that
-      still needs building — I inspected the scripts but can't open the
-      Unity Editor to check the scene graph itself.
+      still needs building — **Confirmed 2026-08-29: already set up and
+      working, verified via a standalone APK export.** No scene-building
+      work needed for Phase 3; it's an embed-and-wire job.
 
 ## Ongoing / as we go
 
