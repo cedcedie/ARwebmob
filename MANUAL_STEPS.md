@@ -41,13 +41,28 @@ as the build progresses; treat it as a living checklist, not a one-time list.
 
 ## Unity — Editor actions only you can perform
 
-- [ ] Confirm the Unity Editor version used for `C:\Users\cedri\VuforiaAR`
+- [x] Confirm the Unity Editor version used for `C:\Users\cedri\VuforiaAR`
       (Unity Hub → the project's version) so I can check
       `flutter_embed_unity`/`flutter_unity_widget` compatibility before we
-      pick one.
+      pick one. **Confirmed 2026-08-29: Unity 6000.4.0f1 (Unity 6.4).**
+      **Package decision (resolved):** `flutter_embed_unity` is the only
+      actively-supported option for Unity 6000.x — `flutter_unity_widget`
+      (juicycleff) only officially supports up to Unity 2022.3.x, with
+      Unity 6 support existing solely as an unofficial fork
+      (`flutter_unity_widget_2`), not something to build on. Phase 3 will
+      use `flutter_embed_unity` plus its Android companion package
+      `flutter_embed_unity_6000_0_android` (opt-in required for Unity
+      6000.x on Android — the default Android implementation targets
+      2022.3.x only).
 - [ ] Confirm Android Build Support (+ Android SDK & NDK Tools, OpenJDK) is
       installed for that Unity version via Unity Hub's module list — needed
-      for the Android export in Section 3 of the design spec.
+      for the Android export in Section 3 of the design spec. **Now that
+      the package choice is confirmed, specifically check the installed
+      NDK version is 27.2.12479018 or higher** (Unity 6000.0's Android
+      embedding requires it), and that `android/`'s Gradle/AGP versions
+      will be bumped to match/exceed what Unity 6000.0 uses when we wire
+      the export in — I'll handle the Gradle/AGP file edits, this item is
+      just confirming Unity Hub's NDK module version.
 - [ ] When we reach the AR-integration phase: perform the actual **Build
       Settings → Android → Export Project** step in the Unity Editor
       yourself (I can't drive the Unity Editor UI), then hand me the
