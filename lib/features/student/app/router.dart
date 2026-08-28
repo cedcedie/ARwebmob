@@ -34,6 +34,18 @@ GoRouter buildStudentRouter() {
           ),
         ],
       ),
+      GoRoute(
+        path: '/quiz/:lessonId/:phase',
+        builder: (context, state) {
+          // Wiring the concrete QuizSessionController provider (with the
+          // right question bank for lessonId+phase, looked up from
+          // kPreTestQuestionsByLesson/kPostTestQuestionsByLesson, and a real
+          // QuizAttemptService/current studentId) happens where AuthService's
+          // signed-in student id is available — same app-startup override
+          // pattern as Task 7/8/9's view-model providers, not repeated here.
+          throw UnimplementedError('Wire a concrete controllerProvider override for this route.');
+        },
+      ),
     ],
   );
 }
