@@ -70,6 +70,22 @@ as the build progresses; treat it as a living checklist, not a one-time list.
 - [ ] A signing keystore for the Android build, whenever we get to a release
       (not needed for early development builds).
 
+## Confirm with the client — Phase 2
+
+- [ ] **Post-test first-attempt gating (PROJECT_FLOW.md Part 7.1).** While
+      building Phase 2, I found the retired web app's actual code
+      (`src/lib/storage.ts`'s `validateQuizEligibility`,
+      `src/components/student/screens/QuizScreen.tsx`'s `handleStartQuiz`)
+      gates *every* post-test attempt — including the first — behind
+      `unlockedQuizIds`, contradicting Part 7.1's stated rule ("the first
+      attempt requires no access code") and matching almost exactly the
+      regression Part 7.1 itself warns against. I implemented the
+      *documented* rule (first post-test attempt always free) in
+      `QuizAttemptService`, not the retired app's literal current behavior.
+      Please confirm this is the intended fix and not a case where the
+      documented rule itself needs updating to match some other real
+      constraint I'm not aware of.
+
 ## Not needed from you
 
 - Repo structure, Dart/Flutter code, the Unity C#/bridge glue code, the
