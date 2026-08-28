@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../home/home_screen.dart';
 import '../learn/learn_screen.dart';
+import '../lesson_detail/lesson_detail_screen.dart';
 import '../progress/progress_screen.dart';
 import 'student_shell.dart';
 
@@ -25,6 +26,12 @@ GoRouter buildStudentRouter() {
           GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
           GoRoute(path: '/learn', builder: (context, state) => const LearnScreen()),
           GoRoute(path: '/progress', builder: (context, state) => const ProgressScreen()),
+          GoRoute(
+            path: '/lesson/:lessonId',
+            builder: (context, state) => LessonDetailScreen(
+              lessonId: state.pathParameters['lessonId']!,
+            ),
+          ),
         ],
       ),
     ],
