@@ -1,15 +1,20 @@
 // test/widget_test.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:ar_science_explorer/main.dart';
 
 void main() {
-  testWidgets('shows a placeholder shell without crashing', (tester) async {
-    await tester.pumpWidget(const ArScienceExplorerApp());
+  testWidgets('shows the teacher placeholder on web, the student shell on Android', (tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(child: ArScienceExplorerApp()),
+    );
+    await tester.pumpAndSettle();
 
-    final expectedText = kIsWeb
-        ? 'Teacher shell (placeholder)'
-        : 'Student shell (placeholder)';
-    expect(find.text(expectedText), findsOneWidget);
+    if (kIsWeb) {
+      expect(find.text('Teacher shell (placeholder)'), findsOneWidget);
+    } else {
+      expect(find.text('Home'), findsWidgets);
+    }
   });
 }
