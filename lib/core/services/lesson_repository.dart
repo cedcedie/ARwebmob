@@ -21,6 +21,17 @@ class LessonRepository {
         );
   }
 
+  /// One-shot fetch of teacher-authored lessons, for callers that already
+  /// have their own live-update trigger (e.g. `watchStudent`) and just need
+  /// the current teacher-lesson snapshot to merge in — avoids opening (and
+  /// tearing down) a fresh `snapshots()` subscription on every emission of
+  /// some other stream, which `watchTeacherLessons().first` would otherwise
+  /// do if called repeatedly inside an `asyncMap`.
+  Future<List<TeacherLesson>> fetchTeacherLessons() async {
+    final snapshot = await _firestore.collection('lessons').get();
+    return snapshot.docs.map((doc) => TeacherLesson.fromJson(doc.data())).toList();
+  }
+
   List<Lesson> mergedLessons(List<TeacherLesson> teacherLessons) {
     final builtInIds = kBuiltInLessons.map((l) => l.id).toSet();
     final appended = teacherLessons

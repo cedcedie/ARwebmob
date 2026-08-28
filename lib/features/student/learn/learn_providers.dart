@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../../core/models/subject_key.dart';
+import '../../../core/services/access_code_service.dart';
 import '../../../core/services/lesson_repository.dart';
 import '../../../core/services/student_repository.dart';
 
@@ -31,11 +32,18 @@ class LearnViewModel {
     required this.activeSubject,
     required this.cards,
     required this.onSelectSubject,
+    required this.studentId,
+    required this.accessCodeService,
   });
 
   final SubjectKey activeSubject;
   final List<LessonCardData> cards;
   final ValueChanged<SubjectKey> onSelectSubject;
+
+  /// Threaded through to each `LessonCard` so a locked card can open the
+  /// shared access-code sheet directly against `AccessCodeService.redeem`.
+  final String studentId;
+  final AccessCodeService accessCodeService;
 }
 
 final learnViewModelProvider = StreamProvider.autoDispose<LearnViewModel>((ref) {
@@ -44,6 +52,14 @@ final learnViewModelProvider = StreamProvider.autoDispose<LearnViewModel>((ref) 
     'stream at app startup.',
   );
 });
+
+/// The Learn screen's currently-selected subject tab. Lives as app-wide
+/// Riverpod state (not screen-local `State`) so the real
+/// `learnViewModelProvider` override (student_providers.dart) can `watch`
+/// it and rebuild the lesson list for the newly-selected subject — without
+/// this, tapping a tab only moves the `TabBar` indicator and never changes
+/// which lessons are shown (the bug this provider fixes).
+final activeLearnSubjectProvider = StateProvider<SubjectKey>((ref) => SubjectKey.chemistry);
 
 /// Builds the real streaming view model. [preTestLessonIds] is the set of
 /// lesson ids that have a non-empty pre-test bank (from
@@ -55,6 +71,7 @@ Stream<LearnViewModel> buildLearnViewModel({
   required SubjectKey initialSubject,
   required LessonRepository lessonRepository,
   required StudentRepository studentRepository,
+  required AccessCodeService accessCodeService,
   required Set<String> preTestLessonIds,
   required void Function(SubjectKey) onSelectSubject,
 }) {
@@ -77,6 +94,12 @@ Stream<LearnViewModel> buildLearnViewModel({
             ))
         .toList();
 
-    return LearnViewModel(activeSubject: initialSubject, cards: cards, onSelectSubject: onSelectSubject);
+    return LearnViewModel(
+      activeSubject: initialSubject,
+      cards: cards,
+      onSelectSubject: onSelectSubject,
+      studentId: studentId,
+      accessCodeService: accessCodeService,
+    );
   });
 }

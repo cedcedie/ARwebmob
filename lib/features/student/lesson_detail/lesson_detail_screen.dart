@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+import '../../../core/services/access_code_service.dart';
+import '../access_code/access_code_sheet.dart';
 import 'lesson_detail_providers.dart';
 
 class LessonDetailScreen extends ConsumerWidget {
@@ -35,14 +37,19 @@ class LessonDetailScreen extends ConsumerWidget {
                 child: const Text('Mark as Read'),
               ),
             const SizedBox(height: 16),
-            OutlinedButton(
-              onPressed: () {
-                vm.onStartPreTest();
-                context.push('/quiz/${vm.lessonId}/pre');
-              },
-              child: const Text('Pre-Test'),
-            ),
-            const SizedBox(height: 8),
+            // A lesson with no pre-test bank (most of the curriculum — Task
+            // 1's data is intentionally sparse) must not offer a Pre-Test
+            // action; the /quiz/:lessonId/pre route has no question bank to
+            // render for it.
+            if (vm.hasPreTest)
+              OutlinedButton(
+                onPressed: () {
+                  vm.onStartPreTest();
+                  context.push('/quiz/${vm.lessonId}/pre');
+                },
+                child: const Text('Pre-Test'),
+              ),
+            if (vm.hasPreTest) const SizedBox(height: 8),
             OutlinedButton(
               onPressed: vm.postTestEligible
                   ? () {
@@ -52,6 +59,20 @@ class LessonDetailScreen extends ConsumerWidget {
                   : null,
               child: Text(vm.postTestEligible ? 'Post-Test' : (vm.postTestReason ?? 'Post-Test locked')),
             ),
+            if (!vm.postTestEligible) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => showAccessCodeSheet(
+                  context,
+                  studentId: vm.studentId,
+                  accessCodeService: vm.accessCodeService,
+                  targetId: vm.lessonId,
+                  targetType: AccessCodeTarget.quiz,
+                  title: 'Enter retake code for ${vm.title}',
+                ),
+                child: const Text('Have a retake code?'),
+              ),
+            ],
           ],
         ),
       ),

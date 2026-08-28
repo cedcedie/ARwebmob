@@ -156,3 +156,53 @@ class QuizSessionController extends StateNotifier<QuizSessionState> {
     state = state.copyWith(isComplete: true, finalScore: score);
   }
 }
+
+/// Identifies one quiz-in-progress session. Equality/hashCode are
+/// deliberately based on `studentId` + `quizId` only — the rest of the
+/// fields (`questions`, `subject`, `quizAttemptService`) are needed to
+/// *construct* the controller the first time this key is seen, but must not
+/// affect the `.family` provider's cache key, or two `QuizSessionKey`
+/// instances built from different closures (but the same underlying quiz
+/// attempt) would be treated as different sessions.
+class QuizSessionKey {
+  const QuizSessionKey({
+    required this.studentId,
+    required this.quizId,
+    required this.subject,
+    required this.questions,
+    required this.quizAttemptService,
+  });
+
+  final String studentId;
+  final String quizId;
+  final SubjectKey subject;
+  final List<BuiltInQuestion> questions;
+  final QuizAttemptService quizAttemptService;
+
+  @override
+  bool operator ==(Object other) =>
+      other is QuizSessionKey && other.studentId == studentId && other.quizId == quizId;
+
+  @override
+  int get hashCode => Object.hash(studentId, quizId);
+}
+
+/// A single, top-level `.family` provider for the in-progress quiz session
+/// — keyed on `(studentId, quizId)` via `QuizSessionKey`. Riverpod caches
+/// family instances by key equality, so calling
+/// `quizSessionControllerProvider(key)` with an equal key always returns the
+/// *same* `QuizSessionController` instance, even across widget rebuilds.
+/// This is the fix for a bug where the quiz route used to build a brand new
+/// `StateNotifierProvider` inline on every rebuild, silently discarding
+/// in-progress answers — see router.dart's `/quiz/:lessonId/:phase` route,
+/// the only caller.
+final quizSessionControllerProvider =
+    StateNotifierProvider.family<QuizSessionController, QuizSessionState, QuizSessionKey>(
+  (ref, key) => QuizSessionController(
+    studentId: key.studentId,
+    quizId: key.quizId,
+    subject: key.subject,
+    questions: key.questions,
+    quizAttemptService: key.quizAttemptService,
+  ),
+);

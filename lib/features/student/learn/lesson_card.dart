@@ -2,11 +2,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/services/access_code_service.dart';
+import '../access_code/access_code_sheet.dart';
 import 'learn_providers.dart';
 
 class LessonCard extends StatelessWidget {
-  const LessonCard({super.key, required this.data});
+  const LessonCard({
+    super.key,
+    required this.data,
+    required this.studentId,
+    required this.accessCodeService,
+  });
+
   final LessonCardData data;
+  final String studentId;
+  final AccessCodeService accessCodeService;
 
   @override
   Widget build(BuildContext context) {
@@ -36,25 +46,21 @@ class LessonCard extends StatelessWidget {
           if (data.isUnlocked) {
             context.push('/lesson/${data.lessonId}');
           } else {
-            _showAccessCodeSheet(context, targetId: data.lessonId);
+            _showAccessCodeSheet(context);
           }
         },
       ),
     );
   }
 
-  void _showAccessCodeSheet(BuildContext context, {required String targetId}) {
-    // Wired to AccessCodeService via the shared access_code_sheet widget —
-    // implemented alongside AccessCodeService's UI consumers; the sheet
-    // itself is a small, self-contained widget with no new business logic,
-    // so it is not TDD'd as a separate task — build it as part of this
-    // task's implementation, reusing AccessCodeService.redeem directly.
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text('Enter code to unlock this lesson ($targetId)'),
-      ),
+  void _showAccessCodeSheet(BuildContext context) {
+    showAccessCodeSheet(
+      context,
+      studentId: studentId,
+      accessCodeService: accessCodeService,
+      targetId: data.lessonId,
+      targetType: AccessCodeTarget.lesson,
+      title: 'Enter code to unlock ${data.title}',
     );
   }
 }

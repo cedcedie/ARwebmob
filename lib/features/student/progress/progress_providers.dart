@@ -1,6 +1,8 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../../core/data/curriculum_data.dart';
+import '../../../core/models/built_in_question.dart';
+import '../../../core/models/quiz_attempt.dart';
 import '../../../core/models/quiz_phase.dart';
 import '../../../core/models/subject_key.dart';
 import '../../../core/quiz_id.dart';
@@ -70,7 +72,7 @@ const _subjectOrder = [
 /// built-in question bank — rather than crashing.
 List<bool> _perQuestionCorrectness(String quizId, List<int> answers) {
   final parsed = parseBuiltinId(quizId);
-  List<dynamic>? questions;
+  List<BuiltInQuestion>? questions;
   if (parsed.isBuiltin && parsed.lessonId != null) {
     questions = parsed.phase == QuizPhase.pre
         ? kPreTestQuestionsByLesson[parsed.lessonId]
@@ -91,7 +93,10 @@ Stream<ProgressViewModel> buildProgressViewModel({
   required StudentRepository studentRepository,
 }) {
   return studentRepository.watchStudent(studentId).asyncMap((student) async {
-    final teacherLessons = await lessonRepository.watchTeacherLessons().first;
+    // One-shot fetch, not a fresh `snapshots()` subscription per emission —
+    // `watchStudent` above is already the live-update trigger for this
+    // stream, so teacher lessons only need to be read once per emission.
+    final teacherLessons = await lessonRepository.fetchTeacherLessons();
     final merged = lessonRepository.mergedLessons(teacherLessons);
     final completed = student?.completedLessonIds.toSet() ?? const <String>{};
 
@@ -107,34 +112,31 @@ Stream<ProgressViewModel> buildProgressViewModel({
           )
           .toList();
 
-      final attemptsBySubject = (student?.quizAttempts ?? const [])
+      final attemptsBySubject = (student?.quizAttempts ?? const <QuizAttempt>[])
           .where(
             (a) => merged.any(
               (l) => a.quizId.contains(l.id) && l.subject == subject,
             ),
           )
           .toList();
-      final byQuizId = <String, List<dynamic>>{};
+      final byQuizId = <String, List<QuizAttempt>>{};
       for (final a in attemptsBySubject) {
-        byQuizId.putIfAbsent(a.quizId, () => []).add(a);
+        byQuizId.putIfAbsent(a.quizId, () => <QuizAttempt>[]).add(a);
       }
       final quizRows = byQuizId.entries.map((entry) {
-        final attempts = entry.value.cast<dynamic>();
-        final scores = attempts.map((a) => a.score as num).toList();
+        final attempts = entry.value;
+        final scores = attempts.map((a) => a.score).toList();
         final latest = attempts.reduce(
           (a, b) =>
               DateTime.parse(a.timestamp).isAfter(DateTime.parse(b.timestamp))
               ? a
               : b,
         );
-        final perQuestion = _perQuestionCorrectness(
-          entry.key,
-          (latest.answers as List).cast<int>(),
-        );
+        final perQuestion = _perQuestionCorrectness(entry.key, latest.answers);
         return QuizAttemptRow(
           quizId: entry.key,
           bestScore: scores.reduce((a, b) => a > b ? a : b),
-          latestScore: latest.score as num,
+          latestScore: latest.score,
           perQuestionCorrect: perQuestion,
         );
       }).toList();

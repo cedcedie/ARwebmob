@@ -29,7 +29,14 @@ class LearnScreen extends ConsumerWidget {
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.all(16),
-                children: [for (final card in vm.cards) LessonCard(data: card)],
+                children: [
+                  for (final card in vm.cards)
+                    LessonCard(
+                      data: card,
+                      studentId: vm.studentId,
+                      accessCodeService: vm.accessCodeService,
+                    ),
+                ],
               ),
             ),
           ],
