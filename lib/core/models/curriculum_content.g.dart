@@ -49,5 +49,5 @@ Map<String, dynamic> _$$CurriculumContentImplToJson(
   'learningCompetencies': instance.learningCompetencies,
   'objectives': instance.objectives,
   'contentDetails': instance.contentDetails,
-  'integration': instance.integration,
+  'integration': instance.integration?.toJson(),
 };

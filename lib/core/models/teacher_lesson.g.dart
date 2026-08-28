@@ -53,7 +53,7 @@ Map<String, dynamic> _$$TeacherLessonImplToJson(_$TeacherLessonImpl instance) =>
       'summary': instance.summary,
       'steps': instance.steps,
       'labExperimentId': instance.labExperimentId,
-      'arPayload': instance.arPayload,
+      'arPayload': instance.arPayload?.toJson(),
       'isPredefined': instance.isPredefined,
       'quarter': instance.quarter,
       'week': instance.week,
@@ -64,5 +64,5 @@ Map<String, dynamic> _$$TeacherLessonImplToJson(_$TeacherLessonImpl instance) =>
       'arModelIndex': instance.arModelIndex,
       'arContext': instance.arContext,
       'hasAR': instance.hasAR,
-      'curriculum': instance.curriculum,
+      'curriculum': instance.curriculum?.toJson(),
     };

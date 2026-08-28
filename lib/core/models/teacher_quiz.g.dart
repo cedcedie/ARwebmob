@@ -27,7 +27,7 @@ Map<String, dynamic> _$$TeacherQuizImplToJson(_$TeacherQuizImpl instance) =>
       'title': instance.title,
       'subject': _subjectToJson(instance.subject),
       'topicId': instance.topicId,
-      'questions': instance.questions,
+      'questions': instance.questions.map((e) => e.toJson()).toList(),
       'createdAt': instance.createdAt,
       'phase': _phaseToJson(instance.phase),
     };

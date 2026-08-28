@@ -36,11 +36,11 @@ Map<String, dynamic> _$$LessonImplToJson(_$LessonImpl instance) =>
       'summary': instance.summary,
       'steps': instance.steps,
       'labExperimentId': instance.labExperimentId,
-      'arPayload': instance.arPayload,
+      'arPayload': instance.arPayload?.toJson(),
       'hasAR': instance.hasAR,
       'pdfUrl': instance.pdfUrl,
       'isUnlockedByDefault': instance.isUnlockedByDefault,
-      'curriculum': instance.curriculum,
+      'curriculum': instance.curriculum?.toJson(),
       'week': instance.week,
       'quarter': instance.quarter,
     };

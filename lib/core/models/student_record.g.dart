@@ -51,6 +51,6 @@ Map<String, dynamic> _$$StudentRecordImplToJson(_$StudentRecordImpl instance) =>
       'completedQuizIds': instance.completedQuizIds,
       'unlockedLessonIds': instance.unlockedLessonIds,
       'unlockedQuizIds': instance.unlockedQuizIds,
-      'quizAttempts': instance.quizAttempts,
+      'quizAttempts': instance.quizAttempts.map((e) => e.toJson()).toList(),
       'isArchived': instance.isArchived,
     };
