@@ -179,6 +179,24 @@ class QuizSessionKey {
   final List<BuiltInQuestion> questions;
   final QuizAttemptService quizAttemptService;
 
+  /// Builds a key that identifies an existing cached session by
+  /// [studentId] + [quizId] only — for `ref.invalidate(...)` calls, never
+  /// for `ref.watch`/`ref.read`. Equality/hashCode ignore every other
+  /// field (see the class doc above), so the placeholder `subject`/
+  /// `questions` below are never read: `ref.invalidate` only needs a
+  /// `==`-equal key to find (and dispose) whatever cached controller
+  /// exists for this student+quiz — it never calls the provider's
+  /// `create` callback. Do NOT `ref.watch`/`ref.read` a key built this
+  /// way: with no cached entry yet, that would construct a real
+  /// `QuizSessionController` from the empty placeholder question list and
+  /// crash on its `assert(questions.isNotEmpty)`.
+  QuizSessionKey.identity({
+    required this.studentId,
+    required this.quizId,
+    required this.quizAttemptService,
+  })  : subject = SubjectKey.chemistry,
+        questions = const [];
+
   @override
   bool operator ==(Object other) =>
       other is QuizSessionKey && other.studentId == studentId && other.quizId == quizId;
@@ -196,8 +214,24 @@ class QuizSessionKey {
 /// `StateNotifierProvider` inline on every rebuild, silently discarding
 /// in-progress answers — see router.dart's `/quiz/:lessonId/:phase` route,
 /// the only caller.
-final quizSessionControllerProvider =
-    StateNotifierProvider.family<QuizSessionController, QuizSessionState, QuizSessionKey>(
+///
+/// `.autoDispose`: without it, a completed session (`isComplete: true`,
+/// stale `finalScore`) stayed cached forever, so re-entering the same quiz
+/// after a retake-code unlock handed back the SAME finished controller and
+/// `QuizPlayerScreen` jumped straight to the old results — the student
+/// could never actually answer the retake (see this file's tests: "a
+/// completed session does not leak into a fresh re-entry"). Callers also
+/// call `ref.invalidate(quizSessionControllerProvider(key))` right before
+/// navigating into a fresh attempt (see `LessonDetailScreen`'s
+/// onStartPreTest/onStartPostTest wiring in router.dart) so a fresh session
+/// is guaranteed deterministically at that exact moment, rather than
+/// relying on widget-disposal timing alone. Ordinary mid-quiz rebuilds
+/// (a hint tap, an answer selection) never trigger either path — they keep
+/// watching the same key while the quiz screen stays mounted, so the
+/// cached, in-progress controller is untouched (Part 7.3 / the original I2
+/// fix).
+final quizSessionControllerProvider = StateNotifierProvider.autoDispose
+    .family<QuizSessionController, QuizSessionState, QuizSessionKey>(
   (ref, key) => QuizSessionController(
     studentId: key.studentId,
     quizId: key.quizId,

@@ -42,14 +42,32 @@ GoRouter buildStudentRouter({required StudentServices services}) {
                 builder: (context, ref, _) {
                   final studentId = ref.watch(currentStudentIdProvider).valueOrNull;
                   if (studentId == null) return const SizedBox.shrink();
+                  // Invalidating the quiz session right before the student
+                  // navigates in guarantees a fresh attempt deterministically
+                  // — not just as a side effect of `.autoDispose` timing —
+                  // whether this is a genuine first attempt (no-op: nothing
+                  // cached yet) or a retake after an `AccessCodeService`
+                  // unlock (discards the stale, already-`isComplete: true`
+                  // controller from the locked attempt). See
+                  // quiz_session_controller.dart's provider doc comment.
+                  void invalidateQuizSession(QuizPhase phase) {
+                    ref.invalidate(quizSessionControllerProvider(
+                      QuizSessionKey.identity(
+                        studentId: studentId,
+                        quizId: builtinQuizId(lessonId, phase),
+                        quizAttemptService: services.quizAttemptService,
+                      ),
+                    ));
+                  }
+
                   return ProviderScope(
                     overrides: [
                       lessonDetailOverrideFor(
                         studentId,
                         lessonId,
                         services: services,
-                        onStartPreTest: () {},
-                        onStartPostTest: () {},
+                        onStartPreTest: () => invalidateQuizSession(QuizPhase.pre),
+                        onStartPostTest: () => invalidateQuizSession(QuizPhase.post),
                       ),
                     ],
                     child: LessonDetailScreen(lessonId: lessonId),

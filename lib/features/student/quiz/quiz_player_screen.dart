@@ -17,7 +17,7 @@ class QuizPlayerScreen extends ConsumerWidget {
     required this.controllerProvider,
   });
 
-  final StateNotifierProvider<QuizSessionController, QuizSessionState> controllerProvider;
+  final AutoDisposeStateNotifierProvider<QuizSessionController, QuizSessionState> controllerProvider;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
