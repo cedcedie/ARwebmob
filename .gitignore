@@ -17,3 +17,6 @@ android/unityLibrary/
 
 # Superpowers scratch workspace
 .superpowers/
+
+# Per-phase worktrees (each phase's isolated workspace)
+.claude/worktrees/
