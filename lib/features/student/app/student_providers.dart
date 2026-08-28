@@ -83,7 +83,7 @@ List<Override> studentProviderOverridesFor(
 /// Per-lesson override for `lessonDetailViewModelProvider` — a `.family`
 /// provider, so it's overridden per lessonId at the call site (the route
 /// builder in router.dart), not bundled into the list above.
-StreamProvider<LessonDetailViewModel> lessonDetailOverrideFor(
+Override lessonDetailOverrideFor(
   String studentId,
   String lessonId, {
   required StudentServices services,
@@ -102,5 +102,5 @@ StreamProvider<LessonDetailViewModel> lessonDetailOverrideFor(
       onStartPreTest: onStartPreTest,
       onStartPostTest: onStartPostTest,
     ),
-  ) as StreamProvider<LessonDetailViewModel>;
+  );
 }

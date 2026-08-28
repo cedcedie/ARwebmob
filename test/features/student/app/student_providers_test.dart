@@ -9,6 +9,7 @@ import 'package:ar_science_explorer/core/models/student_record.dart';
 import 'package:ar_science_explorer/features/student/app/student_providers.dart';
 import 'package:ar_science_explorer/features/student/home/home_providers.dart';
 import 'package:ar_science_explorer/features/student/learn/learn_providers.dart';
+import 'package:ar_science_explorer/features/student/lesson_detail/lesson_detail_providers.dart';
 import 'package:ar_science_explorer/features/student/progress/progress_providers.dart';
 
 void main() {
@@ -46,5 +47,53 @@ void main() {
 
     final progress = await container.read(progressViewModelProvider.future);
     expect(progress.subjectSections, hasLength(3));
+  });
+
+  test('lessonDetailOverrideFor resolves a real stream, not a TypeError', () async {
+    final firestore = FakeFirebaseFirestore();
+    final studentRepo = StudentRepository(firestore: firestore);
+    await studentRepo.saveStudent(StudentRecord(
+      id: '111111', name: 'Juan Dela Cruz', studentId: '111111', grade: '7', section: 'Rizal',
+      scores: const {'chemistry': null, 'biology': null, 'physics': null},
+      completedLessonIds: const [], completedLabExperimentIds: const [],
+      completedQuizIds: const [], unlockedLessonIds: const [], unlockedQuizIds: const [],
+      quizAttempts: const [],
+    ));
+
+    final services = StudentServices(
+      lessonRepository: LessonRepository(firestore: firestore),
+      studentRepository: studentRepo,
+      quizAttemptService: QuizAttemptService(firestore: firestore),
+      accessCodeService: AccessCodeService(
+        firestore: firestore,
+        quizAttemptService: QuizAttemptService(firestore: firestore),
+      ),
+    );
+
+    var preTestStarted = false;
+    var postTestStarted = false;
+
+    final container = ProviderContainer(
+      overrides: [
+        lessonDetailOverrideFor(
+          '111111',
+          'q1w1',
+          services: services,
+          onStartPreTest: () => preTestStarted = true,
+          onStartPostTest: () => postTestStarted = true,
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final lessonDetail = await container.read(lessonDetailViewModelProvider('q1w1').future);
+
+    expect(lessonDetail.lessonId, 'q1w1');
+    expect(lessonDetail.isRead, false);
+
+    lessonDetail.onStartPreTest();
+    lessonDetail.onStartPostTest();
+    expect(preTestStarted, true);
+    expect(postTestStarted, true);
   });
 }
