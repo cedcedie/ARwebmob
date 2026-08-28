@@ -187,4 +187,112 @@ void main() {
     expect(result.success, false);
     expect(result.message, contains('"RETRY99"'));
   });
+
+  test('a first-time test-unlock code (type lesson, redeemed against a quiz) succeeds', () async {
+    final firestore = FakeFirebaseFirestore();
+    await StudentRepository(firestore: firestore).saveStudent(_blankStudent('111111'));
+    await firestore.collection('unlockCodes').doc('FIRSTTEST').set({
+      'type': 'lesson',
+      'targetId': 'q1w1',
+      'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+    });
+    final service = AccessCodeService(
+      firestore: firestore,
+      quizAttemptService: QuizAttemptService(firestore: firestore),
+    );
+
+    final result = await service.redeem(
+      studentId: '111111',
+      rawCode: 'FIRSTTEST',
+      targetId: 'q1w1',
+      targetType: AccessCodeTarget.quiz,
+    );
+
+    expect(result.success, true);
+  });
+
+  test('a manually-created quiz-retake code (type quiz in /unlockCodes) unlocks a locked post-test', () async {
+    final firestore = FakeFirebaseFirestore();
+    final studentRepo = StudentRepository(firestore: firestore);
+    final quizAttemptService = QuizAttemptService(firestore: firestore);
+    await studentRepo.saveStudent(_blankStudent('111111'));
+    final postQuizId = builtinQuizId('q1w1', QuizPhase.post);
+
+    await quizAttemptService.recordAttempt(
+      studentId: '111111',
+      subject: SubjectKey.chemistry,
+      attempt: QuizAttempt(
+        id: 'attempt-1',
+        quizId: postQuizId,
+        studentId: '111111',
+        attemptNumber: 1,
+        score: 40,
+        totalQuestions: 5,
+        correctAnswers: 2,
+        answers: const [0, 1, 0, 1, 0],
+        timestamp: DateTime(2026, 8, 20).toIso8601String(),
+        locked: true,
+      ),
+    );
+
+    await firestore.collection('unlockCodes').doc('MANUALRETAKE').set({
+      'type': 'quiz',
+      'targetId': 'q1w1',
+      'isUsed': false,
+      'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+    });
+
+    final service = AccessCodeService(firestore: firestore, quizAttemptService: quizAttemptService);
+    final result = await service.redeem(
+      studentId: '111111',
+      rawCode: 'MANUALRETAKE',
+      targetId: 'q1w1',
+      targetType: AccessCodeTarget.quiz,
+    );
+
+    expect(result.success, true);
+    final eligibility = await quizAttemptService.checkEligibility('111111', postQuizId);
+    expect(eligibility.canTake, true);
+  });
+
+  test('a code assigned to a different student is rejected, echoing the typed code', () async {
+    final firestore = FakeFirebaseFirestore();
+    await StudentRepository(firestore: firestore).saveStudent(_blankStudent('111111'));
+    await firestore.collection('unlockCodes').doc('OTHERSTUDENT').set({
+      'type': 'subject',
+      'subjects': ['chemistry'],
+      'targetStudentId': '222222',
+      'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+    });
+    final service = AccessCodeService(
+      firestore: firestore,
+      quizAttemptService: QuizAttemptService(firestore: firestore),
+    );
+
+    final result = await service.redeem(studentId: '111111', rawCode: 'otherstudent');
+
+    expect(result.success, false);
+    expect(result.message, contains('"OTHERSTUDENT"'));
+  });
+
+  test('a code already used by this student cannot be redeemed a second time', () async {
+    final firestore = FakeFirebaseFirestore();
+    await StudentRepository(firestore: firestore).saveStudent(_blankStudent('111111'));
+    await firestore.collection('unlockCodes').doc('REUSEME').set({
+      'type': 'subject',
+      'subjects': ['chemistry'],
+      'createdAt': DateTime(2026, 1, 1).toIso8601String(),
+    });
+    final service = AccessCodeService(
+      firestore: firestore,
+      quizAttemptService: QuizAttemptService(firestore: firestore),
+    );
+
+    final first = await service.redeem(studentId: '111111', rawCode: 'REUSEME');
+    expect(first.success, true);
+
+    final second = await service.redeem(studentId: '111111', rawCode: 'reuseme');
+    expect(second.success, false);
+    expect(second.message, contains('"REUSEME"'));
+  });
 }

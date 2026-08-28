@@ -117,10 +117,11 @@ class AccessCodeService {
       if (codeTargetId != null && codeTargetId != targetId) {
         return (success: false, message: 'Code "$code" isn\'t valid for this test.');
       }
-      if (targetId != null) {
-        final quizId = builtinQuizId(targetId, QuizPhase.post);
-        await _quizAttemptService.unlockRetake(studentId, quizId);
+      if (targetId == null) {
+        return (success: false, message: 'Code "$code" isn\'t valid for this test.');
       }
+      final quizId = builtinQuizId(targetId, QuizPhase.post);
+      await _quizAttemptService.unlockRetake(studentId, quizId);
       await doc.reference.update({'isUsed': true});
       await _trackUsage(code, studentId);
       return (success: true, message: 'Test unlocked for retake!');
