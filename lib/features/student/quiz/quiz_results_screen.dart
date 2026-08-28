@@ -8,8 +8,12 @@ const _autoContinueSeconds = 4;
 /// Part 7.4: pass shows a visibly cancelable auto-continue countdown; fail
 /// never auto-redirects and states the retry rule plainly.
 class QuizResultsScreen extends StatefulWidget {
-  const QuizResultsScreen({super.key, required this.score});
+  const QuizResultsScreen({super.key, required this.score, required this.isPreTest});
   final int score;
+
+  /// Which retry-rule copy to show on fail: pre-tests retry anytime with no
+  /// code, post-tests require a teacher-issued retake code.
+  final bool isPreTest;
 
   @override
   State<QuizResultsScreen> createState() => _QuizResultsScreenState();
@@ -60,11 +64,12 @@ class _QuizResultsScreenState extends State<QuizResultsScreen> {
                 style: Theme.of(context).textTheme.headlineMedium),
             Text('${widget.score}%'),
             if (!_passed)
-              const Padding(
-                padding: EdgeInsets.all(16),
+              Padding(
+                padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Ask your teacher for an unlock code to retake this test. '
-                  "Pre-tests don't need a code — you can retry those anytime.",
+                  widget.isPreTest
+                      ? "This is a pre-test — you can retry it anytime, no code needed."
+                      : 'Ask your teacher for a retake code to try this test again.',
                 ),
               ),
             FilledButton(

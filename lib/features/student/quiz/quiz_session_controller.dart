@@ -72,7 +72,8 @@ class QuizSessionController extends StateNotifier<QuizSessionState> {
     required this.subject,
     required this.questions,
     required this.quizAttemptService,
-  }) : super(QuizSessionState.initial(questions.length));
+  })  : assert(questions.isNotEmpty, 'A quiz session requires at least one question'),
+        super(QuizSessionState.initial(questions.length));
 
   final String studentId;
   final String quizId;

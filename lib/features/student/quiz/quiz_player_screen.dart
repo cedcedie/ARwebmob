@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../core/models/built_in_question.dart';
+import '../../../core/models/question_type.dart';
+import '../../../core/quiz_id.dart';
+import '../../../core/models/quiz_phase.dart';
 import 'quiz_session_controller.dart';
 import 'quiz_results_screen.dart';
 
@@ -22,11 +24,12 @@ class QuizPlayerScreen extends ConsumerWidget {
     final state = ref.watch(controllerProvider);
     final controller = ref.read(controllerProvider.notifier);
     final question = controller.currentQuestion;
-    final isTrueFalse = question.type.name == 'tf';
+    final isTrueFalse = question.type == QuestionType.tf;
     final visibleOptions = isTrueFalse ? question.options.sublist(0, 2) : question.options;
 
     if (state.isComplete) {
-      return QuizResultsScreen(score: state.finalScore ?? 0);
+      final isPreTest = parseBuiltinId(controller.quizId).phase == QuizPhase.pre;
+      return QuizResultsScreen(score: state.finalScore ?? 0, isPreTest: isPreTest);
     }
 
     return Scaffold(
