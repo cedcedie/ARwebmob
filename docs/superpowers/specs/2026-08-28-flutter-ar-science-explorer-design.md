@@ -48,16 +48,21 @@ co-location buys only bookkeeping convenience and this project doesn't need
 that, the Unity source stays external and this repo documents the dependency
 instead (`BUILD.md`, to be written during scaffolding).
 
-**Build chain (documented here for the implementation plan to follow):**
+**Build chain — superseded 2026-08-29, see the resolved-decisions table above
+for why:** the actual mechanism is `flutter_embed_unity`'s own Unity Editor
+menu item, not a generic Build Settings export:
 
-1. In Unity: File → Build Settings → Android → check "Export Project" → Export
-   to a scratch folder.
-2. This produces a `unityLibrary` Gradle module (ignore the accompanying
-   `launcher` folder — Flutter's embed plugins don't need it).
-3. Copy `unityLibrary` into `ARwebmob/android/unityLibrary/`.
-4. `ARwebmob/android/settings.gradle` and `android/app/build.gradle` need
-   one-time entries (added during scaffolding) that link the module in.
-5. Every subsequent Unity change repeats steps 1–3, then a normal
+1. Import the `FlutterEmbed` Unity package (Package Manager → Git URL, the
+   6000.0 path — see above) — a one-time setup step.
+2. In Unity: `Flutter Embed → Export project to Flutter app` → select Android
+   → point it at `ARwebmob/android/unityLibrary` (the plugin creates/writes
+   this folder directly — no manual copy step).
+3. `ARwebmob/android/settings.gradle` and `android/app/build.gradle` need
+   one-time entries (added during scaffolding) that link the module in —
+   check whether the plugin's own docs/example project already patches these
+   for you as part of its Flutter-side setup instructions before hand-writing
+   them.
+4. Every subsequent Unity change repeats step 2, then a normal
    `flutter build apk`/`flutter run`.
 
 **Embed architecture (from PROJECT_FLOW.md Part 6.0, restated for the plan):**
@@ -70,15 +75,28 @@ instead (`BUILD.md`, to be written during scaffolding).
   the description/keyIdeas overlay (populated from Flutter's own lesson data,
   not from Unity), hint chips, layered in a `Stack` above the embedded Unity
   view.
-- Bridge payload, in both directions:
-  - Flutter → Unity: `loadMarker(markerIndex)` on Scan-phase entry — which
-    marker/model set to load for *this* lesson (derived `Q{quarter}W{week}`
-    key, per PROJECT_FLOW.md 6.1).
+- **Bridge is one-directional: Unity → Flutter only.** Direct inspection of
+  `SampleScene.unity` confirms all 23 `ImageTargetBehaviour` trackables are
+  already simultaneously active (only 1 inactive GameObject in the whole
+  scene) — there is no per-lesson restriction today, and the confirmed-working
+  standalone APK matches this: scanning any of the 23 printed sheets triggers
+  its own model, regardless of which lesson screen the student came from.
+  **Decision (2026-08-29): keep this behavior, don't add restriction logic.**
+  If a student scans a different lesson's marker while in another lesson's
+  Scan phase, Flutter shows *that marker's* real content (looked up via the
+  `Q{quarter}W{week}` index, same as if they'd navigated there normally) —
+  more forgiving than blocking/warning, and it's zero new Unity work. This
+  means Flutter never needs to tell Unity anything before showing the Unity
+  view — there is no `loadMarker`/outbound call. The Scan screen's "Mark as
+  Read" / lesson progression still belongs to the lesson the screen was
+  *opened* with (Part 6.2's Read/Review phases), independent of which marker
+  happened to be scanned live.
   - Unity → Flutter: `markerFound(markerIndex)` / `markerLost(markerIndex)`
-    only. No content crosses this bridge — Flutter already has the lesson's
-    `arPayload` in memory before the Unity view even appears.
+    — the only payload that crosses the bridge. No content crosses it —
+    Flutter already has every lesson's `arPayload` in memory.
   - Unity-side wiring: `ARTargetVisibilityAndInteraction.cs`'s
-    `HandleTargetFound`/`HandleTargetLost` send these instead of calling
+    `HandleTargetFound`/`HandleTargetLost` call `SendToFlutter.Send(...)`
+    (the `flutter_embed_unity` Unity-side package's bridge API) instead of
     `_modelInfo.DisplayInfo()/HideInfo()` (Unity's own description-panel UI is
     unwired, not deleted — see the resolved-decisions table above).
   - Rotate/zoom (`MobileARController.cs`) is untouched — already correct and
@@ -89,6 +107,21 @@ instead (`BUILD.md`, to be written during scaffolding).
   for Unity 6000.4.0f1 (see the resolved-decisions table above) — accepted as
   a "delicate," version-sensitive embed per the plugin's own documentation;
   test this integration early in the plan, not near a demo deadline.
+  Dart-side API: the `EmbedUnity` widget (`onMessageFromUnity` callback,
+  `pauseUnity()`/`resumeUnity()`) — mounting a fresh `EmbedUnity` instance per
+  screen is fine, the plugin handles the underlying single-instance
+  detach/reattach itself ("Unity can only be shown in 1 widget at a time");
+  no hand-rolled global-singleton bridge class is needed.
+  **Unity-side setup needed before any of this compiles:** the Unity project
+  needs the `FlutterEmbed` Unity package imported (via Unity Package Manager
+  Git URL `https://github.com/learntoflutter/flutter_embed_unity.git?path=example_unity_6000_0_project/Assets/FlutterEmbed`
+  for Unity 6000.x, matching the confirmed 6000.4.0f1 version) — this is what
+  provides `SendToFlutter.Send(string)`. **Export mechanism is also different
+  from what was assumed earlier in this doc:** the package adds a
+  `Flutter Embed → Export project to Flutter app` Unity Editor menu item that
+  writes `unityLibrary` directly into `<flutter-project>/android/unityLibrary`
+  — not the generic Build Settings → Android → Export Project path (superseded
+  in `MANUAL_STEPS.md`).
 
 ## 4. Project structure
 

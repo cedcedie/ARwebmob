@@ -63,11 +63,18 @@ as the build progresses; treat it as a living checklist, not a one-time list.
       will be bumped to match/exceed what Unity 6000.0 uses when we wire
       the export in — I'll handle the Gradle/AGP file edits, this item is
       just confirming Unity Hub's NDK module version.
-- [ ] When we reach the AR-integration phase: perform the actual **Build
-      Settings → Android → Export Project** step in the Unity Editor
-      yourself (I can't drive the Unity Editor UI), then hand me the
-      resulting `unityLibrary` folder path so I can wire it into
-      `android/`.
+- [ ] **Superseded 2026-08-29 — real mechanism is different.** Researched
+      `flutter_embed_unity`'s actual integration: (1) import the
+      `FlutterEmbed` Unity package first (Package Manager → Add package from
+      git URL →
+      `https://github.com/learntoflutter/flutter_embed_unity.git?path=example_unity_6000_0_project/Assets/FlutterEmbed`
+      — the 6000.0 path, matching your confirmed 6000.4.0f1), (2) then use
+      the Editor menu item it adds, **`Flutter Embed → Export project to
+      Flutter app`**, pointing it at `ARwebmob/android/unityLibrary` — the
+      plugin writes the folder directly, no manual copy needed. I can't
+      drive the Unity Editor UI, so both the package import and the export
+      menu action are still yours to run when we reach that task in the
+      plan — I'll tell you exactly when.
 - [x] Verify in the Unity Editor whether the existing `SampleScene.unity`
       already has all 23 markers/models set up as separate trackable
       configurations the app can switch between at runtime, or whether that
