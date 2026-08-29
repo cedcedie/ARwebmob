@@ -43,6 +43,7 @@ mixin _$TeacherLesson {
   String? get arContext => throw _privateConstructorUsedError;
   bool? get hasAR => throw _privateConstructorUsedError;
   CurriculumContent? get curriculum => throw _privateConstructorUsedError;
+  bool get isArchived => throw _privateConstructorUsedError;
 
   /// Serializes this TeacherLesson to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -84,6 +85,7 @@ abstract class $TeacherLessonCopyWith<$Res> {
     String? arContext,
     bool? hasAR,
     CurriculumContent? curriculum,
+    bool isArchived,
   });
 
   $ARPayloadCopyWith<$Res>? get arPayload;
@@ -126,6 +128,7 @@ class _$TeacherLessonCopyWithImpl<$Res, $Val extends TeacherLesson>
     Object? arContext = freezed,
     Object? hasAR = freezed,
     Object? curriculum = freezed,
+    Object? isArchived = null,
   }) {
     return _then(
       _value.copyWith(
@@ -213,6 +216,10 @@ class _$TeacherLessonCopyWithImpl<$Res, $Val extends TeacherLesson>
                 ? _value.curriculum
                 : curriculum // ignore: cast_nullable_to_non_nullable
                       as CurriculumContent?,
+            isArchived: null == isArchived
+                ? _value.isArchived
+                : isArchived // ignore: cast_nullable_to_non_nullable
+                      as bool,
           )
           as $Val,
     );
@@ -279,6 +286,7 @@ abstract class _$$TeacherLessonImplCopyWith<$Res>
     String? arContext,
     bool? hasAR,
     CurriculumContent? curriculum,
+    bool isArchived,
   });
 
   @override
@@ -322,6 +330,7 @@ class __$$TeacherLessonImplCopyWithImpl<$Res>
     Object? arContext = freezed,
     Object? hasAR = freezed,
     Object? curriculum = freezed,
+    Object? isArchived = null,
   }) {
     return _then(
       _$TeacherLessonImpl(
@@ -409,6 +418,10 @@ class __$$TeacherLessonImplCopyWithImpl<$Res>
             ? _value.curriculum
             : curriculum // ignore: cast_nullable_to_non_nullable
                   as CurriculumContent?,
+        isArchived: null == isArchived
+            ? _value.isArchived
+            : isArchived // ignore: cast_nullable_to_non_nullable
+                  as bool,
       ),
     );
   }
@@ -440,6 +453,7 @@ class _$TeacherLessonImpl implements _TeacherLesson {
     this.arContext,
     this.hasAR,
     this.curriculum,
+    this.isArchived = false,
   }) : _steps = steps,
        _learningObjectives = learningObjectives,
        _keyLearningSteps = keyLearningSteps,
@@ -525,10 +539,13 @@ class _$TeacherLessonImpl implements _TeacherLesson {
   final bool? hasAR;
   @override
   final CurriculumContent? curriculum;
+  @override
+  @JsonKey()
+  final bool isArchived;
 
   @override
   String toString() {
-    return 'TeacherLesson(id: $id, title: $title, subject: $subject, content: $content, createdAt: $createdAt, linkedQuizId: $linkedQuizId, summary: $summary, steps: $steps, labExperimentId: $labExperimentId, arPayload: $arPayload, isPredefined: $isPredefined, quarter: $quarter, week: $week, pdfUrl: $pdfUrl, learningObjectives: $learningObjectives, keyLearningSteps: $keyLearningSteps, keyVocabulary: $keyVocabulary, arModelIndex: $arModelIndex, arContext: $arContext, hasAR: $hasAR, curriculum: $curriculum)';
+    return 'TeacherLesson(id: $id, title: $title, subject: $subject, content: $content, createdAt: $createdAt, linkedQuizId: $linkedQuizId, summary: $summary, steps: $steps, labExperimentId: $labExperimentId, arPayload: $arPayload, isPredefined: $isPredefined, quarter: $quarter, week: $week, pdfUrl: $pdfUrl, learningObjectives: $learningObjectives, keyLearningSteps: $keyLearningSteps, keyVocabulary: $keyVocabulary, arModelIndex: $arModelIndex, arContext: $arContext, hasAR: $hasAR, curriculum: $curriculum, isArchived: $isArchived)';
   }
 
   @override
@@ -573,7 +590,9 @@ class _$TeacherLessonImpl implements _TeacherLesson {
                 other.arContext == arContext) &&
             (identical(other.hasAR, hasAR) || other.hasAR == hasAR) &&
             (identical(other.curriculum, curriculum) ||
-                other.curriculum == curriculum));
+                other.curriculum == curriculum) &&
+            (identical(other.isArchived, isArchived) ||
+                other.isArchived == isArchived));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -601,6 +620,7 @@ class _$TeacherLessonImpl implements _TeacherLesson {
     arContext,
     hasAR,
     curriculum,
+    isArchived,
   ]);
 
   /// Create a copy of TeacherLesson
@@ -641,6 +661,7 @@ abstract class _TeacherLesson implements TeacherLesson {
     final String? arContext,
     final bool? hasAR,
     final CurriculumContent? curriculum,
+    final bool isArchived,
   }) = _$TeacherLessonImpl;
 
   factory _TeacherLesson.fromJson(Map<String, dynamic> json) =
@@ -689,6 +710,8 @@ abstract class _TeacherLesson implements TeacherLesson {
   bool? get hasAR;
   @override
   CurriculumContent? get curriculum;
+  @override
+  bool get isArchived;
 
   /// Create a copy of TeacherLesson
   /// with the given fields replaced by the non-null parameter values.

@@ -35,6 +35,7 @@ class TeacherLesson with _$TeacherLesson {
     String? arContext,
     bool? hasAR,
     CurriculumContent? curriculum,
+    @Default(false) bool isArchived,
   }) = _TeacherLesson;
 
   factory TeacherLesson.fromJson(Map<String, dynamic> json) =>

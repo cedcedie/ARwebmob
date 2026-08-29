@@ -40,6 +40,7 @@ _$TeacherLessonImpl _$$TeacherLessonImplFromJson(
   curriculum: json['curriculum'] == null
       ? null
       : CurriculumContent.fromJson(json['curriculum'] as Map<String, dynamic>),
+  isArchived: json['isArchived'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$$TeacherLessonImplToJson(_$TeacherLessonImpl instance) =>
@@ -65,4 +66,5 @@ Map<String, dynamic> _$$TeacherLessonImplToJson(_$TeacherLessonImpl instance) =>
       'arContext': instance.arContext,
       'hasAR': instance.hasAR,
       'curriculum': instance.curriculum?.toJson(),
+      'isArchived': instance.isArchived,
     };

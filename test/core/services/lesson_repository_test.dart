@@ -59,4 +59,102 @@ void main() {
     expect(lessons, hasLength(1));
     expect(lessons.first.title, 'Community Garden Ecology');
   });
+
+  test('createLesson writes a doc at /lessons/{lesson.id}', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = LessonRepository(firestore: firestore);
+
+    final lesson = TeacherLesson(
+      id: 'teacher-new-1',
+      title: 'New Lesson',
+      subject: SubjectKey.biology,
+    );
+
+    await repo.createLesson(lesson);
+
+    final doc = await firestore.collection('lessons').doc('teacher-new-1').get();
+    expect(doc.exists, isTrue);
+    expect(doc.data()!['title'], 'New Lesson');
+  });
+
+  test('updateLesson overwrites the existing doc', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = LessonRepository(firestore: firestore);
+
+    await firestore.collection('lessons').doc('teacher-1').set({
+      'id': 'teacher-1',
+      'title': 'Old Title',
+      'subject': 'biology',
+    });
+
+    final updated = TeacherLesson(
+      id: 'teacher-1',
+      title: 'Updated Title',
+      subject: SubjectKey.biology,
+    );
+
+    await repo.updateLesson(updated);
+
+    final doc = await firestore.collection('lessons').doc('teacher-1').get();
+    expect(doc.data()!['title'], 'Updated Title');
+  });
+
+  test('archiveLesson sets isArchived: true without altering other fields', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = LessonRepository(firestore: firestore);
+
+    await firestore.collection('lessons').doc('teacher-1').set({
+      'id': 'teacher-1',
+      'title': 'Community Garden Ecology',
+      'subject': 'biology',
+      'summary': 'A lesson about gardens',
+    });
+
+    await repo.archiveLesson('teacher-1');
+
+    final doc = await firestore.collection('lessons').doc('teacher-1').get();
+    final data = doc.data()!;
+    expect(data['isArchived'], isTrue);
+    expect(data['title'], 'Community Garden Ecology');
+    expect(data['subject'], 'biology');
+    expect(data['summary'], 'A lesson about gardens');
+  });
+
+  test('mergedLessons excludes archived teacher lessons by default', () {
+    final firestore = FakeFirebaseFirestore();
+    final repo = LessonRepository(firestore: firestore);
+
+    final archived = TeacherLesson(
+      id: 'teacher-archived-1',
+      title: 'Archived Lesson',
+      subject: SubjectKey.physics,
+      isArchived: true,
+    );
+    final active = TeacherLesson(
+      id: 'teacher-active-1',
+      title: 'Active Lesson',
+      subject: SubjectKey.physics,
+    );
+
+    final merged = repo.mergedLessons([archived, active]);
+
+    expect(merged.any((l) => l.id == 'teacher-archived-1'), isFalse);
+    expect(merged.any((l) => l.id == 'teacher-active-1'), isTrue);
+  });
+
+  test('mergedLessons includes archived teacher lessons when includeArchived: true', () {
+    final firestore = FakeFirebaseFirestore();
+    final repo = LessonRepository(firestore: firestore);
+
+    final archived = TeacherLesson(
+      id: 'teacher-archived-2',
+      title: 'Archived Lesson 2',
+      subject: SubjectKey.physics,
+      isArchived: true,
+    );
+
+    final merged = repo.mergedLessons([archived], includeArchived: true);
+
+    expect(merged.any((l) => l.id == 'teacher-archived-2'), isTrue);
+  });
 }

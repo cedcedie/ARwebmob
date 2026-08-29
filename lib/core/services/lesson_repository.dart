@@ -32,10 +32,33 @@ class LessonRepository {
     return snapshot.docs.map((doc) => TeacherLesson.fromJson(doc.data())).toList();
   }
 
-  List<Lesson> mergedLessons(List<TeacherLesson> teacherLessons) {
+  /// Creates (or overwrites) a teacher-authored lesson doc at
+  /// `/lessons/{lesson.id}`.
+  Future<void> createLesson(TeacherLesson lesson) async {
+    await _firestore.collection('lessons').doc(lesson.id).set(lesson.toJson());
+  }
+
+  /// Overwrites an existing teacher-authored lesson doc with [lesson]'s data.
+  Future<void> updateLesson(TeacherLesson lesson) async {
+    await _firestore.collection('lessons').doc(lesson.id).set(lesson.toJson());
+  }
+
+  /// Soft-deletes a teacher-authored lesson by setting `isArchived: true`,
+  /// without touching any other field — lessons may already be referenced by
+  /// id elsewhere (e.g. `linkedQuizId`, students' `unlockedLessonIds`), so a
+  /// hard delete would leave dangling references.
+  Future<void> archiveLesson(String lessonId) async {
+    await _firestore.collection('lessons').doc(lessonId).update({'isArchived': true});
+  }
+
+  List<Lesson> mergedLessons(
+    List<TeacherLesson> teacherLessons, {
+    bool includeArchived = false,
+  }) {
     final builtInIds = kBuiltInLessons.map((l) => l.id).toSet();
     final appended = teacherLessons
         .where((tl) => !builtInIds.contains(tl.id))
+        .where((tl) => includeArchived || !tl.isArchived)
         .map(_toLesson);
     return [...kBuiltInLessons, ...appended];
   }
