@@ -49,6 +49,9 @@ dependencies:
   pin_code_fields: ^8.0.1
   confetti: ^0.8.0
   flutter_animate: ^4.5.2
+  flutter_embed_unity: ^2.0.0
+  flutter_embed_unity_6000_0_android: ^2.0.0
+  flutter_tts: ^4.2.0
 
 dev_dependencies:
   flutter_test:
