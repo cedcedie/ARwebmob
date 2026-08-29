@@ -25,6 +25,10 @@ One new Flutter/Dart project, two build targets from one codebase:
 | 5 | Auth email construction from raw student ID | Actual Firebase Auth email is always `{6 plain digits}@arscience.school` — **no dash**. The `00-0000` format is a display-only mask on the input field; strip to digits before constructing the email or deriving `studentId`. | `ar-science-explorer/src/lib/firebaseAuth.ts` |
 | 6 | Quiz-attempt write source of truth | Write **both** on every attempt: the `/students/{id}/quizAttempts/{attemptId}` subcollection doc, and `arrayUnion` onto the parent student doc's embedded `quizAttempts[]` array. Reads use the embedded array as primary source; the subcollection is a fallback query path and is what bulk delete/archive operates on. | `ar-science-explorer/src/lib/storage.ts` |
 | 7 | Does Unity already do rotate/zoom on the model? | Yes — confirmed in the actual Unity project (`C:\Users\cedri\VuforiaAR\Assets\Scripts\MobileARController.cs`). One-finger rotate + two-finger pinch-zoom, smoothed (Slerp/Lerp), reset on marker-lost. Nothing to build on the Flutter or Unity side for this interaction. | Direct inspection of `MobileARController.cs` |
+| — | Unity Editor version / embed package | **Confirmed 2026-08-29: Unity 6000.4.0f1 (Unity 6.4).** This settles the package choice decisively: `flutter_embed_unity` (+ its `flutter_embed_unity_6000_0_android` companion package, required opt-in for Unity 6000.x on Android) is the only actively-supported option. `flutter_unity_widget` is **no longer a viable fallback** — it only officially supports up to Unity 2022.3.x; Unity 6 support exists solely as an unofficial fork. Android also needs NDK ≥ 27.2.12479018 and matching Gradle/AGP bumps (tracked in `MANUAL_STEPS.md`). | Unity Hub screenshot; [pub.dev/packages/flutter_embed_unity](https://pub.dev/packages/flutter_embed_unity) |
+| — | Does Unity's scene already own its own description-panel UI? | Yes, and it needs to change. `UIManager`/`InteractiveLabel`/`ModelInfo` currently render Unity's own title/subtitle/expandable-details Canvas UI on marker-found — this conflicts with the division of labor above (Flutter owns all on-screen text). Decision: edit `ARTargetVisibilityAndInteraction.cs`'s `HandleTargetFound`/`HandleTargetLost` to call the Flutter bridge instead of `_modelInfo.DisplayInfo()/HideInfo()`. `UIManager`/`InteractiveLabel` are left in place but unwired (not deleted — other scene references may exist), commented as superseded by the Flutter bridge. | Direct inspection of `ARTargetVisibilityAndInteraction.cs`, `UIManager.cs`, `InteractiveLabel.cs` |
+| — | Voice narration scope | In scope for Phase 3, per PROJECT_FLOW.md Part 6.2. Only 5 lessons (`q1w1`–`q1w5`) plus one onboarding script have written narration content in the retired app's `voiceScripts.ts` — the same sparse pattern as the pre-test question banks (Task 1, Phase 2). Port verbatim as a small Dart data file mirroring Task 1's `curriculum_data.dart` pattern; `flutter_tts` replaces `useVoiceOver.ts`'s Web Speech API usage, same English/Filipino toggle and play/replay/stop controls. | `src/data/voiceScripts.ts`, `src/hooks/useVoiceOver.ts` |
+| — | Multi-part-model hotspot legend scope (Part 6.3) | Build the mechanism generically (Unity-side hotspot/legend capability, adaptable from the existing `InteractiveLabel`-style component), but author hotspot data for **zero of the 23 models** in Phase 3 — no model has been flagged as needing it yet. Add per-model hotspot data later as specific models get flagged (e.g. the heart model, if/when it's built). | User decision, 2026-08-29 |
 | 1 | Item analysis → Teacher Web only | **Still open** — needs client/user confirmation. Default assumption (teacher-only, per PROJECT_FLOW.md's own flagged default) will be followed unless told otherwise. |  |
 | 2 | PPT support via slide-image conversion at import time | **Still open** — needs client/user confirmation. Default assumption (convert PPTX → slide images/PDF at teacher upload time, no native on-device PPTX renderer) will be followed unless told otherwise. |  |
 
@@ -44,16 +48,21 @@ co-location buys only bookkeeping convenience and this project doesn't need
 that, the Unity source stays external and this repo documents the dependency
 instead (`BUILD.md`, to be written during scaffolding).
 
-**Build chain (documented here for the implementation plan to follow):**
+**Build chain — superseded 2026-08-29, see the resolved-decisions table above
+for why:** the actual mechanism is `flutter_embed_unity`'s own Unity Editor
+menu item, not a generic Build Settings export:
 
-1. In Unity: File → Build Settings → Android → check "Export Project" → Export
-   to a scratch folder.
-2. This produces a `unityLibrary` Gradle module (ignore the accompanying
-   `launcher` folder — Flutter's embed plugins don't need it).
-3. Copy `unityLibrary` into `ARwebmob/android/unityLibrary/`.
-4. `ARwebmob/android/settings.gradle` and `android/app/build.gradle` need
-   one-time entries (added during scaffolding) that link the module in.
-5. Every subsequent Unity change repeats steps 1–3, then a normal
+1. Import the `FlutterEmbed` Unity package (Package Manager → Git URL, the
+   6000.0 path — see above) — a one-time setup step.
+2. In Unity: `Flutter Embed → Export project to Flutter app` → select Android
+   → point it at `ARwebmob/android/unityLibrary` (the plugin creates/writes
+   this folder directly — no manual copy step).
+3. `ARwebmob/android/settings.gradle` and `android/app/build.gradle` need
+   one-time entries (added during scaffolding) that link the module in —
+   check whether the plugin's own docs/example project already patches these
+   for you as part of its Flutter-side setup instructions before hand-writing
+   them.
+4. Every subsequent Unity change repeats step 2, then a normal
    `flutter build apk`/`flutter run`.
 
 **Embed architecture (from PROJECT_FLOW.md Part 6.0, restated for the plan):**
@@ -66,16 +75,53 @@ instead (`BUILD.md`, to be written during scaffolding).
   the description/keyIdeas overlay (populated from Flutter's own lesson data,
   not from Unity), hint chips, layered in a `Stack` above the embedded Unity
   view.
-- Bridge payload, in both directions:
-  - Flutter → Unity: which marker/model set to load for *this* lesson (derived
-    `Q{quarter}W{week}` key, per PROJECT_FLOW.md 6.1).
-  - Unity → Flutter: `"marker found"` / `"marker lost"` only. No content
-    crosses this bridge — Flutter already has the lesson's `arPayload` in
-    memory before the Unity view even appears.
-- Package: `flutter_embed_unity` (fallback `flutter_unity_widget` if the first
-  proves unworkable) — accepted as a "delicate," version-sensitive embed per
-  the plugin's own documentation; test this integration early in the plan, not
-  near a demo deadline.
+- **Bridge is one-directional: Unity → Flutter only.** Direct inspection of
+  `SampleScene.unity` confirms all 23 `ImageTargetBehaviour` trackables are
+  already simultaneously active (only 1 inactive GameObject in the whole
+  scene) — there is no per-lesson restriction today, and the confirmed-working
+  standalone APK matches this: scanning any of the 23 printed sheets triggers
+  its own model, regardless of which lesson screen the student came from.
+  **Decision (2026-08-29): keep this behavior, don't add restriction logic.**
+  If a student scans a different lesson's marker while in another lesson's
+  Scan phase, Flutter shows *that marker's* real content (looked up via the
+  `Q{quarter}W{week}` index, same as if they'd navigated there normally) —
+  more forgiving than blocking/warning, and it's zero new Unity work. This
+  means Flutter never needs to tell Unity anything before showing the Unity
+  view — there is no `loadMarker`/outbound call. The Scan screen's "Mark as
+  Read" / lesson progression still belongs to the lesson the screen was
+  *opened* with (Part 6.2's Read/Review phases), independent of which marker
+  happened to be scanned live.
+  - Unity → Flutter: `markerFound(markerIndex)` / `markerLost(markerIndex)`
+    — the only payload that crosses the bridge. No content crosses it —
+    Flutter already has every lesson's `arPayload` in memory.
+  - Unity-side wiring: `ARTargetVisibilityAndInteraction.cs`'s
+    `HandleTargetFound`/`HandleTargetLost` call `SendToFlutter.Send(...)`
+    (the `flutter_embed_unity` Unity-side package's bridge API) instead of
+    `_modelInfo.DisplayInfo()/HideInfo()` (Unity's own description-panel UI is
+    unwired, not deleted — see the resolved-decisions table above).
+  - Rotate/zoom (`MobileARController.cs`) is untouched — already correct and
+    entirely Unity-internal; nothing crosses the bridge for it (resolved Q7).
+- Package: **`flutter_embed_unity`, confirmed** (+ its
+  `flutter_embed_unity_6000_0_android` companion package for Android, opt-in
+  required for Unity 6000.x). `flutter_unity_widget` is not a viable fallback
+  for Unity 6000.4.0f1 (see the resolved-decisions table above) — accepted as
+  a "delicate," version-sensitive embed per the plugin's own documentation;
+  test this integration early in the plan, not near a demo deadline.
+  Dart-side API: the `EmbedUnity` widget (`onMessageFromUnity` callback,
+  `pauseUnity()`/`resumeUnity()`) — mounting a fresh `EmbedUnity` instance per
+  screen is fine, the plugin handles the underlying single-instance
+  detach/reattach itself ("Unity can only be shown in 1 widget at a time");
+  no hand-rolled global-singleton bridge class is needed.
+  **Unity-side setup needed before any of this compiles:** the Unity project
+  needs the `FlutterEmbed` Unity package imported (via Unity Package Manager
+  Git URL `https://github.com/learntoflutter/flutter_embed_unity.git?path=example_unity_6000_0_project/Assets/FlutterEmbed`
+  for Unity 6000.x, matching the confirmed 6000.4.0f1 version) — this is what
+  provides `SendToFlutter.Send(string)`. **Export mechanism is also different
+  from what was assumed earlier in this doc:** the package adds a
+  `Flutter Embed → Export project to Flutter app` Unity Editor menu item that
+  writes `unityLibrary` directly into `<flutter-project>/android/unityLibrary`
+  — not the generic Build Settings → Android → Export Project path (superseded
+  in `MANUAL_STEPS.md`).
 
 ## 4. Project structure
 
@@ -100,15 +146,32 @@ ARwebmob/
                                # eligibility (Part 7) — one implementation, both targets
       access_codes/            # the 3-type / 6-step validation order (Part 9) — one
                                # implementation, both targets
-    student/                   # Android-only screens
-      home/, learn/, ar_lab/, quiz/, progress/
-      ar_lab/unity_bridge.dart # wraps flutter_embed_unity: show/hide, marker found/lost stream
+    features/
+      student/                 # Android-only screens (as actually built, Phase 1/2 —
+                                # NOT lib/student/, see Phase 2's plan Global Constraints)
+        home/, learn/, quiz/, progress/, access_code/
+        lesson_detail/          # Phase 2: temporary pre-AR stand-in ("Mark as Read" button)
+                                 # Phase 3: replaced by the real Scan/Read/Review tabbed screen
+        ar_lab/
+          unity_bridge.dart     # wraps flutter_embed_unity: init-once/show/hide,
+                                 # loadMarker() out, markerFound()/markerLost() in
+          voice_scripts.dart    # ported from voiceScripts.ts — onboarding + q1w1-q1w5 only
     teacher/                   # Web-only screens
       lessons/, quizzes/, students/, access_codes/, analytics/  # item analysis (pending Q1)
   unity/                       # NOT created — Unity project stays external, see Section 3
   android/unityLibrary/        # generated by Unity's export step; gitignored
   test/, web/, android/, pubspec.yaml
 ```
+
+**Note on `core/` above:** this tree predates Phase 1/2's actual execution. What
+was actually built is flatter — `core/data/curriculum_data.dart` (not
+`curriculum/`), `core/quiz_id.dart` + `core/services/quiz_attempt_service.dart`
+(not `quiz_rules/`), `core/services/access_code_service.dart` (not
+`access_codes/`) — see `docs/superpowers/plans/2026-08-28-phase1-scaffold-core-auth.md`
+and `...-phase2-student-core-flow.md` for the real, as-built paths. The
+`features/student/` correction above (Section 4, updated 2026-08-29) reflects
+what's actually on disk; this `core/` sketch does not yet — treat the plans'
+File Structure sections as authoritative over this one for `core/`.
 
 Rule enforced by this structure: nothing in `core/` imports from `student/` or
 `teacher/`. The two most drift-prone rules in the whole spec — quiz retake
