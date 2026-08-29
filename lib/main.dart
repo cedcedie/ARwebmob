@@ -12,6 +12,10 @@ import 'core/services/quiz_attempt_service.dart';
 import 'core/services/student_repository.dart';
 import 'features/student/app/router.dart';
 import 'features/student/app/student_providers.dart';
+import 'features/teacher/app/router.dart';
+import 'features/teacher/app/teacher_providers.dart';
+import 'features/teacher/auth/teacher_auth_providers.dart';
+import 'features/teacher/auth/teacher_login_screen.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
@@ -30,18 +34,20 @@ class ArScienceExplorerApp extends StatefulWidget {
 }
 
 class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
-  // Constructed once, the first time a signed-in student id is known — not
-  // on every rebuild of the surrounding Consumer. Rebuilding
-  // `StudentServices`/`GoRouter` on every rebuild used to hand go_router a
-  // brand-new `GoRouter` instance each time, which resets navigation back to
-  // `/home` on any unrelated provider change.
+  // Student branch — constructed once, the first time a signed-in student id
+  // is known — not on every rebuild of the surrounding Consumer.
   String? _servicesStudentId;
-  StudentServices? _services;
-  GoRouter? _router;
+  StudentServices? _studentServices;
+  GoRouter? _studentRouter;
 
-  StudentServices _servicesFor(String studentId) {
-    if (_services != null && _servicesStudentId == studentId) {
-      return _services!;
+  // Teacher branch — same caching rationale as the student branch above.
+  String? _servicesTeacherEmail;
+  TeacherServices? _teacherServices;
+  GoRouter? _teacherRouter;
+
+  StudentServices _studentServicesFor(String studentId) {
+    if (_studentServices != null && _servicesStudentId == studentId) {
+      return _studentServices!;
     }
     final quizAttemptService = QuizAttemptService(firestore: FirebaseFirestore.instance);
     final services = StudentServices(
@@ -54,19 +60,42 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
       ),
     );
     _servicesStudentId = studentId;
-    _services = services;
-    _router = buildStudentRouter(services: services);
+    _studentServices = services;
+    _studentRouter = buildStudentRouter(services: services);
+    return services;
+  }
+
+  TeacherServices _teacherServicesFor(String teacherEmail) {
+    if (_teacherServices != null && _servicesTeacherEmail == teacherEmail) {
+      return _teacherServices!;
+    }
+    final services = teacherServicesFromFirestore(FirebaseFirestore.instance);
+    _servicesTeacherEmail = teacherEmail;
+    _teacherServices = services;
+    _teacherRouter = buildTeacherRouter(services: services);
     return services;
   }
 
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      return const MaterialApp(
-        title: 'AR Science Explorer',
-        home: Scaffold(
-          body: Center(child: Text('Teacher shell (placeholder)')),
-        ),
+      return Consumer(
+        builder: (context, ref, _) {
+          final teacherEmail = ref.watch(currentTeacherEmailProvider).valueOrNull;
+          if (teacherEmail == null) {
+            return const ProviderScope(child: TeacherLoginScreen());
+          }
+
+          final services = _teacherServicesFor(teacherEmail);
+
+          return ProviderScope(
+            overrides: teacherProviderOverridesFor(services: services),
+            child: MaterialApp.router(
+              title: 'AR Science Explorer',
+              routerConfig: _teacherRouter!,
+            ),
+          );
+        },
       );
     }
 
@@ -79,18 +108,13 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
           );
         }
 
-        // Deferred until a student id is known so a widget test can pump
-        // this app with `currentStudentIdProvider` overridden and never
-        // touch the real Firebase singletons below (they require
-        // `Firebase.initializeApp()` to already have run, which only
-        // happens in the real `main()`).
-        final services = _servicesFor(studentId);
+        final services = _studentServicesFor(studentId);
 
         return ProviderScope(
           overrides: studentProviderOverridesFor(studentId, services: services),
           child: MaterialApp.router(
             title: 'AR Science Explorer',
-            routerConfig: _router!,
+            routerConfig: _studentRouter!,
           ),
         );
       },

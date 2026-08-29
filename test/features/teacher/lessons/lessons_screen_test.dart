@@ -1,0 +1,185 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:ar_science_explorer/core/data/curriculum_data.dart';
+import 'package:ar_science_explorer/core/models/subject_key.dart';
+import 'package:ar_science_explorer/core/models/teacher_lesson.dart';
+import 'package:ar_science_explorer/core/services/lesson_repository.dart';
+import 'package:ar_science_explorer/features/teacher/app/teacher_providers.dart';
+import 'package:ar_science_explorer/features/teacher/lessons/lessons_screen.dart';
+
+Future<void> _scrollTo(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(
+    finder,
+    120,
+    scrollable: find.byType(Scrollable).first,
+  );
+}
+
+Future<void> _pumpLessonsScreen(
+  WidgetTester tester, {
+  required FakeFirebaseFirestore firestore,
+}) async {
+  final services = teacherServicesFromFirestore(firestore);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: teacherProviderOverridesFor(services: services),
+      child: ShadApp(
+        home: Scaffold(body: const LessonsScreen()),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  testWidgets('built-in lessons are non-editable and show a Built-in badge', (tester) async {
+    final firestore = FakeFirebaseFirestore();
+    await _pumpLessonsScreen(tester, firestore: firestore);
+
+    expect(find.text(kBuiltInLessons.first.title), findsOneWidget);
+    expect(find.text('Built-in'), findsWidgets);
+    expect(find.byTooltip('Edit'), findsNothing);
+    expect(find.byTooltip('Archive'), findsNothing);
+  });
+
+  testWidgets('teacher-authored lessons are editable', (tester) async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = LessonRepository(firestore: firestore);
+    await repo.createLesson(
+      const TeacherLesson(
+        id: 'teacher-custom-1',
+        title: 'Teacher Volcano Lab',
+        subject: SubjectKey.physics,
+        summary: 'Extra lab',
+        quarter: 1,
+        week: 5,
+      ),
+    );
+
+    await _pumpLessonsScreen(tester, firestore: firestore);
+
+    expect(find.text('Teacher Volcano Lab'), findsOneWidget);
+    await _scrollTo(tester, find.byTooltip('Edit'));
+    expect(find.byTooltip('Edit'), findsOneWidget);
+    expect(find.byTooltip('Archive'), findsOneWidget);
+  });
+
+  testWidgets('Add Lesson opens the form dialog', (tester) async {
+    final firestore = FakeFirebaseFirestore();
+    await _pumpLessonsScreen(tester, firestore: firestore);
+
+    await tester.tap(find.text('Add Lesson'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add lesson'), findsOneWidget);
+    expect(find.byKey(const Key('lesson-title')), findsOneWidget);
+  });
+
+  testWidgets('submitting a valid form calls createLesson', (tester) async {
+    final firestore = FakeFirebaseFirestore();
+    await _pumpLessonsScreen(tester, firestore: firestore);
+
+    await tester.tap(find.text('Add Lesson'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('lesson-title')));
+    await tester.enterText(find.byKey(const Key('lesson-title')), 'New Teacher Lesson');
+    await tester.tap(find.byKey(const Key('lesson-summary')));
+    await tester.enterText(find.byKey(const Key('lesson-summary')), 'A custom summary');
+    await tester.tap(find.byKey(const Key('lesson-quarter')));
+    await tester.enterText(find.byKey(const Key('lesson-quarter')), '1');
+    await tester.tap(find.byKey(const Key('lesson-week')));
+    await tester.enterText(find.byKey(const Key('lesson-week')), '5');
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('lesson-submit')),
+      50,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.byKey(const Key('lesson-submit')));
+    await tester.pumpAndSettle();
+
+    final docs = await firestore.collection('lessons').get();
+    expect(docs.docs, hasLength(1));
+    expect(docs.docs.single.data()['title'], 'New Teacher Lesson');
+    expect(find.text('New Teacher Lesson'), findsOneWidget);
+  });
+
+  testWidgets('AR model index shows a preview placeholder in tests', (tester) async {
+    final firestore = FakeFirebaseFirestore();
+    await _pumpLessonsScreen(tester, firestore: firestore);
+
+    await tester.tap(find.text('Add Lesson'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('lesson-quarter')), '1');
+    await tester.enterText(find.byKey(const Key('lesson-week')), '1');
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Model preview: assets/models/democritus_atom.glb'), findsOneWidget);
+  });
+
+  testWidgets('editing a teacher lesson pre-fills the form and calls updateLesson', (tester) async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = LessonRepository(firestore: firestore);
+    await repo.createLesson(
+      const TeacherLesson(
+        id: 'teacher-edit-1',
+        title: 'Editable Lesson',
+        subject: SubjectKey.biology,
+        summary: 'Original summary',
+      ),
+    );
+
+    await _pumpLessonsScreen(tester, firestore: firestore);
+
+    await _scrollTo(tester, find.byTooltip('Edit'));
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit lesson'), findsOneWidget);
+    expect(find.byKey(const Key('lesson-title')), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('lesson-title')), 'Updated Lesson Title');
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('lesson-submit')),
+      50,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.byKey(const Key('lesson-submit')));
+    await tester.pumpAndSettle();
+
+    final doc = await firestore.collection('lessons').doc('teacher-edit-1').get();
+    expect(doc.data()!['title'], 'Updated Lesson Title');
+    expect(find.text('Updated Lesson Title'), findsOneWidget);
+  });
+
+  testWidgets('archiving a teacher lesson removes it from the default view', (tester) async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = LessonRepository(firestore: firestore);
+    await repo.createLesson(
+      const TeacherLesson(
+        id: 'teacher-archive-1',
+        title: 'Archive Me',
+        subject: SubjectKey.chemistry,
+      ),
+    );
+
+    await _pumpLessonsScreen(tester, firestore: firestore);
+    expect(find.text('Archive Me'), findsOneWidget);
+
+    await _scrollTo(tester, find.byTooltip('Archive'));
+    await tester.tap(find.byTooltip('Archive'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Archive'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Archive Me'), findsNothing);
+
+    final doc = await firestore.collection('lessons').doc('teacher-archive-1').get();
+    expect(doc.data()!['isArchived'], true);
+  });
+}
