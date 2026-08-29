@@ -79,5 +79,18 @@ void main() {
       expect(controller.isPlaying, isFalse);
       expect(fakeTts.stopped, isTrue);
     });
+
+    test('a completion callback arriving after stop() does not resume playback', () async {
+      final fakeTts = FakeFlutterTts();
+      final controller = VoiceOverController(tts: fakeTts);
+
+      await controller.playAll(['a', 'b'], 'en');
+      await controller.stop();
+
+      fakeTts.completeCurrentUtterance();
+
+      expect(controller.isPlaying, isFalse);
+      expect(fakeTts.spokenTexts, ['a']);
+    });
   });
 }

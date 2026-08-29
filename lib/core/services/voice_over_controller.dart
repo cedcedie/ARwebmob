@@ -38,6 +38,10 @@ class VoiceOverController {
   }
 
   void _onUtteranceComplete() {
+    // Guards against a completion callback arriving after stop() already
+    // ran — without this, a stray callback would speak the next queued
+    // line even though playback was supposed to have ended.
+    if (!_isPlaying) return;
     _index += 1;
     if (_index < _queue.length) {
       _tts.speak(_queue[_index]);
