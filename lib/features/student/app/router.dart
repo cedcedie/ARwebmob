@@ -6,9 +6,9 @@ import '../../../core/data/curriculum_data.dart';
 import '../../../core/models/lesson.dart';
 import '../../../core/models/quiz_phase.dart';
 import '../../../core/quiz_id.dart';
+import '../ar_lab/ar_lab_screen.dart';
 import '../home/home_screen.dart';
 import '../learn/learn_screen.dart';
-import '../lesson_detail/lesson_detail_screen.dart';
 import '../progress/progress_screen.dart';
 import '../quiz/quiz_player_screen.dart';
 import '../quiz/quiz_session_controller.dart';
@@ -62,7 +62,7 @@ GoRouter buildStudentRouter({required StudentServices services}) {
 
                   return ProviderScope(
                     overrides: [
-                      lessonDetailOverrideFor(
+                      arLabOverrideFor(
                         studentId,
                         lessonId,
                         services: services,
@@ -70,7 +70,7 @@ GoRouter buildStudentRouter({required StudentServices services}) {
                         onStartPostTest: () => invalidateQuizSession(QuizPhase.post),
                       ),
                     ],
-                    child: LessonDetailScreen(lessonId: lessonId),
+                    child: ArLabScreen(lessonId: lessonId),
                   );
                 },
               );
@@ -92,8 +92,8 @@ GoRouter buildStudentRouter({required StudentServices services}) {
           // data is intentionally sparse), and a teacher-authored lesson id
           // has neither. Screens are expected to hide the action that would
           // reach here when a bank is missing (LessonCard's `hasPreTest`,
-          // LessonDetailScreen's `vm.hasPreTest`) — this is the fallback for
-          // a stale link or a manually-typed URL, not the primary guard.
+          // ArLabScreen's `vm.hasPreTest`) — this is the fallback for a
+          // stale link or a manually-typed URL, not the primary guard.
           if (questions == null || questions.isEmpty) {
             return Scaffold(
               appBar: AppBar(title: const Text('Test unavailable')),

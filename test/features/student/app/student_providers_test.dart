@@ -8,9 +8,9 @@ import 'package:ar_science_explorer/core/services/quiz_attempt_service.dart';
 import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/core/models/student_record.dart';
 import 'package:ar_science_explorer/features/student/app/student_providers.dart';
+import 'package:ar_science_explorer/features/student/ar_lab/ar_lab_providers.dart';
 import 'package:ar_science_explorer/features/student/home/home_providers.dart';
 import 'package:ar_science_explorer/features/student/learn/learn_providers.dart';
-import 'package:ar_science_explorer/features/student/lesson_detail/lesson_detail_providers.dart';
 import 'package:ar_science_explorer/features/student/progress/progress_providers.dart';
 
 void main() {
@@ -50,7 +50,7 @@ void main() {
     expect(progress.subjectSections, hasLength(3));
   });
 
-  test('lessonDetailOverrideFor resolves a real stream, not a TypeError', () async {
+  test('arLabOverrideFor resolves a real stream, not a TypeError', () async {
     final firestore = FakeFirebaseFirestore();
     final studentRepo = StudentRepository(firestore: firestore);
     await studentRepo.saveStudent(StudentRecord(
@@ -76,7 +76,7 @@ void main() {
 
     final container = ProviderContainer(
       overrides: [
-        lessonDetailOverrideFor(
+        arLabOverrideFor(
           '111111',
           'q1w1',
           services: services,
@@ -87,13 +87,13 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    final lessonDetail = await container.read(lessonDetailViewModelProvider('q1w1').future);
+    final arLab = await container.read(arLabViewModelProvider('q1w1').future);
 
-    expect(lessonDetail.lessonId, 'q1w1');
-    expect(lessonDetail.isRead, false);
+    expect(arLab.lessonId, 'q1w1');
+    expect(arLab.isRead, false);
 
-    lessonDetail.onStartPreTest();
-    lessonDetail.onStartPostTest();
+    arLab.onStartPreTest();
+    arLab.onStartPostTest();
     expect(preTestStarted, true);
     expect(postTestStarted, true);
   });
@@ -142,7 +142,7 @@ void main() {
     expect(biologyLearn.cards.map((c) => c.lessonId), isNot(chemistryLearn.cards.map((c) => c.lessonId)));
   });
 
-  test('C4: lessonDetailOverrideFor resolves a teacher-authored lesson id without throwing', () async {
+  test('C4: arLabOverrideFor resolves a teacher-authored lesson id without throwing', () async {
     final firestore = FakeFirebaseFirestore();
     final studentRepo = StudentRepository(firestore: firestore);
     await studentRepo.saveStudent(StudentRecord(
@@ -170,7 +170,7 @@ void main() {
 
     final container = ProviderContainer(
       overrides: [
-        lessonDetailOverrideFor(
+        arLabOverrideFor(
           '111111',
           'teacher-extra-1',
           services: services,
@@ -183,10 +183,10 @@ void main() {
 
     // Must not throw StateError('No element') — the old
     // kBuiltInLessons.firstWhere lookup with no orElse would have.
-    final lessonDetail = await container.read(lessonDetailViewModelProvider('teacher-extra-1').future);
+    final arLab = await container.read(arLabViewModelProvider('teacher-extra-1').future);
 
-    expect(lessonDetail.lessonId, 'teacher-extra-1');
-    expect(lessonDetail.title, 'Extra Credit: Volcanoes');
-    expect(lessonDetail.hasPreTest, false);
+    expect(arLab.lessonId, 'teacher-extra-1');
+    expect(arLab.title, 'Extra Credit: Volcanoes');
+    expect(arLab.hasPreTest, false);
   });
 }

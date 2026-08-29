@@ -10,9 +10,9 @@ import '../../../core/services/auth_service.dart' show isStudentEmail;
 import '../../../core/services/lesson_repository.dart';
 import '../../../core/services/quiz_attempt_service.dart';
 import '../../../core/services/student_repository.dart';
+import '../ar_lab/ar_lab_providers.dart';
 import '../home/home_providers.dart';
 import '../learn/learn_providers.dart';
-import '../lesson_detail/lesson_detail_providers.dart';
 import '../progress/progress_providers.dart';
 
 /// Bundles every core/ service a student screen needs, so app startup only
@@ -106,18 +106,18 @@ List<Override> studentProviderOverridesFor(
   ];
 }
 
-/// Per-lesson override for `lessonDetailViewModelProvider` — a `.family`
-/// provider, so it's overridden per lessonId at the call site (the route
-/// builder in router.dart), not bundled into the list above.
-Override lessonDetailOverrideFor(
+/// Per-lesson override for `arLabViewModelProvider` — a `.family` provider,
+/// so it's overridden per lessonId at the call site (the route builder in
+/// router.dart), not bundled into the list above.
+Override arLabOverrideFor(
   String studentId,
   String lessonId, {
   required StudentServices services,
   required void Function() onStartPreTest,
   required void Function() onStartPostTest,
 }) {
-  return lessonDetailViewModelProvider(lessonId).overrideWith(
-    (ref) => buildLessonDetailViewModel(
+  return arLabViewModelProvider(lessonId).overrideWith(
+    (ref) => buildArLabViewModel(
       studentId: studentId,
       lessonId: lessonId,
       lessonRepository: services.lessonRepository,
