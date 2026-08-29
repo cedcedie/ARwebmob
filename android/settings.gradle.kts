@@ -24,3 +24,7 @@ plugins {
 }
 
 include(":app")
+
+// flutter_embed_unity (Phase 3 AR Lab): the exported Unity Android library,
+// linked into the app module's dependencies in app/build.gradle.kts.
+include(":unityLibrary")

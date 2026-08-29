@@ -2,6 +2,11 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // flutter_embed_unity (Phase 3 AR Lab): lets Gradle find the AARs
+        // bundled inside the exported Unity Android library.
+        flatDir {
+            dirs(file("${project(":unityLibrary").projectDir}/libs"))
+        }
     }
 }
 
