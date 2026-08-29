@@ -8,7 +8,6 @@ import 'package:ar_science_explorer/core/models/quiz_phase.dart';
 import 'package:ar_science_explorer/core/models/student_record.dart';
 import 'package:ar_science_explorer/core/models/subject_key.dart';
 import 'package:ar_science_explorer/core/quiz_id.dart';
-import 'package:ar_science_explorer/core/services/access_code_issuance_service.dart';
 import 'package:ar_science_explorer/core/services/quiz_attempt_service.dart';
 import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/features/teacher/access_codes/access_codes_providers.dart';
@@ -29,11 +28,6 @@ StudentRecord _blankStudent(String id, {String name = 'Test Student'}) => Studen
       unlockedQuizIds: const [],
       quizAttempts: const [],
     );
-
-AccessCodesViewModel _viewModel({
-  required AccessCodesViewModel Function() build,
-}) =>
-    build();
 
 Future<void> _pumpAccessCodesScreen(
   WidgetTester tester, {
