@@ -52,18 +52,23 @@ void main() {
     });
   });
 
-  group('lessonForMarkerIndex', () {
-    test('finds q1w1 by its own arPayload.modelIndex', () {
-      final q1w1 = kBuiltInLessons.firstWhere((l) => l.id == 'q1w1');
-      final found = lessonForMarkerIndex(
-        kBuiltInLessons,
-        q1w1.arPayload!.modelIndex,
-      );
+  group('lessonForTrackableName', () {
+    test('finds q1w1 from a mixed-case trackable name', () {
+      final found = lessonForTrackableName(kBuiltInLessons, 'DemocritusAtomQ1W1');
       expect(found?.id, 'q1w1');
     });
 
-    test('returns null for an index no lesson uses', () {
-      expect(lessonForMarkerIndex(kBuiltInLessons, 9999), isNull);
+    test('finds q3w2 from a lowercase trackable name, disambiguating from q3w1 '
+        '(both share arPayload.modelIndex 8)', () {
+      final found = lessonForTrackableName(
+        kBuiltInLessons,
+        'q3w2inclined_plane_slide_playground',
+      );
+      expect(found?.id, 'q3w2');
+    });
+
+    test('returns null when the trackable name has no Q<n>W<n> pattern', () {
+      expect(lessonForTrackableName(kBuiltInLessons, 'SomeNameWithNoPattern'), isNull);
     });
   });
 

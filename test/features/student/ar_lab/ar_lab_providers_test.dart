@@ -68,10 +68,10 @@ void main() {
 
     expect(viewModel.detectedLesson, isNull);
 
-    viewModel.onMarkerFound(0);
+    viewModel.onMarkerFound('DemocritusAtomQ1W1');
     expect(viewModel.detectedLesson?.id, 'q1w1');
 
-    viewModel.onMarkerFound(999);
+    viewModel.onMarkerFound('NameWithNoPattern');
     expect(viewModel.detectedLesson, isNull);
   });
 }

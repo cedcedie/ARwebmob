@@ -6,9 +6,19 @@ String markerAssetForLesson(Lesson lesson) {
   return 'assets/markers/Q${lesson.quarter}W${lesson.week}.jpg';
 }
 
-Lesson? lessonForMarkerIndex(List<Lesson> orderedLessons, int markerIndex) {
+/// Extracts the `Q<n>W<n>` pattern from a Vuforia trackable name (e.g.
+/// "DemocritusAtomQ1W1" -> lesson with quarter 1, week 1) and finds the
+/// matching lesson. Case-insensitive because trackable names in the Unity
+/// scene are inconsistently cased (e.g. "q3w2inclined_plane_slide_playground"
+/// vs "DemocritusAtomQ1W1"). Returns null if no `Q<n>W<n>` pattern is found
+/// in the name, or if no lesson matches the extracted quarter/week.
+Lesson? lessonForTrackableName(List<Lesson> orderedLessons, String trackableName) {
+  final match = RegExp(r'[Qq](\d+)[Ww](\d+)').firstMatch(trackableName);
+  if (match == null) return null;
+  final quarter = int.parse(match.group(1)!);
+  final week = int.parse(match.group(2)!);
   for (final lesson in orderedLessons) {
-    if (lesson.arPayload?.modelIndex == markerIndex) return lesson;
+    if (lesson.quarter == quarter && lesson.week == week) return lesson;
   }
   return null;
 }

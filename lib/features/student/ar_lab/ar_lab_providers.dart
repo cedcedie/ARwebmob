@@ -56,13 +56,14 @@ class ArLabViewModel extends ChangeNotifier {
   /// detect any marker in the curriculum, not just this lesson's.
   Lesson? detectedLesson;
 
-  void onMarkerFound(int foundMarkerIndex) {
-    detectedLesson = lessonForMarkerIndex(kBuiltInLessons, foundMarkerIndex);
+  void onMarkerFound(String trackableName) {
+    detectedLesson = lessonForTrackableName(kBuiltInLessons, trackableName);
     notifyListeners();
   }
 
-  void onMarkerLost(int lostMarkerIndex) {
-    if (detectedLesson?.arPayload?.modelIndex != lostMarkerIndex) return;
+  void onMarkerLost(String trackableName) {
+    final lostLesson = lessonForTrackableName(kBuiltInLessons, trackableName);
+    if (lostLesson?.id != detectedLesson?.id) return;
     detectedLesson = null;
     notifyListeners();
   }
