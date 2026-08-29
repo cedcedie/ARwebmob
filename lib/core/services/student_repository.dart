@@ -32,4 +32,29 @@ class StudentRepository {
       return StudentRecord.fromJson(data);
     });
   }
+
+  /// Streams the full student roster, filtering out archived students by
+  /// default — teacher roster views should only see active students unless
+  /// explicitly asked to include archived ones.
+  Stream<List<StudentRecord>> watchAllStudents({bool includeArchived = false}) {
+    return _students.snapshots().map(
+          (snapshot) => snapshot.docs
+              .map((doc) => StudentRecord.fromJson(doc.data()))
+              .where((student) => includeArchived || !student.isArchived)
+              .toList(),
+        );
+  }
+
+  /// Creates (or overwrites) a student doc at `/students/{student.studentId}`.
+  Future<void> createStudent(StudentRecord student) {
+    return saveStudent(student);
+  }
+
+  /// Soft-archives a student by setting `isArchived: true`, without touching
+  /// any other field — `scores`, `completedLessonIds`, `unlockedLessonIds`,
+  /// and `quizAttempts` must survive untouched, since Part 9/7's logic
+  /// elsewhere depends on those lists never being silently reset.
+  Future<void> archiveStudent(String studentId) {
+    return _students.doc(studentId).update({'isArchived': true});
+  }
 }

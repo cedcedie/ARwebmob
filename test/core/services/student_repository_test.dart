@@ -77,4 +77,63 @@ void main() {
 
     expect(events.last?.name, 'Juan Dela Cruz Jr.');
   });
+
+  test('watchAllStudents returns only non-archived students by default', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = StudentRepository(firestore: firestore);
+    final active = _sampleStudent();
+    final archived = _sampleStudent().copyWith(id: '999999', studentId: '999999', isArchived: true);
+    await repo.saveStudent(active);
+    await repo.saveStudent(archived);
+
+    final result = await repo.watchAllStudents().first;
+
+    expect(result.map((s) => s.studentId), ['123456']);
+  });
+
+  test('watchAllStudents(includeArchived: true) returns archived students too', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = StudentRepository(firestore: firestore);
+    final active = _sampleStudent();
+    final archived = _sampleStudent().copyWith(id: '999999', studentId: '999999', isArchived: true);
+    await repo.saveStudent(active);
+    await repo.saveStudent(archived);
+
+    final result = await repo.watchAllStudents(includeArchived: true).first;
+
+    expect(result.map((s) => s.studentId).toSet(), {'123456', '999999'});
+  });
+
+  test('createStudent writes a new doc keyed by studentId', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = StudentRepository(firestore: firestore);
+    final student = _sampleStudent();
+
+    await repo.createStudent(student);
+
+    final rawDoc = await firestore.collection('students').doc('123456').get();
+    expect(rawDoc.exists, true);
+    final result = await repo.getStudent('123456');
+    expect(result, isNotNull);
+    expect(result!.name, 'Juan Dela Cruz');
+  });
+
+  test('archiveStudent sets isArchived without touching any other field', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = StudentRepository(firestore: firestore);
+    final student = _sampleStudent();
+    await repo.saveStudent(student);
+
+    await repo.archiveStudent('123456');
+
+    final result = await repo.getStudent('123456');
+    expect(result, isNotNull);
+    expect(result!.isArchived, true);
+    // Explicitly assert these survive untouched — Part 9/7's logic elsewhere
+    // depends on these never being silently reset by an archive operation.
+    expect(result.scores, student.scores);
+    expect(result.completedLessonIds, student.completedLessonIds);
+    expect(result.unlockedLessonIds, student.unlockedLessonIds);
+    expect(result.quizAttempts, student.quizAttempts);
+  });
 }
