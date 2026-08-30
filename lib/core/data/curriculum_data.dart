@@ -74,6 +74,7 @@ final List<Lesson> kBuiltInLessons = [
         'Form all materials in the universe',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q1w2',
@@ -132,6 +133,7 @@ final List<Lesson> kBuiltInLessons = [
         'Results in a bent molecular shape',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q1w3',
@@ -192,6 +194,7 @@ final List<Lesson> kBuiltInLessons = [
         'Kinetic Energy determines the state',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q1w4',
@@ -250,6 +253,7 @@ final List<Lesson> kBuiltInLessons = [
         'KE depends on particle mass and speed',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q1w5',
@@ -348,6 +352,7 @@ final List<Lesson> kBuiltInLessons = [
         'Heat-resistant borosilicate glass',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q1w7',
@@ -412,6 +417,7 @@ final List<Lesson> kBuiltInLessons = [
         'Solubility varies with temperature',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q1w8',
@@ -472,6 +478,7 @@ final List<Lesson> kBuiltInLessons = [
         'Ionic bonds break to form saline',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q2w1',
@@ -534,6 +541,7 @@ final List<Lesson> kBuiltInLessons = [
         'Stage holds the glass slides',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q2w2',
@@ -598,6 +606,7 @@ final List<Lesson> kBuiltInLessons = [
         'Rectangular shape vs Animal cells',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q2w3',
@@ -655,6 +664,7 @@ final List<Lesson> kBuiltInLessons = [
         'Reproduce quickly by binary fission',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q2w4',
@@ -719,6 +729,7 @@ final List<Lesson> kBuiltInLessons = [
         'Occurs in somatic (body) cells',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q2w5',
@@ -779,6 +790,7 @@ final List<Lesson> kBuiltInLessons = [
         'Creates evolutionary genetic diversity',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q2w6',
@@ -838,6 +850,7 @@ final List<Lesson> kBuiltInLessons = [
         'Offspring are genetically identical',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q2w7',
@@ -901,6 +914,7 @@ final List<Lesson> kBuiltInLessons = [
         'Each level has unique emergent traits',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q2w8',
@@ -960,6 +974,7 @@ final List<Lesson> kBuiltInLessons = [
         'Decomposers recycle nutrients to soil',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q3w1',
@@ -1021,6 +1036,7 @@ final List<Lesson> kBuiltInLessons = [
         'Constant velocity appears as a straight line on a d-t graph',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q3w2',
@@ -1085,6 +1101,7 @@ final List<Lesson> kBuiltInLessons = [
         'Newton\'s First Law: Objects at rest stay at rest unless unbalanced forces act on them',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q3w3',
@@ -1150,6 +1167,7 @@ final List<Lesson> kBuiltInLessons = [
         'Real-world objects often experience multiple forces simultaneously',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q3w4',
@@ -1215,6 +1233,7 @@ final List<Lesson> kBuiltInLessons = [
         'Displacement can be zero even when distance is nonzero (round trip)',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q3w5',
@@ -1281,6 +1300,7 @@ final List<Lesson> kBuiltInLessons = [
         'Two objects can have equal speed but different velocities',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q3w6',
@@ -1347,6 +1367,7 @@ final List<Lesson> kBuiltInLessons = [
         'Curved lines indicate changing speed (non-uniform motion)',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q3w7',
@@ -1409,6 +1430,7 @@ final List<Lesson> kBuiltInLessons = [
         'Different materials have different thermal conductivity',
       ],
     ),
+    hasAR: true,
   ),
   const Lesson(
     id: 'q3w8',
@@ -1475,6 +1497,7 @@ final List<Lesson> kBuiltInLessons = [
         'Each method has practical advantages and disadvantages',
       ],
     ),
+    hasAR: true,
   ),
 ];
 

@@ -111,12 +111,7 @@ Stream<ArLabViewModel> buildArLabViewModel({
       lessonId: lessonId,
       title: lesson.title,
       summary: lesson.summary,
-      // `Lesson.hasAR` is never set to `true` anywhere in `curriculum_data.dart`
-      // (it's left at its `false` default even on lessons with a populated
-      // `arPayload`) — presence of `arPayload` is the actual signal for "this
-      // lesson has AR content", so derive `hasAR` from that instead of trusting
-      // the unused flag.
-      hasAR: lesson.arPayload != null,
+      hasAR: lesson.hasAR,
       markerIndex: lesson.arPayload?.modelIndex,
       isRead: isRead,
       hasPreTest: preTestLessonIds.contains(lessonId),

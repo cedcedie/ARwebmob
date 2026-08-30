@@ -122,7 +122,7 @@ class _LessonsBody extends StatelessWidget {
                   final quarterWeek = lesson.quarter != null && lesson.week != null
                       ? 'Q${lesson.quarter}W${lesson.week}'
                       : '—';
-                  final hasAr = lesson.hasAR || lesson.arPayload != null;
+                  final hasAr = lesson.hasAR;
 
                   return DataRow(
                     cells: [
