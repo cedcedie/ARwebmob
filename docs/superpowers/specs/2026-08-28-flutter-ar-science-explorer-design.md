@@ -300,18 +300,65 @@ phone screen).
 `lucide_icons_flutter`, `flutter_form_builder` + `form_builder_validators`,
 `model_viewer_plus`, `cached_network_image`.
 
-### Phase 5 — Item analysis + PPT pipeline (pending Q1/Q2 confirmation)
+### Phase 5 — Item analysis + PPT pipeline
 
-Item analysis reporting (Part 7.5) on Teacher Web, and the PPTX → slide-image
-conversion pipeline (Part 8). Held until Q1/Q2 are confirmed so this phase
-isn't built against the wrong target/approach.
-**UI packages introduced:** `fl_chart`; the student-side content viewer
-(`syncfusion_flutter_pdfviewer` or `photo_view`, decided by Q2's answer).
+Both Q1 and Q2 are now confirmed (2026-08-31 — see the resolved-decisions
+table below); this phase's architecture is settled and ready to plan.
 
-## 7. Still open — needs your/client confirmation before that phase is built
+**Item analysis (Part 7.5):** pure computation, Teacher Web only, no new
+data collection or Firestore writes — `quizAttempts[]` (Phase 2) already
+carries every student's `answers[]` array per attempt, so difficulty index,
+discrimination index, and distractor analysis are all math over data that
+already exists. Computed client-side, on-demand, when a teacher opens a
+quiz's analytics view. Rendered with `fl_chart`.
 
-- Q1: item analysis on Teacher Web only, not shown to students — confirm.
-- Q2: PPTX → slide-images-at-import-time approach — confirm.
+**PPT/PDF pipeline (Part 8):** one cohesive subsystem (not two independent
+features) — a teacher uploads either a `.pptx` **or** a `.pdf` for a
+lesson's content (both supported going forward, teacher's choice per
+lesson), landing in Firebase Storage under the lesson's path (fixing Part
+8.1's `localStorage` data-URL problem for both formats, not just PPTX).
+
+- **PDF path:** no conversion needed. The existing PDF-viewing behavior
+  just gets a real Storage URL instead of the old `localStorage` hack.
+- **PPTX path:** a Storage-triggered Firebase Cloud Function — Cloud
+  Run-based (a custom container running headless LibreOffice; Node/Python's
+  default Cloud Functions runtime has no LibreOffice) — converts the
+  upload into one PNG per slide, writes them back to Storage, then updates
+  the lesson's Firestore doc with the resulting image URLs. No teacher-side
+  editor for the slide content itself — a teacher makes the deck externally
+  (Canva, PowerPoint, whatever) and just uploads the finished file; the app
+  never edits its content, only converts and displays it. While conversion
+  is in flight (a few seconds to roughly a minute depending on slide
+  count), the student's Read tab shows a "processing" state rather than a
+  broken/empty view — this is non-blocking on the teacher's side too, they
+  don't wait through it.
+- **Data model:** both paths write to the same field shape on
+  `TeacherLesson` — a list of content-image/document URLs (1 entry for a
+  PDF, N entries for PPTX-derived slides) — so the student-side viewer only
+  needs to branch on "how many URLs" rather than carry two entirely
+  separate content types through the app.
+- **Student viewer:** a swipeable slide-image gallery (`photo_view`) for
+  PPTX-derived content; the existing PDF view, now backed by a real Storage
+  URL, for a PDF upload.
+
+**Cost/account note (real, not hypothetical):** the Cloud Run-based
+function requires the Firebase project be on the paid "Blaze" (pay-as-you-go)
+plan, not the free "Spark" plan — flagged in `MANUAL_STEPS.md` as an
+account-level action only you can take.
+
+**UI packages introduced:** `fl_chart`, `photo_view`. (Not
+`syncfusion_flutter_pdfviewer` — the existing PDF-viewing approach from
+earlier phases is kept for the PDF path; only the storage backing changes.)
+
+## 7. Confirmed decisions (previously open questions)
+
+- **Q1 — item analysis on Teacher Web only, never shown to students.**
+  Confirmed 2026-08-31. Matches the working default used throughout Phases
+  1–4.
+- **Q2 — PPTX → slide-images-at-import-time approach.** Confirmed
+  2026-08-31, via a Cloud Function (Cloud Run + headless LibreOffice), not
+  a third-party paid conversion API — see Phase 5's section above for the
+  full mechanism and its Blaze-plan requirement.
 
 No other item in PROJECT_FLOW.md Parts 3, 7, 9, or Part 5's curriculum content
 is open for reinterpretation — those are replicate-exactly requirements.
