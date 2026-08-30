@@ -39,14 +39,22 @@ class _ScanTabState extends State<ScanTab> {
   void _onViewModelChanged() => setState(() {});
 
   void _handleUnityMessage(String message) {
-    final decoded = jsonDecode(message) as Map<String, dynamic>;
-    final event = decoded['event'] as String?;
-    final trackableName = decoded['trackableName'] as String?;
-    if (trackableName == null) return;
-    if (event == 'markerFound') {
-      widget.vm.onMarkerFound(trackableName);
-    } else if (event == 'markerLost') {
-      widget.vm.onMarkerLost(trackableName);
+    try {
+      final decoded = jsonDecode(message);
+      if (decoded is! Map<String, dynamic>) return;
+      final event = decoded['event'] as String?;
+      final trackableName = decoded['trackableName'] as String?;
+      if (trackableName == null) return;
+      if (event == 'markerFound') {
+        widget.vm.onMarkerFound(trackableName);
+      } else if (event == 'markerLost') {
+        widget.vm.onMarkerLost(trackableName);
+      }
+    } catch (error) {
+      // A malformed or unrecognized message from Unity (bad JSON, wrong
+      // shape, or a future event type) should never crash the Scan tab —
+      // swallow it after logging for debugging.
+      debugPrint('ScanTab: ignoring malformed Unity message: $error');
     }
   }
 

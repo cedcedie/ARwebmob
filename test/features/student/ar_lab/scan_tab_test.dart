@@ -1,5 +1,4 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:flutter/services.dart' show VoidCallback;
 import 'package:flutter/material.dart';
 import 'package:flutter_embed_unity/flutter_embed_unity.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -109,6 +108,51 @@ void main() {
 
       expect(find.textContaining("doesn't have an AR model"), findsOneWidget);
       expect(find.byType(EmbedUnity), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'ignores a malformed Unity message (invalid JSON) without throwing or '
+    'changing UI state',
+    (tester) async {
+      final vm = _buildViewModel(lessonId: 'q1w1', hasAR: true);
+      final voiceOverController = VoiceOverController(tts: FakeFlutterTts());
+
+      await tester.pumpWidget(
+        _wrap(ScanTab(vm: vm, voiceOverController: voiceOverController)),
+      );
+      await tester.pump();
+
+      final embedUnity = tester.widget<EmbedUnity>(find.byType(EmbedUnity));
+
+      expect(() => embedUnity.onMessageFromUnity?.call('not valid json{'), returnsNormally);
+      await tester.pump();
+
+      expect(vm.detectedLesson, isNull);
+      expect(find.textContaining('Point your camera'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'ignores a well-formed JSON message missing the expected fields without '
+    'throwing or changing UI state',
+    (tester) async {
+      final vm = _buildViewModel(lessonId: 'q1w1', hasAR: true);
+      final voiceOverController = VoiceOverController(tts: FakeFlutterTts());
+
+      await tester.pumpWidget(
+        _wrap(ScanTab(vm: vm, voiceOverController: voiceOverController)),
+      );
+      await tester.pump();
+
+      final embedUnity = tester.widget<EmbedUnity>(find.byType(EmbedUnity));
+
+      expect(() => embedUnity.onMessageFromUnity?.call('{"unexpected":"shape"}'), returnsNormally);
+      expect(() => embedUnity.onMessageFromUnity?.call('["not", "a", "map"]'), returnsNormally);
+      await tester.pump();
+
+      expect(vm.detectedLesson, isNull);
+      expect(find.textContaining('Point your camera'), findsOneWidget);
     },
   );
 }
