@@ -9,9 +9,15 @@ import 'review_tab.dart';
 import 'scan_tab.dart';
 
 class ArLabScreen extends ConsumerStatefulWidget {
-  const ArLabScreen({super.key, required this.lessonId});
+  const ArLabScreen({super.key, required this.lessonId, this.voiceOverController});
 
   final String lessonId;
+
+  /// Overrides the [VoiceOverController] this screen builds internally.
+  /// Exposed for tests that need to observe narration lifecycle (e.g.
+  /// asserting [VoiceOverController.stop] is called on [dispose]); real
+  /// callers should leave this null and let the screen build its own.
+  final VoiceOverController? voiceOverController;
 
   @override
   ConsumerState<ArLabScreen> createState() => _ArLabScreenState();
@@ -23,7 +29,13 @@ class _ArLabScreenState extends ConsumerState<ArLabScreen> {
   @override
   void initState() {
     super.initState();
-    _voiceOverController = VoiceOverController(tts: FlutterTts());
+    _voiceOverController = widget.voiceOverController ?? VoiceOverController(tts: FlutterTts());
+  }
+
+  @override
+  void dispose() {
+    _voiceOverController.stop();
+    super.dispose();
   }
 
   @override
