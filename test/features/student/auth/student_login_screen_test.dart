@@ -1,9 +1,11 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:ar_science_explorer/core/services/auth_service.dart';
+import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/features/student/auth/student_auth_providers.dart';
 import 'package:ar_science_explorer/features/student/auth/student_login_screen.dart';
 
@@ -29,7 +31,16 @@ class _TrackingAuthService extends AuthService {
 Future<void> _pumpScreen(WidgetTester tester, AuthService authService) {
   return tester.pumpWidget(
     ProviderScope(
-      overrides: [studentAuthServiceProvider.overrideWithValue(authService)],
+      overrides: [
+        studentAuthServiceProvider.overrideWithValue(authService),
+        // These widget tests exercise the login form itself, not the
+        // archive check, so a plain in-memory Firestore (with no students
+        // in it) is enough to satisfy studentAuthViewModelProvider's
+        // dependency without requiring Firebase.initializeApp().
+        studentAuthRepositoryProvider.overrideWithValue(
+          StudentRepository(firestore: FakeFirebaseFirestore()),
+        ),
+      ],
       child: const StudentLoginScreen(),
     ),
   );

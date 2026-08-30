@@ -1,9 +1,11 @@
 // test/widget_test.dart
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:ar_science_explorer/core/services/auth_service.dart';
+import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/features/student/app/student_providers.dart';
 import 'package:ar_science_explorer/features/student/auth/student_auth_providers.dart';
 import 'package:ar_science_explorer/features/teacher/auth/teacher_auth_providers.dart';
@@ -31,6 +33,13 @@ void main() {
           ),
           authServiceProvider.overrideWithValue(
             AuthService(firebaseAuth: MockFirebaseAuth()),
+          ),
+          // StudentAuthViewModel also resolves a StudentRepository (for the
+          // sign-in archive check) at build time — override it with an
+          // in-memory Firestore for the same reason as the two overrides
+          // above.
+          studentAuthRepositoryProvider.overrideWithValue(
+            StudentRepository(firestore: FakeFirebaseFirestore()),
           ),
         ],
         child: const ArScienceExplorerApp(),

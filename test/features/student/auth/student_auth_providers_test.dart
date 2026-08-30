@@ -1,7 +1,10 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ar_science_explorer/core/models/student_record.dart';
 import 'package:ar_science_explorer/core/services/auth_service.dart';
+import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/features/student/auth/student_auth_providers.dart';
 
 class _TrackingAuthService extends AuthService {
@@ -11,6 +14,7 @@ class _TrackingAuthService extends AuthService {
       onSignInStudent;
 
   int signInStudentCallCount = 0;
+  int signOutCallCount = 0;
   String? lastIdOrEmail;
 
   @override
@@ -25,6 +29,30 @@ class _TrackingAuthService extends AuthService {
     }
     return MockUser(uid: 'uid-student', email: '$idOrEmail@arscience.school');
   }
+
+  @override
+  Future<void> signOut() async {
+    signOutCallCount++;
+    return super.signOut();
+  }
+}
+
+StudentRecord _studentRecord({required String id, bool isArchived = false}) {
+  return StudentRecord(
+    id: id,
+    name: 'Student $id',
+    studentId: id,
+    grade: '7',
+    section: 'Rizal',
+    scores: const {'chemistry': null, 'biology': null, 'physics': null},
+    completedLessonIds: const [],
+    completedLabExperimentIds: const [],
+    completedQuizIds: const [],
+    unlockedLessonIds: const [],
+    unlockedQuizIds: const [],
+    quizAttempts: const [],
+    isArchived: isArchived,
+  );
 }
 
 void main() {
@@ -85,6 +113,48 @@ void main() {
 
       expect(authService.signInStudentCallCount, 1);
       expect(vm.state.errorMessage, 'Invalid password.');
+      expect(vm.state.isSubmitting, false);
+    });
+
+    test('archived student is signed back out and shown a clear message', () async {
+      final firestore = FakeFirebaseFirestore();
+      final studentRepository = StudentRepository(firestore: firestore);
+      await studentRepository.saveStudent(_studentRecord(id: '123456', isArchived: true));
+
+      final authService = _TrackingAuthService();
+      final vm = StudentAuthViewModel(
+        authService: authService,
+        studentRepository: studentRepository,
+      )
+        ..idOrEmail = '123456'
+        ..password = 'secret';
+
+      await vm.submit();
+
+      expect(authService.signInStudentCallCount, 1);
+      expect(authService.signOutCallCount, 1, reason: 'archived student must be signed back out');
+      expect(vm.state.errorMessage, kArchivedStudentMessage);
+      expect(vm.state.isSubmitting, false);
+    });
+
+    test('non-archived student sign-in is unaffected by the archive check', () async {
+      final firestore = FakeFirebaseFirestore();
+      final studentRepository = StudentRepository(firestore: firestore);
+      await studentRepository.saveStudent(_studentRecord(id: '123456', isArchived: false));
+
+      final authService = _TrackingAuthService();
+      final vm = StudentAuthViewModel(
+        authService: authService,
+        studentRepository: studentRepository,
+      )
+        ..idOrEmail = '123456'
+        ..password = 'secret';
+
+      await vm.submit();
+
+      expect(authService.signInStudentCallCount, 1);
+      expect(authService.signOutCallCount, 0);
+      expect(vm.state.errorMessage, isNull);
       expect(vm.state.isSubmitting, false);
     });
   });
