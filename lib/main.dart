@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import 'core/services/access_code_service.dart';
 import 'core/services/lesson_repository.dart';
@@ -12,6 +13,7 @@ import 'core/services/quiz_attempt_service.dart';
 import 'core/services/student_repository.dart';
 import 'features/student/app/router.dart';
 import 'features/student/app/student_providers.dart';
+import 'features/student/auth/student_login_screen.dart';
 import 'features/teacher/app/router.dart';
 import 'features/teacher/app/teacher_providers.dart';
 import 'features/teacher/auth/teacher_auth_providers.dart';
@@ -83,14 +85,15 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
         builder: (context, ref, _) {
           final teacherEmail = ref.watch(currentTeacherEmailProvider).valueOrNull;
           if (teacherEmail == null) {
-            return const ProviderScope(child: TeacherLoginScreen());
+            return const TeacherLoginScreen();
           }
 
           final services = _teacherServicesFor(teacherEmail);
 
           return ProviderScope(
+            key: ValueKey(teacherEmail),
             overrides: teacherProviderOverridesFor(services: services),
-            child: MaterialApp.router(
+            child: ShadApp.router(
               title: 'AR Science Explorer',
               routerConfig: _teacherRouter!,
             ),
@@ -103,14 +106,13 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
       builder: (context, ref, _) {
         final studentId = ref.watch(currentStudentIdProvider).valueOrNull;
         if (studentId == null) {
-          return const MaterialApp(
-            home: Scaffold(body: Center(child: Text('Sign in'))),
-          );
+          return const StudentLoginScreen();
         }
 
         final services = _studentServicesFor(studentId);
 
         return ProviderScope(
+          key: ValueKey(studentId),
           overrides: studentProviderOverridesFor(studentId, services: services),
           child: MaterialApp.router(
             title: 'AR Science Explorer',

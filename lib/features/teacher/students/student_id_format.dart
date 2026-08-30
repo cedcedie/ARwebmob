@@ -14,6 +14,11 @@ String formatStudentIdForDisplay(String studentId) {
 class StudentIdInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    // A literal email (per Part 3.2, the field also accepts a full
+    // "@arscience.school" address) must pass through unformatted — stripping
+    // non-digits would destroy it.
+    if (newValue.text.contains('@')) return newValue;
+
     final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
     if (digits.length > 6) return oldValue;
 
