@@ -10,21 +10,35 @@ import 'package:flutter/foundation.dart' show kIsWeb, TargetPlatform, defaultTar
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'firebase_options.dart is a placeholder — run `flutterfire configure` '
-        '(see MANUAL_STEPS.md) before running the web target.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        throw UnsupportedError(
-          'firebase_options.dart is a placeholder — run `flutterfire configure` '
-          '(see MANUAL_STEPS.md) before running the Android target.',
-        );
+        return android;
       default:
         throw UnsupportedError(
           '${defaultTargetPlatform.name} is not a supported platform for this app.',
         );
     }
   }
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBZXwWJexTEFG_iI5WsCBvaM2YiXqo66yc',
+    appId: '1:770827848561:web:c741605ca6e0bac38dc4d0',
+    messagingSenderId: '770827848561',
+    projectId: 'ar-science-explorer',
+    authDomain: 'ar-science-explorer.firebaseapp.com',
+    databaseURL: 'https://ar-science-explorer-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'ar-science-explorer.firebasestorage.app',
+    measurementId: 'G-SYVPL146CZ',
+  );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyCI9VctEzFH0BMg3VROWbC_r8UffZAAycg',
+    appId: '1:770827848561:android:1f1094ff51b312f28dc4d0',
+    messagingSenderId: '770827848561',
+    projectId: 'ar-science-explorer',
+    databaseURL: 'https://ar-science-explorer-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'ar-science-explorer.firebasestorage.app',
+  );
 }

@@ -20,3 +20,8 @@ android/unityLibrary/
 
 # Per-phase worktrees (each phase's isolated workspace)
 .claude/worktrees/
+
+# Real Firebase project config (from flutterfire configure) — every clone
+# runs its own flutterfire configure rather than sharing these in git
+android/app/google-services.json
+firebase.json
