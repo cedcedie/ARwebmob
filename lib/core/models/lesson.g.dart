@@ -25,6 +25,7 @@ _$LessonImpl _$$LessonImplFromJson(Map<String, dynamic> json) => _$LessonImpl(
       : CurriculumContent.fromJson(json['curriculum'] as Map<String, dynamic>),
   week: (json['week'] as num?)?.toInt(),
   quarter: (json['quarter'] as num?)?.toInt(),
+  linkedQuizId: json['linkedQuizId'] as String?,
 );
 
 Map<String, dynamic> _$$LessonImplToJson(_$LessonImpl instance) =>
@@ -43,4 +44,5 @@ Map<String, dynamic> _$$LessonImplToJson(_$LessonImpl instance) =>
       'curriculum': instance.curriculum?.toJson(),
       'week': instance.week,
       'quarter': instance.quarter,
+      'linkedQuizId': instance.linkedQuizId,
     };

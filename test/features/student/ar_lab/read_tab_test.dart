@@ -25,6 +25,7 @@ ArLabViewModel _buildViewModel({
     markerIndex: null,
     isRead: isRead,
     hasPreTest: true,
+    hasPostTest: true,
     postTestEligible: true,
     postTestReason: null,
     studentId: '111111',

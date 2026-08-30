@@ -36,6 +36,7 @@ mixin _$Lesson {
   CurriculumContent? get curriculum => throw _privateConstructorUsedError;
   int? get week => throw _privateConstructorUsedError;
   int? get quarter => throw _privateConstructorUsedError;
+  String? get linkedQuizId => throw _privateConstructorUsedError;
 
   /// Serializes this Lesson to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -67,6 +68,7 @@ abstract class $LessonCopyWith<$Res> {
     CurriculumContent? curriculum,
     int? week,
     int? quarter,
+    String? linkedQuizId,
   });
 
   $ARPayloadCopyWith<$Res>? get arPayload;
@@ -102,6 +104,7 @@ class _$LessonCopyWithImpl<$Res, $Val extends Lesson>
     Object? curriculum = freezed,
     Object? week = freezed,
     Object? quarter = freezed,
+    Object? linkedQuizId = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -161,6 +164,10 @@ class _$LessonCopyWithImpl<$Res, $Val extends Lesson>
                 ? _value.quarter
                 : quarter // ignore: cast_nullable_to_non_nullable
                       as int?,
+            linkedQuizId: freezed == linkedQuizId
+                ? _value.linkedQuizId
+                : linkedQuizId // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -219,6 +226,7 @@ abstract class _$$LessonImplCopyWith<$Res> implements $LessonCopyWith<$Res> {
     CurriculumContent? curriculum,
     int? week,
     int? quarter,
+    String? linkedQuizId,
   });
 
   @override
@@ -255,6 +263,7 @@ class __$$LessonImplCopyWithImpl<$Res>
     Object? curriculum = freezed,
     Object? week = freezed,
     Object? quarter = freezed,
+    Object? linkedQuizId = freezed,
   }) {
     return _then(
       _$LessonImpl(
@@ -314,6 +323,10 @@ class __$$LessonImplCopyWithImpl<$Res>
             ? _value.quarter
             : quarter // ignore: cast_nullable_to_non_nullable
                   as int?,
+        linkedQuizId: freezed == linkedQuizId
+            ? _value.linkedQuizId
+            : linkedQuizId // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -338,6 +351,7 @@ class _$LessonImpl implements _Lesson {
     this.curriculum,
     this.week,
     this.quarter,
+    this.linkedQuizId,
   }) : _steps = steps;
 
   factory _$LessonImpl.fromJson(Map<String, dynamic> json) =>
@@ -381,10 +395,12 @@ class _$LessonImpl implements _Lesson {
   final int? week;
   @override
   final int? quarter;
+  @override
+  final String? linkedQuizId;
 
   @override
   String toString() {
-    return 'Lesson(id: $id, title: $title, subject: $subject, topicId: $topicId, summary: $summary, steps: $steps, labExperimentId: $labExperimentId, arPayload: $arPayload, hasAR: $hasAR, pdfUrl: $pdfUrl, isUnlockedByDefault: $isUnlockedByDefault, curriculum: $curriculum, week: $week, quarter: $quarter)';
+    return 'Lesson(id: $id, title: $title, subject: $subject, topicId: $topicId, summary: $summary, steps: $steps, labExperimentId: $labExperimentId, arPayload: $arPayload, hasAR: $hasAR, pdfUrl: $pdfUrl, isUnlockedByDefault: $isUnlockedByDefault, curriculum: $curriculum, week: $week, quarter: $quarter, linkedQuizId: $linkedQuizId)';
   }
 
   @override
@@ -409,7 +425,9 @@ class _$LessonImpl implements _Lesson {
             (identical(other.curriculum, curriculum) ||
                 other.curriculum == curriculum) &&
             (identical(other.week, week) || other.week == week) &&
-            (identical(other.quarter, quarter) || other.quarter == quarter));
+            (identical(other.quarter, quarter) || other.quarter == quarter) &&
+            (identical(other.linkedQuizId, linkedQuizId) ||
+                other.linkedQuizId == linkedQuizId));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -430,6 +448,7 @@ class _$LessonImpl implements _Lesson {
     curriculum,
     week,
     quarter,
+    linkedQuizId,
   );
 
   /// Create a copy of Lesson
@@ -463,6 +482,7 @@ abstract class _Lesson implements Lesson {
     final CurriculumContent? curriculum,
     final int? week,
     final int? quarter,
+    final String? linkedQuizId,
   }) = _$LessonImpl;
 
   factory _Lesson.fromJson(Map<String, dynamic> json) = _$LessonImpl.fromJson;
@@ -496,6 +516,8 @@ abstract class _Lesson implements Lesson {
   int? get week;
   @override
   int? get quarter;
+  @override
+  String? get linkedQuizId;
 
   /// Create a copy of Lesson
   /// with the given fields replaced by the non-null parameter values.

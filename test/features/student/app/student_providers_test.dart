@@ -5,6 +5,7 @@ import 'package:ar_science_explorer/core/models/subject_key.dart';
 import 'package:ar_science_explorer/core/services/access_code_service.dart';
 import 'package:ar_science_explorer/core/services/lesson_repository.dart';
 import 'package:ar_science_explorer/core/services/quiz_attempt_service.dart';
+import 'package:ar_science_explorer/core/services/quiz_repository.dart';
 import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/core/models/student_record.dart';
 import 'package:ar_science_explorer/features/student/app/student_providers.dart';
@@ -33,6 +34,7 @@ void main() {
         firestore: firestore,
         quizAttemptService: QuizAttemptService(firestore: firestore),
       ),
+      quizRepository: QuizRepository(firestore: firestore),
     );
 
     final container = ProviderContainer(
@@ -69,6 +71,7 @@ void main() {
         firestore: firestore,
         quizAttemptService: QuizAttemptService(firestore: firestore),
       ),
+      quizRepository: QuizRepository(firestore: firestore),
     );
 
     var preTestStarted = false;
@@ -118,6 +121,7 @@ void main() {
         firestore: firestore,
         quizAttemptService: QuizAttemptService(firestore: firestore),
       ),
+      quizRepository: QuizRepository(firestore: firestore),
     );
 
     final container = ProviderContainer(
@@ -166,6 +170,7 @@ void main() {
         firestore: firestore,
         quizAttemptService: QuizAttemptService(firestore: firestore),
       ),
+      quizRepository: QuizRepository(firestore: firestore),
     );
 
     final container = ProviderContainer(

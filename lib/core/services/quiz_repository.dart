@@ -42,6 +42,18 @@ class QuizRepository {
     return snapshot.docs.map((doc) => TeacherQuiz.fromJson(doc.data())).toList();
   }
 
+  /// One-shot fetch of a single teacher-authored quiz by id, for the
+  /// student-side linked-quiz post-test path (`TeacherLesson.linkedQuizId`)
+  /// — returns `null` if no such doc exists (a stale/dangling
+  /// `linkedQuizId`, e.g. the quiz was deleted after being linked), so
+  /// callers can degrade gracefully instead of crashing.
+  Future<TeacherQuiz?> fetchQuizById(String quizId) async {
+    final doc = await _firestore.collection('quizzes').doc(quizId).get();
+    final data = doc.data();
+    if (data == null) return null;
+    return TeacherQuiz.fromJson(data);
+  }
+
   Future<void> createQuiz(TeacherQuiz quiz) {
     return _firestore.collection('quizzes').doc(quiz.id).set(quiz.toJson());
   }
@@ -88,6 +100,41 @@ class QuizRepository {
     final authored = teacherQuizzes.map((quiz) => DisplayQuiz(quiz: quiz, isBuiltIn: false));
 
     return [...builtIns, ...authored];
+  }
+
+  /// Adapts a teacher-authored [quiz]'s questions to [BuiltInQuestion] shape
+  /// — the type `QuizSessionController`/`QuizPlayerScreen` already consume.
+  /// This is the smallest way to reuse the existing quiz-player machinery
+  /// for a `TeacherLesson.linkedQuizId` post-test without teaching the
+  /// player two question types: ids are synthesized (`{quiz.id}-q{index}`,
+  /// stable across rebuilds since it's derived only from the quiz doc and
+  /// question order, never from wall-clock time) since `TeacherQuizQuestion`
+  /// has no id of its own, and `lessonId` is threaded through from the
+  /// caller (the route the student is on), not stored on [TeacherQuiz].
+  List<BuiltInQuestion> questionsFromTeacherQuiz(TeacherQuiz quiz, {required String lessonId}) {
+    return [
+      for (var i = 0; i < quiz.questions.length; i++)
+        _fromTeacherQuizQuestion(quiz.questions[i], quiz: quiz, lessonId: lessonId, index: i),
+    ];
+  }
+
+  BuiltInQuestion _fromTeacherQuizQuestion(
+    TeacherQuizQuestion question, {
+    required TeacherQuiz quiz,
+    required String lessonId,
+    required int index,
+  }) {
+    return BuiltInQuestion(
+      id: '${quiz.id}-q$index',
+      subject: quiz.subject,
+      topicId: quiz.topicId,
+      lessonId: lessonId,
+      question: question.question,
+      options: question.options,
+      correctIndex: question.correctIndex,
+      hint: question.hint,
+      type: question.type,
+    );
   }
 
   DisplayQuiz _synthesize({

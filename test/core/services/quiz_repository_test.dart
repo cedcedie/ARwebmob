@@ -128,6 +128,43 @@ void main() {
     expect(merged.first.quiz.title, contains('Scientific Models'));
   });
 
+  test('fetchQuizById returns the TeacherQuiz for an existing doc', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = QuizRepository(firestore: firestore);
+    await repo.createQuiz(_quiz());
+
+    final quiz = await repo.fetchQuizById('quiz-1');
+
+    expect(quiz, isNotNull);
+    expect(quiz!.title, 'Volcano Quiz');
+  });
+
+  test('fetchQuizById returns null for a missing/dangling quiz id', () async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = QuizRepository(firestore: firestore);
+
+    final quiz = await repo.fetchQuizById('does-not-exist');
+
+    expect(quiz, isNull);
+  });
+
+  test('questionsFromTeacherQuiz adapts TeacherQuizQuestion to BuiltInQuestion shape', () {
+    final firestore = FakeFirebaseFirestore();
+    final repo = QuizRepository(firestore: firestore);
+    final quiz = _quiz();
+
+    final questions = repo.questionsFromTeacherQuiz(quiz, lessonId: 'teacher-lesson-1');
+
+    expect(questions, hasLength(1));
+    expect(questions.first.question, 'What is lava?');
+    expect(questions.first.options, ['Molten rock', 'Water', 'Gas', 'Ice']);
+    expect(questions.first.correctIndex, 0);
+    expect(questions.first.hint, 'Think hot.');
+    expect(questions.first.subject, SubjectKey.chemistry);
+    expect(questions.first.lessonId, 'teacher-lesson-1');
+    expect(questions.first.id, isNotEmpty);
+  });
+
   test('mergedQuizzes appends teacher-authored quizzes after built-ins', () {
     final firestore = FakeFirebaseFirestore();
     final repo = QuizRepository(firestore: firestore);

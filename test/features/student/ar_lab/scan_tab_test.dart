@@ -47,6 +47,7 @@ ArLabViewModel _buildViewModel({required String lessonId, required bool hasAR}) 
     markerIndex: hasAR ? 0 : null,
     isRead: false,
     hasPreTest: true,
+    hasPostTest: true,
     postTestEligible: true,
     postTestReason: null,
     studentId: '111111',

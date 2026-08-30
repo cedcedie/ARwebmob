@@ -5,6 +5,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:ar_science_explorer/core/services/access_code_service.dart';
 import 'package:ar_science_explorer/core/services/lesson_repository.dart';
 import 'package:ar_science_explorer/core/services/quiz_attempt_service.dart';
+import 'package:ar_science_explorer/core/services/quiz_repository.dart';
 import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/features/student/app/router.dart';
 import 'package:ar_science_explorer/features/student/app/student_providers.dart';
@@ -21,6 +22,7 @@ void main() {
         firestore: firestore,
         quizAttemptService: quizAttemptService,
       ),
+      quizRepository: QuizRepository(firestore: firestore),
     );
     final router = buildStudentRouter(services: services);
 

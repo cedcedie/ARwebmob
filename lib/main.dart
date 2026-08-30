@@ -10,6 +10,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'core/services/access_code_service.dart';
 import 'core/services/lesson_repository.dart';
 import 'core/services/quiz_attempt_service.dart';
+import 'core/services/quiz_repository.dart';
 import 'core/services/student_repository.dart';
 import 'features/student/app/router.dart';
 import 'features/student/app/student_providers.dart';
@@ -60,6 +61,7 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
         firestore: FirebaseFirestore.instance,
         quizAttemptService: quizAttemptService,
       ),
+      quizRepository: QuizRepository(firestore: FirebaseFirestore.instance),
     );
     _servicesStudentId = studentId;
     _studentServices = services;

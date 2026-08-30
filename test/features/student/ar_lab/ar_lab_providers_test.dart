@@ -1,6 +1,8 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ar_science_explorer/core/models/student_record.dart';
+import 'package:ar_science_explorer/core/models/subject_key.dart';
+import 'package:ar_science_explorer/core/models/teacher_lesson.dart';
 import 'package:ar_science_explorer/core/services/access_code_service.dart';
 import 'package:ar_science_explorer/core/services/lesson_repository.dart';
 import 'package:ar_science_explorer/core/services/quiz_attempt_service.dart';
@@ -23,13 +25,17 @@ StudentRecord _sampleStudent() => StudentRecord.fromJson(const {
       'isArchived': false,
     });
 
-Future<ArLabViewModel> _buildViewModel(String lessonId) async {
-  final firestore = FakeFirebaseFirestore();
-  final studentRepository = StudentRepository(firestore: firestore);
-  final lessonRepository = LessonRepository(firestore: firestore);
-  final quizAttemptService = QuizAttemptService(firestore: firestore);
+Future<ArLabViewModel> _buildViewModel(
+  String lessonId, {
+  FakeFirebaseFirestore? firestore,
+  Set<String> postTestLessonIds = const {},
+}) async {
+  final fs = firestore ?? FakeFirebaseFirestore();
+  final studentRepository = StudentRepository(firestore: fs);
+  final lessonRepository = LessonRepository(firestore: fs);
+  final quizAttemptService = QuizAttemptService(firestore: fs);
   final accessCodeService = AccessCodeService(
-    firestore: firestore,
+    firestore: fs,
     quizAttemptService: quizAttemptService,
   );
   await studentRepository.saveStudent(_sampleStudent());
@@ -42,6 +48,7 @@ Future<ArLabViewModel> _buildViewModel(String lessonId) async {
     quizAttemptService: quizAttemptService,
     accessCodeService: accessCodeService,
     preTestLessonIds: const {},
+    postTestLessonIds: postTestLessonIds,
     onStartPreTest: () {},
     onStartPostTest: () {},
   ).first;
@@ -61,6 +68,42 @@ void main() {
 
     expect(viewModel.hasAR, false);
     expect(viewModel.markerIndex, isNull);
+  });
+
+  test('a teacher lesson with linkedQuizId reports hasPostTest true even with no built-in bank',
+      () async {
+    final firestore = FakeFirebaseFirestore();
+    await firestore.collection('lessons').doc('teacher-linked-1').set(const TeacherLesson(
+      id: 'teacher-linked-1',
+      title: 'Teacher Lesson With Quiz',
+      subject: SubjectKey.biology,
+      linkedQuizId: 'quiz-123',
+    ).toJson());
+
+    final viewModel = await _buildViewModel('teacher-linked-1', firestore: firestore);
+
+    expect(viewModel.hasPostTest, isTrue);
+  });
+
+  test('a teacher lesson with no linkedQuizId and no built-in bank reports hasPostTest false',
+      () async {
+    final firestore = FakeFirebaseFirestore();
+    await firestore.collection('lessons').doc('teacher-unlinked-1').set(const TeacherLesson(
+      id: 'teacher-unlinked-1',
+      title: 'Teacher Lesson Without Quiz',
+      subject: SubjectKey.biology,
+    ).toJson());
+
+    final viewModel = await _buildViewModel('teacher-unlinked-1', firestore: firestore);
+
+    expect(viewModel.hasPostTest, isFalse);
+  });
+
+  test('REGRESSION: a built-in lesson with a populated postTestLessonIds bank still reports hasPostTest true',
+      () async {
+    final viewModel = await _buildViewModel('q1w1', postTestLessonIds: {'q1w1'});
+
+    expect(viewModel.hasPostTest, isTrue);
   });
 
   test('onMarkerFound/onMarkerLost track the currently detected lesson', () async {

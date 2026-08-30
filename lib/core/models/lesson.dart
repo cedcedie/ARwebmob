@@ -28,6 +28,7 @@ class Lesson with _$Lesson {
     CurriculumContent? curriculum,
     int? week,
     int? quarter,
+    String? linkedQuizId,
   }) = _Lesson;
 
   factory Lesson.fromJson(Map<String, dynamic> json) => _$LessonFromJson(json);

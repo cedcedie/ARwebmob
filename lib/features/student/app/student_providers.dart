@@ -7,8 +7,10 @@ import '../../../core/models/lesson.dart';
 import '../../../core/models/subject_key.dart';
 import '../../../core/services/access_code_service.dart';
 import '../../../core/services/auth_service.dart' show isStudentEmail;
+import '../../../core/models/teacher_quiz.dart';
 import '../../../core/services/lesson_repository.dart';
 import '../../../core/services/quiz_attempt_service.dart';
+import '../../../core/services/quiz_repository.dart';
 import '../../../core/services/student_repository.dart';
 import '../ar_lab/ar_lab_providers.dart';
 import '../home/home_providers.dart';
@@ -24,12 +26,14 @@ class StudentServices {
     required this.studentRepository,
     required this.quizAttemptService,
     required this.accessCodeService,
+    required this.quizRepository,
   });
 
   final LessonRepository lessonRepository;
   final StudentRepository studentRepository;
   final QuizAttemptService quizAttemptService;
   final AccessCodeService accessCodeService;
+  final QuizRepository quizRepository;
 }
 
 /// The signed-in student's id, derived from their Firebase Auth email
@@ -55,6 +59,20 @@ final mergedLessonsProvider = StreamProvider.autoDispose<List<Lesson>>((ref) {
   );
 });
 
+/// One-shot fetch of a single teacher-authored quiz by id, keyed so router.dart
+/// can resolve a `TeacherLesson.linkedQuizId` post-test source. Kept as a
+/// `.family` provider (like `arLabViewModelProvider`) rather than a bare
+/// `services.quizRepository.fetchQuizById` call inline in the router, so
+/// Riverpod caches/dedupes the fetch per quizId instead of re-fetching on
+/// every rebuild of the quiz route.
+final teacherQuizByIdProvider =
+    FutureProvider.autoDispose.family<TeacherQuiz?, String>((ref, quizId) {
+  throw UnimplementedError(
+    'teacherQuizByIdProvider must be overridden at app startup — see '
+    'studentProviderOverridesFor.',
+  );
+});
+
 /// Every `ProviderScope` override the student screens need once a signed-in
 /// student id is known. Closes out the "wired at app startup" comments left
 /// in home_providers.dart, learn_providers.dart, progress_providers.dart,
@@ -70,6 +88,9 @@ List<Override> studentProviderOverridesFor(
       (ref) => services.lessonRepository
           .watchTeacherLessons()
           .map((teacherLessons) => services.lessonRepository.mergedLessons(teacherLessons)),
+    ),
+    teacherQuizByIdProvider.overrideWith(
+      (ref, quizId) => services.quizRepository.fetchQuizById(quizId),
     ),
     homeViewModelProvider.overrideWith(
       (ref) => buildHomeViewModel(
@@ -125,6 +146,7 @@ Override arLabOverrideFor(
       quizAttemptService: services.quizAttemptService,
       accessCodeService: services.accessCodeService,
       preTestLessonIds: kPreTestQuestionsByLesson.keys.toSet(),
+      postTestLessonIds: kPostTestQuestionsByLesson.keys.toSet(),
       onStartPreTest: onStartPreTest,
       onStartPostTest: onStartPostTest,
     ),

@@ -20,6 +20,7 @@ class ArLabViewModel extends ChangeNotifier {
     required this.markerIndex,
     required this.isRead,
     required this.hasPreTest,
+    required this.hasPostTest,
     required this.postTestEligible,
     required this.postTestReason,
     required this.studentId,
@@ -41,6 +42,15 @@ class ArLabViewModel extends ChangeNotifier {
 
   final bool isRead;
   final bool hasPreTest;
+
+  /// True if a post-test is available for this lesson at all — either a
+  /// built-in bank (`kPostTestQuestionsByLesson`) or a teacher-authored
+  /// lesson with `linkedQuizId` set. Independent of [postTestEligible],
+  /// which is about retake locking, not availability: a lesson can have a
+  /// post-test that exists but is currently locked, or (this field's whole
+  /// point) no post-test at all, in which case the Post-Test button must
+  /// stay disabled regardless of eligibility.
+  final bool hasPostTest;
   final bool postTestEligible;
   final String? postTestReason;
 
@@ -85,6 +95,7 @@ Stream<ArLabViewModel> buildArLabViewModel({
   required QuizAttemptService quizAttemptService,
   required AccessCodeService accessCodeService,
   required Set<String> preTestLessonIds,
+  required Set<String> postTestLessonIds,
   required void Function() onStartPreTest,
   required void Function() onStartPostTest,
 }) {
@@ -115,6 +126,7 @@ Stream<ArLabViewModel> buildArLabViewModel({
       markerIndex: lesson.arPayload?.modelIndex,
       isRead: isRead,
       hasPreTest: preTestLessonIds.contains(lessonId),
+      hasPostTest: postTestLessonIds.contains(lessonId) || lesson.linkedQuizId != null,
       postTestEligible: eligibility.canTake,
       postTestReason: eligibility.reason,
       studentId: studentId,

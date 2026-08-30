@@ -78,6 +78,7 @@ class LessonRepository {
       curriculum: tl.curriculum,
       week: tl.week,
       quarter: tl.quarter,
+      linkedQuizId: tl.linkedQuizId,
     );
   }
 }

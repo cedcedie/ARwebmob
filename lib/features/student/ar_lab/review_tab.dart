@@ -20,13 +20,19 @@ class ReviewTab extends StatelessWidget {
           Text('Lesson Complete', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 24),
           OutlinedButton(
-            onPressed: vm.postTestEligible
+            onPressed: vm.hasPostTest && vm.postTestEligible
                 ? () {
                     vm.onStartPostTest();
                     context.push('/quiz/${vm.lessonId}/post');
                   }
                 : null,
-            child: Text(vm.postTestEligible ? 'Start Post-Test' : (vm.postTestReason ?? 'Post-Test locked')),
+            child: Text(
+              !vm.hasPostTest
+                  ? 'No Post-Test for this lesson'
+                  : vm.postTestEligible
+                      ? 'Start Post-Test'
+                      : (vm.postTestReason ?? 'Post-Test locked'),
+            ),
           ),
           const SizedBox(height: 8),
           FilledButton(

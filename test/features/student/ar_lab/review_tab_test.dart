@@ -8,6 +8,7 @@ import 'package:ar_science_explorer/features/student/ar_lab/ar_lab_providers.dar
 import 'package:ar_science_explorer/features/student/ar_lab/review_tab.dart';
 
 ArLabViewModel _buildViewModel({
+  bool hasPostTest = true,
   required bool postTestEligible,
   String? postTestReason,
   void Function()? onStartPostTest,
@@ -27,6 +28,7 @@ ArLabViewModel _buildViewModel({
     markerIndex: null,
     isRead: true,
     hasPreTest: true,
+    hasPostTest: hasPostTest,
     postTestEligible: postTestEligible,
     postTestReason: postTestReason,
     studentId: '111111',
@@ -93,6 +95,23 @@ void main() {
 
       expect(find.text('Start Post-Test'), findsNothing);
       final buttonFinder = find.widgetWithText(OutlinedButton, reason);
+      expect(buttonFinder, findsOneWidget);
+
+      final button = tester.widget<OutlinedButton>(buttonFinder);
+      expect(button.onPressed, isNull);
+    },
+  );
+
+  testWidgets(
+    'disables the button and shows "No Post-Test for this lesson" when hasPostTest is false, '
+    'even though postTestEligible is true',
+    (tester) async {
+      final vm = _buildViewModel(hasPostTest: false, postTestEligible: true);
+
+      await tester.pumpWidget(_wrap(ReviewTab(vm: vm)));
+
+      expect(find.text('Start Post-Test'), findsNothing);
+      final buttonFinder = find.widgetWithText(OutlinedButton, 'No Post-Test for this lesson');
       expect(buttonFinder, findsOneWidget);
 
       final button = tester.widget<OutlinedButton>(buttonFinder);
