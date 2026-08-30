@@ -46,8 +46,27 @@ managed in the Firebase console.
 
 - [ ] Confirm which Firebase project backs this app (same as the retired
       `ar-science-explorer` web app — **no migration**, same collections).
+- [ ] Install tooling (one-time on this machine):
+      ```powershell
+      dart pub global activate flutterfire_cli
+      npm install -g firebase-tools
+      ```
+      If `flutterfire` is "not recognized", either add
+      `%LOCALAPPDATA%\Pub\Cache\bin` to your PATH **or** use the form below
+      (no PATH change needed).
+- [ ] Sign in to Firebase CLI (opens browser):
+      ```powershell
+      firebase login
+      ```
 - [ ] Run **`flutterfire configure`** from the worktree (recommended) and pick
-      that project — writes `firebase_options.dart`, `google-services.json`, etc.
+      your existing project — writes `firebase_options.dart`,
+      `google-services.json`, etc. **Use this command** (works even when
+      `flutterfire` is not on PATH):
+      ```powershell
+      cd C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob\.claude\worktrees\phase1-scaffold-core-auth
+      dart pub global run flutterfire_cli:flutterfire configure
+      ```
+      Select platforms **Web** and **Android** when prompted.
       **Or** hand-copy `google-services.json` (Android) + web config from
       Firebase Console → Project Settings.
 - [ ] Confirm you can **edit Firestore security rules** in the console (or via
