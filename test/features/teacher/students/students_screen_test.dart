@@ -2,6 +2,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:ar_science_explorer/core/models/quiz_attempt.dart';
 import 'package:ar_science_explorer/core/models/student_record.dart';
 import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/features/teacher/students/student_id_format.dart';
@@ -13,6 +14,8 @@ StudentRecord _sampleStudent({
   String? name,
   bool isArchived = false,
   Map<String, num?>? scores,
+  List<String>? completedLessonIds,
+  List<QuizAttempt>? quizAttempts,
 }) {
   return StudentRecord(
     id: id,
@@ -22,12 +25,12 @@ StudentRecord _sampleStudent({
     section: 'Rizal',
     scores: scores ??
         const {'chemistry': 85, 'biology': null, 'physics': 72},
-    completedLessonIds: const [],
+    completedLessonIds: completedLessonIds ?? const [],
     completedLabExperimentIds: const [],
     completedQuizIds: const [],
     unlockedLessonIds: const [],
     unlockedQuizIds: const [],
-    quizAttempts: const [],
+    quizAttempts: quizAttempts ?? const [],
     isArchived: isArchived,
   );
 }
@@ -188,5 +191,68 @@ void main() {
     await tester.pump();
 
     expect(archivedIds, ['123456']);
+  });
+
+  testWidgets('roster shows lesson-completion count and quiz-attempt count', (tester) async {
+    await _pumpStudentsScreen(
+      tester,
+      viewModel: _viewModel(students: [
+        _sampleStudent(
+          id: '123456',
+          name: 'Progressed Student',
+          completedLessonIds: const ['lesson-1', 'lesson-2', 'lesson-3'],
+          quizAttempts: [
+            QuizAttempt(
+              id: 'a1',
+              quizId: 'chemistry-lesson-1-pre',
+              studentId: '123456',
+              attemptNumber: 1,
+              score: 8,
+              totalQuestions: 10,
+              correctAnswers: 8,
+              answers: const [0, 1, 2],
+              timestamp: '2026-08-01T10:00:00.000Z',
+              locked: false,
+            ),
+            QuizAttempt(
+              id: 'a2',
+              quizId: 'chemistry-lesson-1-post',
+              studentId: '123456',
+              attemptNumber: 1,
+              score: 9,
+              totalQuestions: 10,
+              correctAnswers: 9,
+              answers: const [0, 1, 2],
+              timestamp: '2026-08-02T10:00:00.000Z',
+              locked: true,
+            ),
+          ],
+        ),
+      ]),
+    );
+
+    expect(find.text('Lessons: 3'), findsOneWidget);
+    expect(find.text('Quizzes taken: 2'), findsOneWidget);
+
+    // Drill down into the per-student detail view.
+    await tester.tap(find.byTooltip('View progress details'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lessons completed: 3'), findsOneWidget);
+    expect(find.text('Quiz attempts (2)'), findsOneWidget);
+    expect(find.textContaining('chemistry-lesson-1-pre'), findsOneWidget);
+    expect(find.textContaining('chemistry-lesson-1-post'), findsOneWidget);
+  });
+
+  testWidgets('roster shows zero-progress state for a brand-new student', (tester) async {
+    await _pumpStudentsScreen(
+      tester,
+      viewModel: _viewModel(students: [
+        _sampleStudent(id: '654321', name: 'Fresh Student'),
+      ]),
+    );
+
+    expect(find.text('Lessons: 0'), findsOneWidget);
+    expect(find.text('Quizzes taken: 0'), findsOneWidget);
   });
 }

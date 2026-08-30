@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/models/student_record.dart';
 import 'student_form.dart';
 import 'student_id_format.dart';
 import 'students_providers.dart';
@@ -70,7 +71,8 @@ class _StudentsBody extends StatelessWidget {
                   DataColumn2(label: Text('Grade'), size: ColumnSize.S),
                   DataColumn2(label: Text('Section'), size: ColumnSize.S),
                   DataColumn2(label: Text('Scores'), size: ColumnSize.M),
-                  DataColumn2(label: Text('Actions'), size: ColumnSize.S),
+                  DataColumn2(label: Text('Progress'), size: ColumnSize.M),
+                  DataColumn2(label: Text('Actions'), size: ColumnSize.M),
                 ],
                 rows: viewModel.students.map((student) {
                   return DataRow(
@@ -80,14 +82,32 @@ class _StudentsBody extends StatelessWidget {
                       DataCell(Text(student.grade)),
                       DataCell(Text(student.section)),
                       DataCell(_ScoreChips(scores: student.scores)),
+                      DataCell(_ProgressSummary(student: student)),
                       DataCell(
-                        student.isArchived
-                            ? const Text('Archived', style: TextStyle(color: Colors.grey))
-                            : IconButton(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _CompactIconButton(
+                              tooltip: 'View progress details',
+                              icon: LucideIcons.listChecks,
+                              onPressed: () => _showProgressDetails(context, student),
+                            ),
+                            if (!student.isArchived)
+                              _CompactIconButton(
                                 tooltip: 'Archive',
-                                icon: const Icon(LucideIcons.archive),
+                                icon: LucideIcons.archive,
                                 onPressed: () => viewModel.onArchiveStudent(student.studentId),
+                              )
+                            else
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4),
+                                child: Text(
+                                  'Archived',
+                                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                                ),
                               ),
+                          ],
+                        ),
                       ),
                     ],
                   );
@@ -97,6 +117,137 @@ class _StudentsBody extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Narrower `IconButton` (default has a 48x48 touch target) so two of them
+/// plus an "Archived" label fit inside the roster's Actions column without
+/// overflowing.
+class _CompactIconButton extends StatelessWidget {
+  const _CompactIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      icon: Icon(icon, size: 18),
+      iconSize: 18,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      visualDensity: VisualDensity.compact,
+      onPressed: onPressed,
+    );
+  }
+}
+
+void _showProgressDetails(BuildContext context, StudentRecord student) {
+  showDialog<void>(
+    context: context,
+    builder: (context) => _ProgressDetailsDialog(student: student),
+  );
+}
+
+/// Compact roster-cell summary of a student's actual activity — lesson
+/// completion count and quiz-attempt count — surfaced alongside `scores` so
+/// a teacher isn't limited to the latest post-test score per subject.
+class _ProgressSummary extends StatelessWidget {
+  const _ProgressSummary({required this.student});
+
+  final StudentRecord student;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: [
+        Chip(
+          label: Text(
+            'Lessons: ${student.completedLessonIds.length}',
+            style: const TextStyle(fontSize: 11),
+          ),
+          visualDensity: VisualDensity.compact,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        Chip(
+          label: Text(
+            'Quizzes taken: ${student.quizAttempts.length}',
+            style: const TextStyle(fontSize: 11),
+          ),
+          visualDensity: VisualDensity.compact,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ],
+    );
+  }
+}
+
+/// Per-student drill-down showing the full `quizAttempts` history (score,
+/// attempt number, timestamp) plus completed-lesson count, so a teacher can
+/// see what a student has actually done, not just their latest score.
+class _ProgressDetailsDialog extends StatelessWidget {
+  const _ProgressDetailsDialog({required this.student});
+
+  final StudentRecord student;
+
+  @override
+  Widget build(BuildContext context) {
+    final attempts = [...student.quizAttempts]
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+    return AlertDialog(
+      title: Text('${student.name} — Progress'),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Lessons completed: ${student.completedLessonIds.length}'),
+            const SizedBox(height: 12),
+            Text('Quiz attempts (${attempts.length})',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            if (attempts.isEmpty)
+              const Text('No quiz attempts yet.')
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: attempts.length,
+                  itemBuilder: (context, index) {
+                    final attempt = attempts[index];
+                    return ListTile(
+                      dense: true,
+                      title: Text('${attempt.quizId} — attempt ${attempt.attemptNumber}'),
+                      subtitle: Text(
+                        'Score ${attempt.correctAnswers}/${attempt.totalQuestions} '
+                        '(${attempt.score.round()}) · ${attempt.timestamp}'
+                        '${attempt.locked ? ' · locked' : ''}',
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
     );
   }
 }
