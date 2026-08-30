@@ -1,4 +1,5 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:ar_science_explorer/core/models/subject_key.dart';
@@ -9,59 +10,184 @@ import 'package:ar_science_explorer/core/services/quiz_repository.dart';
 import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/core/models/student_record.dart';
 import 'package:ar_science_explorer/features/student/app/student_providers.dart';
+import 'package:ar_science_explorer/features/student/auth/student_auth_providers.dart';
 import 'package:ar_science_explorer/features/student/ar_lab/ar_lab_providers.dart';
 import 'package:ar_science_explorer/features/student/home/home_providers.dart';
 import 'package:ar_science_explorer/features/student/learn/learn_providers.dart';
 import 'package:ar_science_explorer/features/student/progress/progress_providers.dart';
 
+StudentRecord _studentRecord({required String id, bool isArchived = false}) {
+  return StudentRecord(
+    id: id,
+    name: 'Student $id',
+    studentId: id,
+    grade: '7',
+    section: 'Rizal',
+    scores: const {'chemistry': null, 'biology': null, 'physics': null},
+    completedLessonIds: const [],
+    completedLabExperimentIds: const [],
+    completedQuizIds: const [],
+    unlockedLessonIds: const [],
+    unlockedQuizIds: const [],
+    quizAttempts: const [],
+    isArchived: isArchived,
+  );
+}
+
 void main() {
-  test('studentProviderOverridesFor wires Home/Learn/Progress to a real student stream', () async {
-    final firestore = FakeFirebaseFirestore();
-    final studentRepo = StudentRepository(firestore: firestore);
-    await studentRepo.saveStudent(StudentRecord(
-      id: '111111', name: 'Juan Dela Cruz', studentId: '111111', grade: '7', section: 'Rizal',
-      scores: const {'chemistry': null, 'biology': null, 'physics': null},
-      completedLessonIds: const [], completedLabExperimentIds: const [],
-      completedQuizIds: const [], unlockedLessonIds: const [], unlockedQuizIds: const [],
-      quizAttempts: const [],
-    ));
+  group('currentStudentIdProvider archive gating', () {
+    // This exercises the actual shell-gating provider main.dart reads
+    // (currentStudentIdProvider itself, via its real asyncMap/isArchived
+    // logic — not a stand-in), proving the race described in the Flow 5
+    // review finding is closed: an archived student's Firestore record
+    // never resolves this provider to a non-null id, so main.dart never
+    // even gets the chance to mount the real student app shell for them —
+    // there is no "mount, then revert a moment later" window at this
+    // layer, unlike gating purely on StudentAuthViewModel's async sign-out.
+    test(
+      'an archived student never resolves to a non-null student id',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final studentRepository = StudentRepository(firestore: firestore);
+        await studentRepository.saveStudent(
+          _studentRecord(id: '111111', isArchived: true),
+        );
 
-    final services = StudentServices(
-      lessonRepository: LessonRepository(firestore: firestore),
-      studentRepository: studentRepo,
-      quizAttemptService: QuizAttemptService(firestore: firestore),
-      accessCodeService: AccessCodeService(
-        firestore: firestore,
-        quizAttemptService: QuizAttemptService(firestore: firestore),
-      ),
-      quizRepository: QuizRepository(firestore: firestore),
+        final container = ProviderContainer(
+          overrides: [
+            studentAuthRepositoryProvider.overrideWithValue(studentRepository),
+            studentAuthStateChangesProvider.overrideWithValue(
+              Stream.value(
+                MockUser(uid: 'uid-111111', email: '111111@arscience.school'),
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final studentId = await container.read(currentStudentIdProvider.future);
+
+        expect(
+          studentId,
+          isNull,
+          reason:
+              'an archived student must never resolve to a valid app-shell id',
+        );
+      },
     );
 
-    final container = ProviderContainer(
-      overrides: studentProviderOverridesFor('111111', services: services),
+    test(
+      'a non-archived student resolves to their student id as normal',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final studentRepository = StudentRepository(firestore: firestore);
+        await studentRepository.saveStudent(
+          _studentRecord(id: '111111', isArchived: false),
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            studentAuthRepositoryProvider.overrideWithValue(studentRepository),
+            studentAuthStateChangesProvider.overrideWithValue(
+              Stream.value(
+                MockUser(uid: 'uid-111111', email: '111111@arscience.school'),
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final studentId = await container.read(currentStudentIdProvider.future);
+
+        expect(studentId, '111111');
+      },
     );
-    addTearDown(container.dispose);
 
-    final home = await container.read(homeViewModelProvider.future);
-    expect(home.studentDisplayName, 'Juan');
+    test('no signed-in user resolves to null', () async {
+      final container = ProviderContainer(
+        overrides: [
+          studentAuthRepositoryProvider.overrideWithValue(
+            StudentRepository(firestore: FakeFirebaseFirestore()),
+          ),
+          studentAuthStateChangesProvider.overrideWithValue(Stream.value(null)),
+        ],
+      );
+      addTearDown(container.dispose);
 
-    final learn = await container.read(learnViewModelProvider.future);
-    expect(learn.cards, isNotEmpty);
+      final studentId = await container.read(currentStudentIdProvider.future);
 
-    final progress = await container.read(progressViewModelProvider.future);
-    expect(progress.subjectSections, hasLength(3));
+      expect(studentId, isNull);
+    });
   });
+
+  test(
+    'studentProviderOverridesFor wires Home/Learn/Progress to a real student stream',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final studentRepo = StudentRepository(firestore: firestore);
+      await studentRepo.saveStudent(
+        StudentRecord(
+          id: '111111',
+          name: 'Juan Dela Cruz',
+          studentId: '111111',
+          grade: '7',
+          section: 'Rizal',
+          scores: const {'chemistry': null, 'biology': null, 'physics': null},
+          completedLessonIds: const [],
+          completedLabExperimentIds: const [],
+          completedQuizIds: const [],
+          unlockedLessonIds: const [],
+          unlockedQuizIds: const [],
+          quizAttempts: const [],
+        ),
+      );
+
+      final services = StudentServices(
+        lessonRepository: LessonRepository(firestore: firestore),
+        studentRepository: studentRepo,
+        quizAttemptService: QuizAttemptService(firestore: firestore),
+        accessCodeService: AccessCodeService(
+          firestore: firestore,
+          quizAttemptService: QuizAttemptService(firestore: firestore),
+        ),
+        quizRepository: QuizRepository(firestore: firestore),
+      );
+
+      final container = ProviderContainer(
+        overrides: studentProviderOverridesFor('111111', services: services),
+      );
+      addTearDown(container.dispose);
+
+      final home = await container.read(homeViewModelProvider.future);
+      expect(home.studentDisplayName, 'Juan');
+
+      final learn = await container.read(learnViewModelProvider.future);
+      expect(learn.cards, isNotEmpty);
+
+      final progress = await container.read(progressViewModelProvider.future);
+      expect(progress.subjectSections, hasLength(3));
+    },
+  );
 
   test('arLabOverrideFor resolves a real stream, not a TypeError', () async {
     final firestore = FakeFirebaseFirestore();
     final studentRepo = StudentRepository(firestore: firestore);
-    await studentRepo.saveStudent(StudentRecord(
-      id: '111111', name: 'Juan Dela Cruz', studentId: '111111', grade: '7', section: 'Rizal',
-      scores: const {'chemistry': null, 'biology': null, 'physics': null},
-      completedLessonIds: const [], completedLabExperimentIds: const [],
-      completedQuizIds: const [], unlockedLessonIds: const [], unlockedQuizIds: const [],
-      quizAttempts: const [],
-    ));
+    await studentRepo.saveStudent(
+      StudentRecord(
+        id: '111111',
+        name: 'Juan Dela Cruz',
+        studentId: '111111',
+        grade: '7',
+        section: 'Rizal',
+        scores: const {'chemistry': null, 'biology': null, 'physics': null},
+        completedLessonIds: const [],
+        completedLabExperimentIds: const [],
+        completedQuizIds: const [],
+        unlockedLessonIds: const [],
+        unlockedQuizIds: const [],
+        quizAttempts: const [],
+      ),
+    );
 
     final services = StudentServices(
       lessonRepository: LessonRepository(firestore: firestore),
@@ -101,97 +227,133 @@ void main() {
     expect(postTestStarted, true);
   });
 
-  test('C1: switching activeLearnSubjectProvider changes which lessons learnViewModelProvider emits',
-      () async {
-    final firestore = FakeFirebaseFirestore();
-    final studentRepo = StudentRepository(firestore: firestore);
-    await studentRepo.saveStudent(StudentRecord(
-      id: '111111', name: 'Juan Dela Cruz', studentId: '111111', grade: '7', section: 'Rizal',
-      scores: const {'chemistry': null, 'biology': null, 'physics': null},
-      completedLessonIds: const [], completedLabExperimentIds: const [],
-      completedQuizIds: const [], unlockedLessonIds: const [], unlockedQuizIds: const [],
-      quizAttempts: const [],
-    ));
-
-    final services = StudentServices(
-      lessonRepository: LessonRepository(firestore: firestore),
-      studentRepository: studentRepo,
-      quizAttemptService: QuizAttemptService(firestore: firestore),
-      accessCodeService: AccessCodeService(
-        firestore: firestore,
-        quizAttemptService: QuizAttemptService(firestore: firestore),
-      ),
-      quizRepository: QuizRepository(firestore: firestore),
-    );
-
-    final container = ProviderContainer(
-      overrides: studentProviderOverridesFor('111111', services: services),
-    );
-    addTearDown(container.dispose);
-
-    final chemistryLearn = await container.read(learnViewModelProvider.future);
-    expect(chemistryLearn.activeSubject, SubjectKey.chemistry);
-    expect(chemistryLearn.cards, isNotEmpty);
-    expect(chemistryLearn.cards.every((c) => c.lessonId.startsWith('q1w')), true);
-
-    // This is exactly what LearnScreen's TabBar.onTap does via
-    // LearnViewModel.onSelectSubject — proving the real provider path, not
-    // an injected view model, actually reacts to a subject switch.
-    chemistryLearn.onSelectSubject(SubjectKey.biology);
-
-    final biologyLearn = await container.read(learnViewModelProvider.future);
-    expect(biologyLearn.activeSubject, SubjectKey.biology);
-    expect(biologyLearn.cards, isNotEmpty);
-    expect(biologyLearn.cards.every((c) => c.lessonId.startsWith('q2w')), true);
-    expect(biologyLearn.cards.map((c) => c.lessonId), isNot(chemistryLearn.cards.map((c) => c.lessonId)));
-  });
-
-  test('C4: arLabOverrideFor resolves a teacher-authored lesson id without throwing', () async {
-    final firestore = FakeFirebaseFirestore();
-    final studentRepo = StudentRepository(firestore: firestore);
-    await studentRepo.saveStudent(StudentRecord(
-      id: '111111', name: 'Juan Dela Cruz', studentId: '111111', grade: '7', section: 'Rizal',
-      scores: const {'chemistry': null, 'biology': null, 'physics': null},
-      completedLessonIds: const [], completedLabExperimentIds: const [],
-      completedQuizIds: const [], unlockedLessonIds: const [], unlockedQuizIds: const [],
-      quizAttempts: const [],
-    ));
-    await firestore.collection('lessons').doc('teacher-extra-1').set({
-      'id': 'teacher-extra-1',
-      'title': 'Extra Credit: Volcanoes',
-      'subject': 'physics',
-    });
-
-    final services = StudentServices(
-      lessonRepository: LessonRepository(firestore: firestore),
-      studentRepository: studentRepo,
-      quizAttemptService: QuizAttemptService(firestore: firestore),
-      accessCodeService: AccessCodeService(
-        firestore: firestore,
-        quizAttemptService: QuizAttemptService(firestore: firestore),
-      ),
-      quizRepository: QuizRepository(firestore: firestore),
-    );
-
-    final container = ProviderContainer(
-      overrides: [
-        arLabOverrideFor(
-          '111111',
-          'teacher-extra-1',
-          services: services,
-          onStartPreTest: () {},
-          onStartPostTest: () {},
+  test(
+    'C1: switching activeLearnSubjectProvider changes which lessons learnViewModelProvider emits',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final studentRepo = StudentRepository(firestore: firestore);
+      await studentRepo.saveStudent(
+        StudentRecord(
+          id: '111111',
+          name: 'Juan Dela Cruz',
+          studentId: '111111',
+          grade: '7',
+          section: 'Rizal',
+          scores: const {'chemistry': null, 'biology': null, 'physics': null},
+          completedLessonIds: const [],
+          completedLabExperimentIds: const [],
+          completedQuizIds: const [],
+          unlockedLessonIds: const [],
+          unlockedQuizIds: const [],
+          quizAttempts: const [],
         ),
-      ],
-    );
-    addTearDown(container.dispose);
+      );
 
-    // Must not throw StateError('No element') — the old
-    // kBuiltInLessons.firstWhere lookup with no orElse would have.
-    final arLab = await container.read(arLabViewModelProvider('teacher-extra-1').future);
+      final services = StudentServices(
+        lessonRepository: LessonRepository(firestore: firestore),
+        studentRepository: studentRepo,
+        quizAttemptService: QuizAttemptService(firestore: firestore),
+        accessCodeService: AccessCodeService(
+          firestore: firestore,
+          quizAttemptService: QuizAttemptService(firestore: firestore),
+        ),
+        quizRepository: QuizRepository(firestore: firestore),
+      );
 
-    expect(arLab.lessonId, 'teacher-extra-1');
-    expect(arLab.title, 'Extra Credit: Volcanoes');
-    expect(arLab.hasPreTest, false);
-  });
+      final container = ProviderContainer(
+        overrides: studentProviderOverridesFor('111111', services: services),
+      );
+      addTearDown(container.dispose);
+
+      final chemistryLearn = await container.read(
+        learnViewModelProvider.future,
+      );
+      expect(chemistryLearn.activeSubject, SubjectKey.chemistry);
+      expect(chemistryLearn.cards, isNotEmpty);
+      expect(
+        chemistryLearn.cards.every((c) => c.lessonId.startsWith('q1w')),
+        true,
+      );
+
+      // This is exactly what LearnScreen's TabBar.onTap does via
+      // LearnViewModel.onSelectSubject — proving the real provider path, not
+      // an injected view model, actually reacts to a subject switch.
+      chemistryLearn.onSelectSubject(SubjectKey.biology);
+
+      final biologyLearn = await container.read(learnViewModelProvider.future);
+      expect(biologyLearn.activeSubject, SubjectKey.biology);
+      expect(biologyLearn.cards, isNotEmpty);
+      expect(
+        biologyLearn.cards.every((c) => c.lessonId.startsWith('q2w')),
+        true,
+      );
+      expect(
+        biologyLearn.cards.map((c) => c.lessonId),
+        isNot(chemistryLearn.cards.map((c) => c.lessonId)),
+      );
+    },
+  );
+
+  test(
+    'C4: arLabOverrideFor resolves a teacher-authored lesson id without throwing',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final studentRepo = StudentRepository(firestore: firestore);
+      await studentRepo.saveStudent(
+        StudentRecord(
+          id: '111111',
+          name: 'Juan Dela Cruz',
+          studentId: '111111',
+          grade: '7',
+          section: 'Rizal',
+          scores: const {'chemistry': null, 'biology': null, 'physics': null},
+          completedLessonIds: const [],
+          completedLabExperimentIds: const [],
+          completedQuizIds: const [],
+          unlockedLessonIds: const [],
+          unlockedQuizIds: const [],
+          quizAttempts: const [],
+        ),
+      );
+      await firestore.collection('lessons').doc('teacher-extra-1').set({
+        'id': 'teacher-extra-1',
+        'title': 'Extra Credit: Volcanoes',
+        'subject': 'physics',
+      });
+
+      final services = StudentServices(
+        lessonRepository: LessonRepository(firestore: firestore),
+        studentRepository: studentRepo,
+        quizAttemptService: QuizAttemptService(firestore: firestore),
+        accessCodeService: AccessCodeService(
+          firestore: firestore,
+          quizAttemptService: QuizAttemptService(firestore: firestore),
+        ),
+        quizRepository: QuizRepository(firestore: firestore),
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          arLabOverrideFor(
+            '111111',
+            'teacher-extra-1',
+            services: services,
+            onStartPreTest: () {},
+            onStartPostTest: () {},
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      // Must not throw StateError('No element') — the old
+      // kBuiltInLessons.firstWhere lookup with no orElse would have.
+      final arLab = await container.read(
+        arLabViewModelProvider('teacher-extra-1').future,
+      );
+
+      expect(arLab.lessonId, 'teacher-extra-1');
+      expect(arLab.title, 'Extra Credit: Volcanoes');
+      expect(arLab.hasPreTest, false);
+    },
+  );
 }

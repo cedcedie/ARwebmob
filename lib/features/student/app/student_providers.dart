@@ -13,6 +13,7 @@ import '../../../core/services/quiz_attempt_service.dart';
 import '../../../core/services/quiz_repository.dart';
 import '../../../core/services/student_repository.dart';
 import '../ar_lab/ar_lab_providers.dart';
+import '../auth/student_auth_providers.dart' show studentAuthRepositoryProvider;
 import '../home/home_providers.dart';
 import '../learn/learn_providers.dart';
 import '../progress/progress_providers.dart';
@@ -36,14 +37,47 @@ class StudentServices {
   final QuizRepository quizRepository;
 }
 
+/// The raw Firebase Auth user stream `currentStudentIdProvider` maps over.
+/// Pulled out as its own overridable provider (rather than
+/// `currentStudentIdProvider` reaching for `FirebaseAuth.instance` inline)
+/// purely so tests can drive `currentStudentIdProvider`'s own archive-check
+/// logic below with a fake user stream, without needing a live Firebase
+/// app — the archive-check race this exists to close can only be proven
+/// closed by exercising this provider's real mapping logic, not by
+/// overriding `currentStudentIdProvider` wholesale as most other tests do.
+final studentAuthStateChangesProvider = Provider<Stream<User?>>((ref) {
+  return FirebaseAuth.instance.authStateChanges();
+});
+
 /// The signed-in student's id, derived from their Firebase Auth email
 /// (Phase 1's student email convention: `{digits}@arscience.school`). Null
-/// while signed out or signed in as a teacher.
+/// while signed out, signed in as a teacher, or — critically — signed in as
+/// a student whose Firestore record has `isArchived == true`.
+///
+/// This is the single choke point `main.dart` reads to decide whether to
+/// mount the real student app shell, so the archive check has to live here,
+/// not only in `StudentAuthViewModel.submit()`. Firebase's own auth-state
+/// stream flips to "signed in" the instant `signInWithEmailAndPassword`
+/// resolves, which is *before* the view model's separate, awaited
+/// `getStudent`/`isArchived`/`signOut()` sequence completes. Without this
+/// provider itself checking `isArchived`, that gap is a real window (under
+/// real network latency) where an archived student's app shell renders
+/// before being kicked back out a moment later. Re-checking `isArchived`
+/// here — using the same `StudentRepository` the view model uses, so there
+/// is one authoritative source for "is this student archived", not two
+/// copies of the check — means an archived student's id never resolves to
+/// a non-null value in the first place, so the shell is never reachable at
+/// all, not merely reachable-then-reverted.
 final currentStudentIdProvider = StreamProvider<String?>((ref) {
-  return FirebaseAuth.instance.authStateChanges().map((user) {
+  final studentRepository = ref.watch(studentAuthRepositoryProvider);
+  final authStateChanges = ref.watch(studentAuthStateChangesProvider);
+  return authStateChanges.asyncMap((user) async {
     final email = user?.email;
     if (email == null || !isStudentEmail(email)) return null;
-    return email.split('@').first;
+    final studentId = email.split('@').first;
+    final record = await studentRepository.getStudent(studentId);
+    if (record != null && record.isArchived) return null;
+    return studentId;
   });
 });
 
@@ -65,13 +99,13 @@ final mergedLessonsProvider = StreamProvider.autoDispose<List<Lesson>>((ref) {
 /// `services.quizRepository.fetchQuizById` call inline in the router, so
 /// Riverpod caches/dedupes the fetch per quizId instead of re-fetching on
 /// every rebuild of the quiz route.
-final teacherQuizByIdProvider =
-    FutureProvider.autoDispose.family<TeacherQuiz?, String>((ref, quizId) {
-  throw UnimplementedError(
-    'teacherQuizByIdProvider must be overridden at app startup — see '
-    'studentProviderOverridesFor.',
-  );
-});
+final teacherQuizByIdProvider = FutureProvider.autoDispose
+    .family<TeacherQuiz?, String>((ref, quizId) {
+      throw UnimplementedError(
+        'teacherQuizByIdProvider must be overridden at app startup — see '
+        'studentProviderOverridesFor.',
+      );
+    });
 
 /// Every `ProviderScope` override the student screens need once a signed-in
 /// student id is known. Closes out the "wired at app startup" comments left
@@ -85,9 +119,10 @@ List<Override> studentProviderOverridesFor(
   return [
     activeLearnSubjectProvider.overrideWith((ref) => initialLearnSubject),
     mergedLessonsProvider.overrideWith(
-      (ref) => services.lessonRepository
-          .watchTeacherLessons()
-          .map((teacherLessons) => services.lessonRepository.mergedLessons(teacherLessons)),
+      (ref) => services.lessonRepository.watchTeacherLessons().map(
+        (teacherLessons) =>
+            services.lessonRepository.mergedLessons(teacherLessons),
+      ),
     ),
     teacherQuizByIdProvider.overrideWith(
       (ref, quizId) => services.quizRepository.fetchQuizById(quizId),
@@ -100,23 +135,22 @@ List<Override> studentProviderOverridesFor(
         orderedLessons: kBuiltInLessons,
       ),
     ),
-    learnViewModelProvider.overrideWith(
-      (ref) {
-        // Watching this provider is what makes tapping a Learn subject tab
-        // actually change which lessons render — see
-        // learn_providers.dart's `activeLearnSubjectProvider` doc comment.
-        final activeSubject = ref.watch(activeLearnSubjectProvider);
-        return buildLearnViewModel(
-          studentId: studentId,
-          initialSubject: activeSubject,
-          lessonRepository: services.lessonRepository,
-          studentRepository: services.studentRepository,
-          accessCodeService: services.accessCodeService,
-          preTestLessonIds: kPreTestQuestionsByLesson.keys.toSet(),
-          onSelectSubject: (subject) => ref.read(activeLearnSubjectProvider.notifier).state = subject,
-        );
-      },
-    ),
+    learnViewModelProvider.overrideWith((ref) {
+      // Watching this provider is what makes tapping a Learn subject tab
+      // actually change which lessons render — see
+      // learn_providers.dart's `activeLearnSubjectProvider` doc comment.
+      final activeSubject = ref.watch(activeLearnSubjectProvider);
+      return buildLearnViewModel(
+        studentId: studentId,
+        initialSubject: activeSubject,
+        lessonRepository: services.lessonRepository,
+        studentRepository: services.studentRepository,
+        accessCodeService: services.accessCodeService,
+        preTestLessonIds: kPreTestQuestionsByLesson.keys.toSet(),
+        onSelectSubject: (subject) =>
+            ref.read(activeLearnSubjectProvider.notifier).state = subject,
+      );
+    }),
     progressViewModelProvider.overrideWith(
       (ref) => buildProgressViewModel(
         studentId: studentId,
