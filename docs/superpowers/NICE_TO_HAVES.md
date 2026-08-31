@@ -22,16 +22,16 @@ history to backfill here.)*
 
 ## Phase 4 — Teacher Web
 
-- **Mangled em-dash encoding ("ΓÇö") in `lesson_repository.dart`'s doc
+- **Mangled em-dash encoding (pre-existing in source) in `lesson_repository.dart`'s doc
   comments.** Noticed during Task 3's review — some existing doc comments
-  in this file contain "ΓÇö" instead of "—" (a UTF-8-as-Windows-1252
-  mis-decode artifact, likely from an earlier edit/paste on this Windows
-  machine). Pre-existing, not introduced by Task 3 (the new doc comments
-  the Task 3 implementer added match the same broken pattern, apparently
-  copy-pasting the surrounding style without noticing). Purely cosmetic —
-  doesn't affect compilation or behavior. Status: open, low priority —
-  worth a find-and-replace across the repo for "ΓÇö" → "—" if anyone's
-  doing a general cleanup pass; not worth a dedicated task on its own.
+  in this file contained mojibake em-dash artifacts instead of proper em-dashes
+  (a UTF-8-as-Windows-1252 mis-decode artifact, likely from an earlier edit/paste
+  on this Windows machine). Pre-existing, not introduced by Task 3 (the new doc
+  comments the Task 3 implementer added matched the same broken pattern, apparently
+  copy-pasting the surrounding style without noticing). Purely cosmetic — doesn't
+  affect compilation or behavior. Status: resolved — repo-wide find-and-replace
+  completed across 5 affected files (13 instances in documentation and review-diff
+  comments), replacing all misencoded em-dashes with proper U+2014 em-dashes.
 
 - **Teacher Web is desktop-only by design; no responsive breakpoints.**
   Flagged in Round 5's UI/UX overhaul critique (item 8) as something that

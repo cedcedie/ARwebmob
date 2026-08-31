@@ -3,7 +3,13 @@ import '../models/lesson.dart';
 String markerAssetForLesson(Lesson lesson) {
   final override = lesson.arPayload?.markerImage;
   if (override != null) return override;
-  return 'assets/markers/Q${lesson.quarter}W${lesson.week}.jpg';
+  // Root-relative, no `assets/` prefix -- matches the scheme every
+  // explicit arPayload.markerImage override in curriculum_data.dart uses
+  // (e.g. '/markers/Q1W1.jpg'). This branch is otherwise dead in production
+  // data today (23/24 lessons set an override; the remaining lesson has no
+  // arPayload at all), but keeping it consistent avoids an unresolvable
+  // path if it's ever exercised.
+  return '/markers/Q${lesson.quarter}W${lesson.week}.jpg';
 }
 
 /// Extracts the `Q<n>W<n>` pattern from a Vuforia trackable name (e.g.

@@ -25,14 +25,21 @@ Lesson _lesson({
 
 void main() {
   group('markerAssetForLesson', () {
-    test('derives assets/markers/Q1W1.jpg when there is no override', () {
+    test('derives /markers/Q1W1.jpg when there is no override', () {
       final lesson = _lesson(id: 'q1w1', quarter: 1, week: 1);
-      expect(markerAssetForLesson(lesson), 'assets/markers/Q1W1.jpg');
+      expect(markerAssetForLesson(lesson), '/markers/Q1W1.jpg');
     });
 
-    test('derives assets/markers/Q3W8.jpg (double-digit-safe)', () {
+    test('derives /markers/Q3W8.jpg (double-digit-safe)', () {
       final lesson = _lesson(id: 'q3w8', quarter: 3, week: 8);
-      expect(markerAssetForLesson(lesson), 'assets/markers/Q3W8.jpg');
+      expect(markerAssetForLesson(lesson), '/markers/Q3W8.jpg');
+    });
+
+    test('fallback scheme matches the explicit-override scheme (root-relative, no '
+        'assets/ prefix) so both agree', () {
+      final lesson = _lesson(id: 'q2w5', quarter: 2, week: 5);
+      expect(markerAssetForLesson(lesson), startsWith('/markers/'));
+      expect(markerAssetForLesson(lesson), isNot(startsWith('assets/')));
     });
 
     test('returns the explicit markerImage override as-is when present', () {
