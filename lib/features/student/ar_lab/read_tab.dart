@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'ar_lab_providers.dart';
+import 'content_viewer.dart';
 
 class ReadTab extends StatelessWidget {
   const ReadTab({super.key, required this.vm});
@@ -15,6 +16,7 @@ class ReadTab extends StatelessWidget {
         Text(vm.title, style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 12),
         Text(vm.summary, style: Theme.of(context).textTheme.bodyLarge),
+        ContentViewer(imageUrls: vm.contentImageUrls, status: vm.contentStatus),
         const SizedBox(height: 24),
         if (!vm.isRead)
           FilledButton(

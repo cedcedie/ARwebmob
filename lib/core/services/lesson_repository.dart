@@ -74,6 +74,8 @@ class LessonRepository {
       arPayload: tl.arPayload,
       hasAR: tl.hasAR ?? false,
       pdfUrl: tl.pdfUrl,
+      contentImageUrls: tl.contentImageUrls,
+      contentStatus: tl.contentStatus,
       isUnlockedByDefault: false,
       curriculum: tl.curriculum,
       week: tl.week,

@@ -24,6 +24,8 @@ class Lesson with _$Lesson {
     ARPayload? arPayload,
     @Default(false) bool hasAR,
     String? pdfUrl,
+    List<String>? contentImageUrls,
+    String? contentStatus, // 'processing' | 'ready' | null
     @Default(false) bool isUnlockedByDefault,
     CurriculumContent? curriculum,
     int? week,

@@ -19,6 +19,10 @@ _$LessonImpl _$$LessonImplFromJson(Map<String, dynamic> json) => _$LessonImpl(
       : ARPayload.fromJson(json['arPayload'] as Map<String, dynamic>),
   hasAR: json['hasAR'] as bool? ?? false,
   pdfUrl: json['pdfUrl'] as String?,
+  contentImageUrls: (json['contentImageUrls'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
+  contentStatus: json['contentStatus'] as String?,
   isUnlockedByDefault: json['isUnlockedByDefault'] as bool? ?? false,
   curriculum: json['curriculum'] == null
       ? null
@@ -40,6 +44,8 @@ Map<String, dynamic> _$$LessonImplToJson(_$LessonImpl instance) =>
       'arPayload': instance.arPayload?.toJson(),
       'hasAR': instance.hasAR,
       'pdfUrl': instance.pdfUrl,
+      'contentImageUrls': instance.contentImageUrls,
+      'contentStatus': instance.contentStatus,
       'isUnlockedByDefault': instance.isUnlockedByDefault,
       'curriculum': instance.curriculum?.toJson(),
       'week': instance.week,

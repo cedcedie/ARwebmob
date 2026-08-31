@@ -18,6 +18,8 @@ class ArLabViewModel extends ChangeNotifier {
     required this.summary,
     required this.hasAR,
     required this.markerIndex,
+    this.contentImageUrls,
+    this.contentStatus,
     required this.isRead,
     required this.hasPreTest,
     required this.hasPostTest,
@@ -39,6 +41,18 @@ class ArLabViewModel extends ChangeNotifier {
   /// should be looking for while this lesson's lab is open. `null` when
   /// `hasAR` is false.
   final int? markerIndex;
+
+  /// This lesson's uploaded slide content, if any — only ever non-null for
+  /// a teacher-authored lesson whose merged [Lesson] carries these fields;
+  /// a built-in curriculum lesson never sets them, so they stay null.
+  final List<String>? contentImageUrls;
+
+  /// `'processing'` while a just-uploaded PPTX is still being converted to
+  /// slide images server-side, `'ready'` once [contentImageUrls] holds
+  /// viewable slide images, or `null` for the legacy/no-conversion-needed
+  /// case (a single already-viewable image/PDF URL) or when there's no
+  /// content at all.
+  final String? contentStatus;
 
   final bool isRead;
   final bool hasPreTest;
@@ -124,6 +138,8 @@ Stream<ArLabViewModel> buildArLabViewModel({
       summary: lesson.summary,
       hasAR: lesson.hasAR,
       markerIndex: lesson.arPayload?.modelIndex,
+      contentImageUrls: lesson.contentImageUrls,
+      contentStatus: lesson.contentStatus,
       isRead: isRead,
       hasPreTest: preTestLessonIds.contains(lessonId),
       hasPostTest: postTestLessonIds.contains(lessonId) || lesson.linkedQuizId != null,

@@ -32,6 +32,9 @@ mixin _$Lesson {
   ARPayload? get arPayload => throw _privateConstructorUsedError;
   bool get hasAR => throw _privateConstructorUsedError;
   String? get pdfUrl => throw _privateConstructorUsedError;
+  List<String>? get contentImageUrls => throw _privateConstructorUsedError;
+  String? get contentStatus =>
+      throw _privateConstructorUsedError; // 'processing' | 'ready' | null
   bool get isUnlockedByDefault => throw _privateConstructorUsedError;
   CurriculumContent? get curriculum => throw _privateConstructorUsedError;
   int? get week => throw _privateConstructorUsedError;
@@ -64,6 +67,8 @@ abstract class $LessonCopyWith<$Res> {
     ARPayload? arPayload,
     bool hasAR,
     String? pdfUrl,
+    List<String>? contentImageUrls,
+    String? contentStatus,
     bool isUnlockedByDefault,
     CurriculumContent? curriculum,
     int? week,
@@ -100,6 +105,8 @@ class _$LessonCopyWithImpl<$Res, $Val extends Lesson>
     Object? arPayload = freezed,
     Object? hasAR = null,
     Object? pdfUrl = freezed,
+    Object? contentImageUrls = freezed,
+    Object? contentStatus = freezed,
     Object? isUnlockedByDefault = null,
     Object? curriculum = freezed,
     Object? week = freezed,
@@ -147,6 +154,14 @@ class _$LessonCopyWithImpl<$Res, $Val extends Lesson>
             pdfUrl: freezed == pdfUrl
                 ? _value.pdfUrl
                 : pdfUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            contentImageUrls: freezed == contentImageUrls
+                ? _value.contentImageUrls
+                : contentImageUrls // ignore: cast_nullable_to_non_nullable
+                      as List<String>?,
+            contentStatus: freezed == contentStatus
+                ? _value.contentStatus
+                : contentStatus // ignore: cast_nullable_to_non_nullable
                       as String?,
             isUnlockedByDefault: null == isUnlockedByDefault
                 ? _value.isUnlockedByDefault
@@ -222,6 +237,8 @@ abstract class _$$LessonImplCopyWith<$Res> implements $LessonCopyWith<$Res> {
     ARPayload? arPayload,
     bool hasAR,
     String? pdfUrl,
+    List<String>? contentImageUrls,
+    String? contentStatus,
     bool isUnlockedByDefault,
     CurriculumContent? curriculum,
     int? week,
@@ -259,6 +276,8 @@ class __$$LessonImplCopyWithImpl<$Res>
     Object? arPayload = freezed,
     Object? hasAR = null,
     Object? pdfUrl = freezed,
+    Object? contentImageUrls = freezed,
+    Object? contentStatus = freezed,
     Object? isUnlockedByDefault = null,
     Object? curriculum = freezed,
     Object? week = freezed,
@@ -307,6 +326,14 @@ class __$$LessonImplCopyWithImpl<$Res>
             ? _value.pdfUrl
             : pdfUrl // ignore: cast_nullable_to_non_nullable
                   as String?,
+        contentImageUrls: freezed == contentImageUrls
+            ? _value._contentImageUrls
+            : contentImageUrls // ignore: cast_nullable_to_non_nullable
+                  as List<String>?,
+        contentStatus: freezed == contentStatus
+            ? _value.contentStatus
+            : contentStatus // ignore: cast_nullable_to_non_nullable
+                  as String?,
         isUnlockedByDefault: null == isUnlockedByDefault
             ? _value.isUnlockedByDefault
             : isUnlockedByDefault // ignore: cast_nullable_to_non_nullable
@@ -347,12 +374,15 @@ class _$LessonImpl implements _Lesson {
     this.arPayload,
     this.hasAR = false,
     this.pdfUrl,
+    final List<String>? contentImageUrls,
+    this.contentStatus,
     this.isUnlockedByDefault = false,
     this.curriculum,
     this.week,
     this.quarter,
     this.linkedQuizId,
-  }) : _steps = steps;
+  }) : _steps = steps,
+       _contentImageUrls = contentImageUrls;
 
   factory _$LessonImpl.fromJson(Map<String, dynamic> json) =>
       _$$LessonImplFromJson(json);
@@ -386,6 +416,20 @@ class _$LessonImpl implements _Lesson {
   final bool hasAR;
   @override
   final String? pdfUrl;
+  final List<String>? _contentImageUrls;
+  @override
+  List<String>? get contentImageUrls {
+    final value = _contentImageUrls;
+    if (value == null) return null;
+    if (_contentImageUrls is EqualUnmodifiableListView)
+      return _contentImageUrls;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
+  @override
+  final String? contentStatus;
+  // 'processing' | 'ready' | null
   @override
   @JsonKey()
   final bool isUnlockedByDefault;
@@ -400,7 +444,7 @@ class _$LessonImpl implements _Lesson {
 
   @override
   String toString() {
-    return 'Lesson(id: $id, title: $title, subject: $subject, topicId: $topicId, summary: $summary, steps: $steps, labExperimentId: $labExperimentId, arPayload: $arPayload, hasAR: $hasAR, pdfUrl: $pdfUrl, isUnlockedByDefault: $isUnlockedByDefault, curriculum: $curriculum, week: $week, quarter: $quarter, linkedQuizId: $linkedQuizId)';
+    return 'Lesson(id: $id, title: $title, subject: $subject, topicId: $topicId, summary: $summary, steps: $steps, labExperimentId: $labExperimentId, arPayload: $arPayload, hasAR: $hasAR, pdfUrl: $pdfUrl, contentImageUrls: $contentImageUrls, contentStatus: $contentStatus, isUnlockedByDefault: $isUnlockedByDefault, curriculum: $curriculum, week: $week, quarter: $quarter, linkedQuizId: $linkedQuizId)';
   }
 
   @override
@@ -420,6 +464,12 @@ class _$LessonImpl implements _Lesson {
                 other.arPayload == arPayload) &&
             (identical(other.hasAR, hasAR) || other.hasAR == hasAR) &&
             (identical(other.pdfUrl, pdfUrl) || other.pdfUrl == pdfUrl) &&
+            const DeepCollectionEquality().equals(
+              other._contentImageUrls,
+              _contentImageUrls,
+            ) &&
+            (identical(other.contentStatus, contentStatus) ||
+                other.contentStatus == contentStatus) &&
             (identical(other.isUnlockedByDefault, isUnlockedByDefault) ||
                 other.isUnlockedByDefault == isUnlockedByDefault) &&
             (identical(other.curriculum, curriculum) ||
@@ -444,6 +494,8 @@ class _$LessonImpl implements _Lesson {
     arPayload,
     hasAR,
     pdfUrl,
+    const DeepCollectionEquality().hash(_contentImageUrls),
+    contentStatus,
     isUnlockedByDefault,
     curriculum,
     week,
@@ -478,6 +530,8 @@ abstract class _Lesson implements Lesson {
     final ARPayload? arPayload,
     final bool hasAR,
     final String? pdfUrl,
+    final List<String>? contentImageUrls,
+    final String? contentStatus,
     final bool isUnlockedByDefault,
     final CurriculumContent? curriculum,
     final int? week,
@@ -508,6 +562,10 @@ abstract class _Lesson implements Lesson {
   bool get hasAR;
   @override
   String? get pdfUrl;
+  @override
+  List<String>? get contentImageUrls;
+  @override
+  String? get contentStatus; // 'processing' | 'ready' | null
   @override
   bool get isUnlockedByDefault;
   @override

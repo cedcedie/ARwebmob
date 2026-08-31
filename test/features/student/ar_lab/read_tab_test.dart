@@ -4,11 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ar_science_explorer/core/services/access_code_service.dart';
 import 'package:ar_science_explorer/core/services/quiz_attempt_service.dart';
 import 'package:ar_science_explorer/features/student/ar_lab/ar_lab_providers.dart';
+import 'package:ar_science_explorer/features/student/ar_lab/content_viewer.dart';
 import 'package:ar_science_explorer/features/student/ar_lab/read_tab.dart';
 
 ArLabViewModel _buildViewModel({
   required bool isRead,
   Future<void> Function()? onMarkAsRead,
+  List<String>? contentImageUrls,
+  String? contentStatus,
 }) {
   final firestore = FakeFirebaseFirestore();
   final quizAttemptService = QuizAttemptService(firestore: firestore);
@@ -23,6 +26,8 @@ ArLabViewModel _buildViewModel({
     summary: 'Some lesson summary',
     hasAR: false,
     markerIndex: null,
+    contentImageUrls: contentImageUrls,
+    contentStatus: contentStatus,
     isRead: isRead,
     hasPreTest: true,
     hasPostTest: true,
@@ -74,6 +79,22 @@ void main() {
       expect(find.text('Read'), findsOneWidget);
       expect(find.byType(FilledButton), findsNothing);
       expect(find.byType(Chip), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'renders uploaded lesson content via ContentViewer when present',
+    (tester) async {
+      final vm = _buildViewModel(
+        isRead: false,
+        contentImageUrls: ['https://example.com/slide1.png', 'https://example.com/slide2.png'],
+        contentStatus: 'ready',
+      );
+
+      await tester.pumpWidget(_wrap(ReadTab(vm: vm)));
+
+      expect(find.byType(ContentViewer), findsOneWidget);
+      expect(find.textContaining('1 / 2'), findsOneWidget);
     },
   );
 }
