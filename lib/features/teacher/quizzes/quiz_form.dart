@@ -8,6 +8,7 @@ import '../../../core/models/quiz_phase.dart';
 import '../../../core/models/subject_key.dart';
 import '../../../core/models/teacher_quiz.dart';
 import '../../../core/models/teacher_quiz_question.dart';
+import '../../../core/theme/app_theme.dart';
 import '../lessons/lessons_providers.dart' show subjectKeyLabel;
 import '../widgets/dynamic_string_list_field.dart';
 import '../widgets/error_state.dart';
@@ -332,11 +333,12 @@ class _QuestionEditorState extends State<_QuestionEditor> {
           ],
         ),
         const SizedBox(height: 8),
-        TextFormField(
+        FormBuilderTextField(
           key: Key('quiz-question-$index-text'),
+          name: 'question-$index-text',
           controller: _questionController,
           decoration: const InputDecoration(labelText: 'Question text'),
-          onChanged: (value) => _syncDraft(() => draft.question = value),
+          onChanged: (value) => _syncDraft(() => draft.question = value ?? ''),
         ),
         const SizedBox(height: 8),
         DynamicStringListField(
@@ -356,32 +358,71 @@ class _QuestionEditorState extends State<_QuestionEditor> {
         ),
         const SizedBox(height: 8),
         Text('Correct option', style: Theme.of(context).textTheme.bodySmall),
-        Wrap(
-          spacing: 8,
-          children: List.generate(4, (optionIndex) {
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Radio<int>(
-                  key: Key('quiz-q$index-correct-$optionIndex'),
-                  value: optionIndex,
-                  groupValue: draft.correctIndex,
-                  onChanged: (value) {
-                    if (value == null) return;
-                    _syncDraft(() => draft.correctIndex = value);
-                  },
+        const SizedBox(height: 4),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(4, (optionIndex) {
+              final isSelected = draft.correctIndex == optionIndex;
+              return InkWell(
+                onTap: () => _syncDraft(() => draft.correctIndex = optionIndex),
+                borderRadius: optionIndex == 0
+                    ? const BorderRadius.vertical(top: Radius.circular(8))
+                    : optionIndex == 3
+                    ? const BorderRadius.vertical(bottom: Radius.circular(8))
+                    : BorderRadius.zero,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.muted : null,
+                    border: optionIndex == 0
+                        ? null
+                        : const Border(
+                            top: BorderSide(color: AppColors.border),
+                          ),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    children: [
+                      Radio<int>(
+                        key: Key('quiz-q$index-correct-$optionIndex'),
+                        value: optionIndex,
+                        groupValue: draft.correctIndex,
+                        activeColor: AppColors.ink,
+                        onChanged: (value) {
+                          if (value == null) return;
+                          _syncDraft(() => draft.correctIndex = value);
+                        },
+                      ),
+                      Text(
+                        'Option ${optionIndex + 1}',
+                        style: TextStyle(
+                          color: AppColors.ink,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                Text('Option ${optionIndex + 1}'),
-              ],
-            );
-          }),
+              );
+            }),
+          ),
         ),
         const SizedBox(height: 8),
-        TextFormField(
+        FormBuilderTextField(
           key: Key('quiz-question-$index-hint'),
+          name: 'question-$index-hint',
           controller: _hintController,
           decoration: const InputDecoration(labelText: 'Hint'),
-          onChanged: (value) => _syncDraft(() => draft.hint = value),
+          onChanged: (value) => _syncDraft(() => draft.hint = value ?? ''),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<QuestionType>(
