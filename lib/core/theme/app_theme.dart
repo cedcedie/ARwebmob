@@ -289,4 +289,19 @@ final ThemeData appMaterialTheme = ThemeData(
       }),
     ),
   ),
+  // Every bare `CircularProgressIndicator()` across the list screens
+  // (lessons/quizzes/students/access-codes/item-analysis) previously fell
+  // through to stock Material defaults for stroke width and track color —
+  // themed here once so they all pick up the same brand look automatically.
+  // Uses `AppColors.physics`, the same accent already used for focus rings
+  // (`ring`/`focusedBorder` above) and selected-state chrome
+  // (`navigationRailTheme`, `segmentedButtonTheme`) — the app's established
+  // "this is active/in-progress" signal color — rather than `AppColors.ink`,
+  // which is reserved for static foreground/primary content.
+  progressIndicatorTheme: ProgressIndicatorThemeData(
+    color: AppColors.physics,
+    circularTrackColor: AppColors.muted,
+    linearTrackColor: AppColors.muted,
+    strokeWidth: 3,
+  ),
 );
