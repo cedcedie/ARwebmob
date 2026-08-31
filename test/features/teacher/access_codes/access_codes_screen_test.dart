@@ -440,6 +440,12 @@ void main() {
 
       expect(find.textContaining('already exists'), findsOneWidget);
       expect(find.textContaining('Code issued'), findsNothing);
+
+      // Item 7: the inline issuance-error banner (restyled to match
+      // ErrorState's visual language) is dismissible via its close button.
+      await tester.tap(find.byIcon(LucideIcons.x));
+      await tester.pump();
+      expect(find.textContaining('already exists'), findsNothing);
     },
   );
 

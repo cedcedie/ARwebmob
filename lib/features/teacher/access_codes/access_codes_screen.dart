@@ -97,18 +97,59 @@ class _AccessCodesBody extends HookWidget {
           const SizedBox(height: 16),
           if (issuedCode.value != null)
             _IssuedCodeBanner(code: issuedCode.value!),
+          // Item 7: this used to be a raw Material `MaterialBanner` — a
+          // third error idiom next to `ErrorState` (full-space failed-load
+          // display, used by every list screen's `asyncVm.when(error: ...)`
+          // branch) and the `ShadToast.destructive` toasts items 1-4 use for
+          // a mutating action's failure. Kept as an inline banner rather
+          // than switched to `ErrorState` (that widget replaces this whole
+          // screen's body — wrong shape for a dismissible, transient
+          // issuance-form error the teacher should be able to see, correct,
+          // and retry without losing the rest of the screen) or to a toast
+          // (a toast auto-dismisses; the retake-eligibility/duplicate-code
+          // messages this shows are often exactly the info the teacher needs
+          // to read and act on while still looking at the form, not a
+          // fire-and-forget notification). Restyled instead to match
+          // `ErrorState`'s visual language — the same `circleAlert` icon and
+          // `AppColors.destructive` tone — so it reads as the same "this
+          // failed" signal as the rest of the app rather than a visually
+          // distinct banner.
           if (errorMessage.value != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: MaterialBanner(
-                content: Text(errorMessage.value!),
-                backgroundColor: Theme.of(context).colorScheme.errorContainer,
-                actions: [
-                  TextButton(
-                    onPressed: () => errorMessage.value = null,
-                    child: const Text('Dismiss'),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.destructive.withValues(alpha: 0.08),
+                  borderRadius: const BorderRadius.all(Radius.circular(8)),
+                  border: Border.all(
+                    color: AppColors.destructive.withValues(alpha: 0.4),
                   ),
-                ],
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      LucideIcons.circleAlert,
+                      size: 20,
+                      color: AppColors.destructive,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        errorMessage.value!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.destructive,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ShadIconButton.ghost(
+                      icon: const Icon(LucideIcons.x, size: 16),
+                      onPressed: () => errorMessage.value = null,
+                    ),
+                  ],
+                ),
               ),
             ),
           Flexible(
