@@ -25,6 +25,10 @@ _$TeacherLessonImpl _$$TeacherLessonImplFromJson(
   quarter: (json['quarter'] as num?)?.toInt(),
   week: (json['week'] as num?)?.toInt(),
   pdfUrl: json['pdfUrl'] as String?,
+  contentImageUrls: (json['contentImageUrls'] as List<dynamic>?)
+      ?.map((e) => e as String)
+      .toList(),
+  contentStatus: json['contentStatus'] as String?,
   learningObjectives: (json['learningObjectives'] as List<dynamic>?)
       ?.map((e) => e as String)
       .toList(),
@@ -59,6 +63,8 @@ Map<String, dynamic> _$$TeacherLessonImplToJson(_$TeacherLessonImpl instance) =>
       'quarter': instance.quarter,
       'week': instance.week,
       'pdfUrl': instance.pdfUrl,
+      'contentImageUrls': instance.contentImageUrls,
+      'contentStatus': instance.contentStatus,
       'learningObjectives': instance.learningObjectives,
       'keyLearningSteps': instance.keyLearningSteps,
       'keyVocabulary': instance.keyVocabulary,

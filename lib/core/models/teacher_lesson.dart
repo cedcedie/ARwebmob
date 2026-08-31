@@ -28,6 +28,8 @@ class TeacherLesson with _$TeacherLesson {
     int? quarter,
     int? week,
     String? pdfUrl,
+    List<String>? contentImageUrls,
+    String? contentStatus, // 'processing' | 'ready' | null
     List<String>? learningObjectives,
     List<String>? keyLearningSteps,
     List<String>? keyVocabulary,

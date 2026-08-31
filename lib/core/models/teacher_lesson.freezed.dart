@@ -36,6 +36,9 @@ mixin _$TeacherLesson {
   int? get quarter => throw _privateConstructorUsedError;
   int? get week => throw _privateConstructorUsedError;
   String? get pdfUrl => throw _privateConstructorUsedError;
+  List<String>? get contentImageUrls => throw _privateConstructorUsedError;
+  String? get contentStatus =>
+      throw _privateConstructorUsedError; // 'processing' | 'ready' | null
   List<String>? get learningObjectives => throw _privateConstructorUsedError;
   List<String>? get keyLearningSteps => throw _privateConstructorUsedError;
   List<String>? get keyVocabulary => throw _privateConstructorUsedError;
@@ -78,6 +81,8 @@ abstract class $TeacherLessonCopyWith<$Res> {
     int? quarter,
     int? week,
     String? pdfUrl,
+    List<String>? contentImageUrls,
+    String? contentStatus,
     List<String>? learningObjectives,
     List<String>? keyLearningSteps,
     List<String>? keyVocabulary,
@@ -121,6 +126,8 @@ class _$TeacherLessonCopyWithImpl<$Res, $Val extends TeacherLesson>
     Object? quarter = freezed,
     Object? week = freezed,
     Object? pdfUrl = freezed,
+    Object? contentImageUrls = freezed,
+    Object? contentStatus = freezed,
     Object? learningObjectives = freezed,
     Object? keyLearningSteps = freezed,
     Object? keyVocabulary = freezed,
@@ -187,6 +194,14 @@ class _$TeacherLessonCopyWithImpl<$Res, $Val extends TeacherLesson>
             pdfUrl: freezed == pdfUrl
                 ? _value.pdfUrl
                 : pdfUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            contentImageUrls: freezed == contentImageUrls
+                ? _value.contentImageUrls
+                : contentImageUrls // ignore: cast_nullable_to_non_nullable
+                      as List<String>?,
+            contentStatus: freezed == contentStatus
+                ? _value.contentStatus
+                : contentStatus // ignore: cast_nullable_to_non_nullable
                       as String?,
             learningObjectives: freezed == learningObjectives
                 ? _value.learningObjectives
@@ -279,6 +294,8 @@ abstract class _$$TeacherLessonImplCopyWith<$Res>
     int? quarter,
     int? week,
     String? pdfUrl,
+    List<String>? contentImageUrls,
+    String? contentStatus,
     List<String>? learningObjectives,
     List<String>? keyLearningSteps,
     List<String>? keyVocabulary,
@@ -323,6 +340,8 @@ class __$$TeacherLessonImplCopyWithImpl<$Res>
     Object? quarter = freezed,
     Object? week = freezed,
     Object? pdfUrl = freezed,
+    Object? contentImageUrls = freezed,
+    Object? contentStatus = freezed,
     Object? learningObjectives = freezed,
     Object? keyLearningSteps = freezed,
     Object? keyVocabulary = freezed,
@@ -390,6 +409,14 @@ class __$$TeacherLessonImplCopyWithImpl<$Res>
             ? _value.pdfUrl
             : pdfUrl // ignore: cast_nullable_to_non_nullable
                   as String?,
+        contentImageUrls: freezed == contentImageUrls
+            ? _value._contentImageUrls
+            : contentImageUrls // ignore: cast_nullable_to_non_nullable
+                  as List<String>?,
+        contentStatus: freezed == contentStatus
+            ? _value.contentStatus
+            : contentStatus // ignore: cast_nullable_to_non_nullable
+                  as String?,
         learningObjectives: freezed == learningObjectives
             ? _value._learningObjectives
             : learningObjectives // ignore: cast_nullable_to_non_nullable
@@ -446,6 +473,8 @@ class _$TeacherLessonImpl implements _TeacherLesson {
     this.quarter,
     this.week,
     this.pdfUrl,
+    final List<String>? contentImageUrls,
+    this.contentStatus,
     final List<String>? learningObjectives,
     final List<String>? keyLearningSteps,
     final List<String>? keyVocabulary,
@@ -455,6 +484,7 @@ class _$TeacherLessonImpl implements _TeacherLesson {
     this.curriculum,
     this.isArchived = false,
   }) : _steps = steps,
+       _contentImageUrls = contentImageUrls,
        _learningObjectives = learningObjectives,
        _keyLearningSteps = keyLearningSteps,
        _keyVocabulary = keyVocabulary;
@@ -499,7 +529,22 @@ class _$TeacherLessonImpl implements _TeacherLesson {
   final int? week;
   @override
   final String? pdfUrl;
+  final List<String>? _contentImageUrls;
+  @override
+  List<String>? get contentImageUrls {
+    final value = _contentImageUrls;
+    if (value == null) return null;
+    if (_contentImageUrls is EqualUnmodifiableListView)
+      return _contentImageUrls;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
+  @override
+  final String? contentStatus;
+  // 'processing' | 'ready' | null
   final List<String>? _learningObjectives;
+  // 'processing' | 'ready' | null
   @override
   List<String>? get learningObjectives {
     final value = _learningObjectives;
@@ -545,7 +590,7 @@ class _$TeacherLessonImpl implements _TeacherLesson {
 
   @override
   String toString() {
-    return 'TeacherLesson(id: $id, title: $title, subject: $subject, content: $content, createdAt: $createdAt, linkedQuizId: $linkedQuizId, summary: $summary, steps: $steps, labExperimentId: $labExperimentId, arPayload: $arPayload, isPredefined: $isPredefined, quarter: $quarter, week: $week, pdfUrl: $pdfUrl, learningObjectives: $learningObjectives, keyLearningSteps: $keyLearningSteps, keyVocabulary: $keyVocabulary, arModelIndex: $arModelIndex, arContext: $arContext, hasAR: $hasAR, curriculum: $curriculum, isArchived: $isArchived)';
+    return 'TeacherLesson(id: $id, title: $title, subject: $subject, content: $content, createdAt: $createdAt, linkedQuizId: $linkedQuizId, summary: $summary, steps: $steps, labExperimentId: $labExperimentId, arPayload: $arPayload, isPredefined: $isPredefined, quarter: $quarter, week: $week, pdfUrl: $pdfUrl, contentImageUrls: $contentImageUrls, contentStatus: $contentStatus, learningObjectives: $learningObjectives, keyLearningSteps: $keyLearningSteps, keyVocabulary: $keyVocabulary, arModelIndex: $arModelIndex, arContext: $arContext, hasAR: $hasAR, curriculum: $curriculum, isArchived: $isArchived)';
   }
 
   @override
@@ -572,6 +617,12 @@ class _$TeacherLessonImpl implements _TeacherLesson {
             (identical(other.quarter, quarter) || other.quarter == quarter) &&
             (identical(other.week, week) || other.week == week) &&
             (identical(other.pdfUrl, pdfUrl) || other.pdfUrl == pdfUrl) &&
+            const DeepCollectionEquality().equals(
+              other._contentImageUrls,
+              _contentImageUrls,
+            ) &&
+            (identical(other.contentStatus, contentStatus) ||
+                other.contentStatus == contentStatus) &&
             const DeepCollectionEquality().equals(
               other._learningObjectives,
               _learningObjectives,
@@ -613,6 +664,8 @@ class _$TeacherLessonImpl implements _TeacherLesson {
     quarter,
     week,
     pdfUrl,
+    const DeepCollectionEquality().hash(_contentImageUrls),
+    contentStatus,
     const DeepCollectionEquality().hash(_learningObjectives),
     const DeepCollectionEquality().hash(_keyLearningSteps),
     const DeepCollectionEquality().hash(_keyVocabulary),
@@ -654,6 +707,8 @@ abstract class _TeacherLesson implements TeacherLesson {
     final int? quarter,
     final int? week,
     final String? pdfUrl,
+    final List<String>? contentImageUrls,
+    final String? contentStatus,
     final List<String>? learningObjectives,
     final List<String>? keyLearningSteps,
     final List<String>? keyVocabulary,
@@ -696,6 +751,10 @@ abstract class _TeacherLesson implements TeacherLesson {
   int? get week;
   @override
   String? get pdfUrl;
+  @override
+  List<String>? get contentImageUrls;
+  @override
+  String? get contentStatus; // 'processing' | 'ready' | null
   @override
   List<String>? get learningObjectives;
   @override
