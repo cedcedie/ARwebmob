@@ -345,22 +345,60 @@ Async, no meeting needed.
    - The Teacher Web URL from 3.4, if you deployed it, plus the teacher
      login you created in 1.5.
    - Confirmation their GitHub access is set up, if you did step 1.
-3. **If they (or their own dev) ever want to run Teacher Web locally**
-   instead of using the deployed URL — e.g. to see it without a live
-   deploy, or while making their own changes later — this is the terminal
-   command, **but it needs Flutter installed on whoever runs it** (see
-   Prerequisites at the top — this is the one case where that applies to
-   the client's side, not yours):
-   ```powershell
-   git clone <repo-url>
-   cd <folder you cloned into>
-   flutter pub get
-   flutter run -d chrome
-   ```
-   This opens Teacher Web in Chrome, live-reloading, already pointed at
-   *their* Firebase project (since `firebase_options.dart` was
-   reconfigured and pushed in Phase 3.1/3.2) — no extra setup needed
-   beyond having Flutter itself installed.
+3. **Optional — running Teacher Web locally, not required for the handoff.**
+   The deployed Hosting URL (3.4) is the actual deliverable and needs
+   nothing installed to use — it's just a website. This step is only for
+   if they (or their own dev, later) want to run the code directly instead.
+
+   **Should you install this for them?** No, not proactively — it's not
+   part of getting the handoff done. If you're already in the AnyDesk
+   session (Phase 1) and want to save them a step later, you *could* do
+   this install then, since you're already remoted in; otherwise, just
+   leave these instructions for them (or their own dev) to follow
+   whenever/if they ever want it. Either way, this is separate from
+   everything the handoff actually depends on.
+
+   If/when someone does want it, here's the real step-by-step, assuming
+   nothing is installed on that machine yet:
+
+   1. **Git** — <https://git-scm.com/downloads> → download the Windows
+      installer → run it → click through with the defaults (nothing to
+      configure). Lets them download and update the project's code.
+   2. **Flutter SDK** — <https://docs.flutter.dev/get-started/install/windows>
+      → follow that page's Windows steps exactly (download a zip, extract
+      it somewhere permanent like `C:\src\flutter`, add it to PATH — the
+      page explains PATH, don't skip it). **Dart** installs automatically
+      with Flutter, nothing separate needed for it.
+   3. **Node.js** — <https://nodejs.org> → download the **LTS** version →
+      run the installer → defaults are fine. This is only needed if they
+      later want to also run `firebase` commands themselves (e.g.
+      redeploy Hosting on their own) — `npm` comes bundled with Node.js
+      automatically, no separate npm install:
+      ```powershell
+      npm install -g firebase-tools
+      ```
+      Skip this step entirely if they only ever want to view the app
+      locally via `flutter run -d chrome`, nothing more.
+   4. **Verify it all worked** — open a **new** terminal (Windows key →
+      type `PowerShell` → Enter; close and reopen if one was already open
+      so it picks up the changes) and run:
+      ```powershell
+      git --version
+      flutter --version
+      ```
+      Each should print a version number, not "not recognized." If
+      `flutter --version` fails, run `flutter doctor` — it explains
+      exactly what's still wrong.
+   5. **Then run the app:**
+      ```powershell
+      git clone <repo-url>
+      cd <folder you cloned into>
+      flutter pub get
+      flutter run -d chrome
+      ```
+      This opens Teacher Web in Chrome, live-reloading, already pointed
+      at *their* Firebase project (since `firebase_options.dart` was
+      reconfigured and pushed in Phase 3.1/3.2) — nothing else to set up.
 4. Done — they test it themselves from here.
 
 ---
