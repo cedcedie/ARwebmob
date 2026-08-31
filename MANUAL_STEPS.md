@@ -1,23 +1,34 @@
-# Manual Steps — Things Only You Can Do
+# Manual Steps — Things Only You (or the Client) Can Do
 
-This tracks everything the implementation needs from you directly — installs,
-credentials, Unity Editor actions, Firebase console work, and on-device
-verification. Treat it as a living checklist, not a one-time list.
+This tracks everything the implementation needs done outside the codebase —
+installs, credentials, Unity Editor actions, Firebase console work, and
+on-device verification. Treat it as a living checklist, not a one-time list.
 
-**Worktree note:** Active app code lives on branch `worktree-phase1-scaffold-core-auth`
-in `.claude/worktrees/phase1-scaffold-core-auth`. Run `flutter` commands from
-that directory unless you've merged to `main`.
+Every item below is labeled with who does it:
+
+- **[DEV]** — you, as the person currently holding this codebase (`cedcedie`).
+- **[CLIENT]** — the person/school this project is being handed over to.
+- **[EITHER]** — genuinely doesn't matter who runs it, whoever has the access at the time.
+
+For the full narrative version of the DEV→CLIENT handover sequence (with
+copy-pasteable terminal commands end to end), see **`PROJECT_HANDOVER.md`**
+at the repo root — this file stays the flat, checkbox-style reference; that
+one is the step-by-step walkthrough.
+
+**Repo note:** As of this update, all phases are merged onto `main` — there
+is no active development worktree/branch anymore. Run every command below
+from the repo root: `C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob`.
 
 ---
 
-## 0. One-time environment setup
+## 0. [DEV] One-time environment setup
 
 - [ ] **Flutter SDK** on PATH — run `flutter doctor` and fix anything red
       (Android toolchain especially).
 - [ ] **Android SDK / Android Studio** — at least one SDK platform + build-tools
       matching the Unity export (see Unity section below).
 - [ ] **Chrome** (or another browser) for Teacher Web smoke tests
-      (`flutter run -d chrome` from the worktree).
+      (`flutter run -d chrome` from the repo root).
 - [ ] **Physical Android phone** (recommended over emulator for AR/Unity embed).
 - [ ] **Unity Hub + Unity 6000.4.0f1** with **Android Build Support**, **Android
       SDK & NDK Tools**, **OpenJDK** modules installed.
@@ -26,27 +37,51 @@ that directory unless you've merged to `main`.
 
 ---
 
-## 1. Open product decisions (confirm before Phase 5)
+## 1. Product decisions — status
 
-- [ ] **Q1** (PROJECT_FLOW.md Part 13): Item analysis is **Teacher Web only**,
-      not shown to students. Default: yes — confirm with client/stakeholder.
-- [ ] **Q2** (PROJECT_FLOW.md Part 13): PPTX support = convert to slide
-      images/PDF at teacher upload time, **not** a native on-device PPTX renderer.
-      Default: yes — confirm with client/stakeholder.
+- [x] **Q1** (PROJECT_FLOW.md Part 13): Item analysis is **Teacher Web only**,
+      not shown to students. **Confirmed 2026-08-31**, before Phase 5 was built
+      (see `docs/superpowers/sdd/2026-08-31-phase5-item-analysis-ppt-pipeline/progress.md`).
+      No action needed.
+- [x] **Q2** (PROJECT_FLOW.md Part 13): PPTX support = convert to slide
+      images/PDF at teacher upload time, **not** a native on-device PPTX
+      renderer. **Confirmed 2026-08-31**, same source as Q1. No action needed.
+- [ ] **[CLIENT] New decision — PPTX upload availability.** The teacher
+      lesson-content picker currently offers **both** PDF and PPTX as file
+      choices, but PPTX conversion depends on an **undeployed** Cloud Function
+      (see §6). PDF works fully today; PPTX silently gets stuck at
+      `contentStatus: 'processing'` forever if picked while the function is
+      undeployed — no error shown to the teacher. This is a known, disclosed
+      gap, not a bug that was missed. **The client needs to decide**: accept
+      PDF-only for now (recommended — free, works today), or fund/approve
+      deploying the Cloud Function (§6, requires the Blaze plan) so PPTX
+      works too. Revisit item 3 of §7 once decided.
 
 ---
 
-## 2. Firebase — account & config (you must do this)
+## 2. Firebase — accounts & config
 
-This repo expects **one shared Firebase project** for both Android (student)
-and Web (teacher). There is **no** `firestore.rules` file in git — rules are
-managed in the Firebase console.
+This app expects **one Firebase project** shared by both the Android (student)
+and Web (teacher) targets. There is **no** `firestore.rules` file in git —
+rules are managed in the Firebase console, per-project.
+
+**Two-project model for this handover** (see `PROJECT_HANDOVER.md` for the
+full walkthrough):
+
+- **[DEV] Your own project, for testing now**: `ar-science-explorer`
+  (already exists under your Firebase account — confirmed via
+  `firebase projects:list`). Use this for all local dev/testing between now
+  and handover.
+- **[CLIENT] Their own new project, for the real handover**: created fresh
+  by the client under their own Google account — **not** a transfer of the
+  project above. At handover, re-run `flutterfire configure` against the
+  client's new project (§2.1 below), which re-registers the apps; Firestore
+  starts empty and needs reseeding (auth accounts, any test data).
 
 ### 2.1 Project wiring
 
-- [ ] Confirm which Firebase project backs this app (same as the retired
-      `ar-science-explorer` web app — **no migration**, same collections).
-- [ ] Install tooling (one-time on this machine):
+- [ ] **[EITHER, whoever owns the target project]** Install tooling
+      (one-time on this machine):
       ```powershell
       dart pub global activate flutterfire_cli
       npm install -g firebase-tools
@@ -58,12 +93,12 @@ managed in the Firebase console.
       ```powershell
       firebase login
       ```
-- [ ] Run **`flutterfire configure`** from the worktree (recommended) and pick
-      your existing project — writes `firebase_options.dart`,
-      `google-services.json`, etc. **Use this command** (works even when
-      `flutterfire` is not on PATH):
+- [ ] Run **`flutterfire configure`** from the repo root and pick the target
+      project (your `ar-science-explorer` now; the client's new project at
+      handover) — writes `firebase_options.dart`, `google-services.json`,
+      etc.:
       ```powershell
-      cd C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob\.claude\worktrees\phase1-scaffold-core-auth
+      cd C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob
       dart pub global run flutterfire_cli:flutterfire configure
       ```
       Select platforms **Web** and **Android** when prompted.
@@ -74,12 +109,13 @@ managed in the Firebase console.
 
 ### 2.2 Auth accounts to create (Firebase Console → Authentication)
 
-- [ ] **At least one teacher account** — any email that is **not** the student
-      pattern `/^\d+@arscience\.school$/` (e.g. `teacher@yourschool.edu` + password).
-      Used for `flutter run -d chrome` Teacher Web sign-in.
-- [ ] **Student test accounts** — create users with emails like
-      `123456@arscience.school` (6 digits + `@arscience.school`) for Android testing.
-      The app derives `studentId` from the part before `@`.
+- [ ] **[EITHER]** **At least one teacher account** — any email that is
+      **not** the student pattern `/^\d+@arscience\.school$/`
+      (e.g. `teacher@yourschool.edu` + password). Used for
+      `flutter run -d chrome` Teacher Web sign-in.
+- [ ] **[EITHER]** **Student test accounts** — create users with emails like
+      `123456@arscience.school` (6 digits + `@arscience.school`) for Android
+      testing. The app derives `studentId` from the part before `@`.
 
 ### 2.3 Firestore security rules — student reads + teacher writes
 
@@ -95,19 +131,33 @@ signed in with a non-student email:
 | `/unlockCodes/{code}` | create (doc id = code string) |
 | `/quizUnlockCodes/{docId}` | create |
 
-- [ ] **Verify or update Firestore rules** so teacher-authenticated users (non-student
-      email) can write the collections above. If Teacher Web shows
-      `permission-denied` in the browser console after sign-in, fix rules first.
+- [ ] **[EITHER, whoever owns the target project]** **Verify or update
+      Firestore rules** so teacher-authenticated users (non-student email)
+      can write the collections above. If Teacher Web shows
+      `permission-denied` in the browser console after sign-in, fix rules
+      first.
 
 ### 2.4 Optional: initial student roster
 
-- [ ] Create `/students/{studentId}` docs via Teacher Web **Students** screen,
-      or seed manually in the console if you prefer pre-populated rosters before
-      first login.
+- [ ] **[EITHER]** Create `/students/{studentId}` docs via Teacher Web
+      **Students** screen, or seed manually in the console if you prefer
+      pre-populated rosters before first login.
+
+### 2.5 [DEV → CLIENT] Ownership transfer, at handover
+
+Once the client's own project (§2.1) is live and verified working:
+
+- [ ] Firebase Console → Project Settings → **Users and permissions** → add
+      the client's Google account as **Owner**.
+- [ ] Confirm the client can sign in and see the project themselves.
+- [ ] Step yourself down to a lesser role (or remove yourself entirely) once
+      the client confirms they're set — only relevant if you were ever Owner
+      on *their* project (you won't be, under the two-project model above,
+      unless they explicitly add you for support).
 
 ---
 
-## 3. Unity — Editor actions only you can perform
+## 3. Unity — [DEV] Editor actions only you can perform
 
 Unity project location: **`C:\Users\cedri\VuforiaAR`** (external to this repo).
 
@@ -128,9 +178,9 @@ Unity project location: **`C:\Users\cedri\VuforiaAR`** (external to this repo).
 
 ### 3.3 Export to Flutter (repeat after every Unity change)
 
-Export target (worktree path):
+Export target (repo root):
 ```
-C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob\.claude\worktrees\phase1-scaffold-core-auth\android\unityLibrary
+C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob\android\unityLibrary
 ```
 
 **Player Settings checklist** (required before export succeeds):
@@ -156,8 +206,8 @@ fails after a fresh export (full details in `docs/superpowers/NICE_TO_HAVES.md`)
 - [ ] Remove `-ignorewarnings` line from
       `android/unityLibrary/proguard-unity.txt` if Gradle fails with
       `mergeDebugConsumerProguardFiles` / consumer proguard error (AGP 9.x).
-- [ ] Gradle wiring is already committed in the worktree (`310fdf3`) — normally
-      no re-edit needed unless you reset `settings.gradle.kts` / `app/build.gradle.kts`.
+- [ ] Gradle wiring is already committed (`310fdf3`) — normally no re-edit
+      needed unless you reset `settings.gradle.kts` / `app/build.gradle.kts`.
 
 ### 3.5 Unity C# bridge (already edited — re-verify after scene changes)
 
@@ -173,18 +223,19 @@ Scripts touched in Phase 3 (in the Unity project, not this Flutter repo):
 
 ---
 
-## 4. Android build & on-device test (Phase 3 Task 11)
+## 4. [DEV or CLIENT, whoever has the device] Android build & on-device test
 
 - [x] **`flutter build apk --debug`** succeeded once (IL2CPP ~24 min first time;
       ~2 min on cache hit). APK:
       `build/app/outputs/flutter-apk/app-debug.apk` (~806 MB debug/unstripped).
 - [ ] **Install on a physical device** — `flutter install` or adb:
       `adb install build/app/outputs/flutter-apk/app-debug.apk`
-- [ ] **Sign in as a student** — ⚠️ **Student login UI is still a placeholder**
-      (`Text('Sign in')` in `main.dart`). Until a real login screen is built,
-      you may need to sign in via Firebase test harness or temporary dev wiring.
-      See § 6 Known gaps.
-- [ ] **AR end-to-end on device:**
+- [ ] **Sign in as a student** — real login screen exists
+      (`lib/features/student/auth/student_login_screen.dart`); use a student
+      test account created in §2.2.
+- [ ] **AR end-to-end on device** — this is the one step in this whole
+      document that genuinely **cannot be automated**, no device/emulator
+      available in the dev environment this was built in:
       1. Navigate to a lesson with AR (e.g. q1w1).
       2. Open **Scan** tab — Unity camera view should appear.
       3. Point at a printed marker — Flutter overlay (title/description) should
@@ -196,53 +247,64 @@ Scripts touched in Phase 3 (in the Unity project, not this Flutter repo):
 
 ---
 
-## 5. Teacher Web — manual verification (Phase 4 Task 13)
+## 5. Teacher Web — [DEV or CLIENT] manual verification
 
-Automated gate passed: **`flutter test` 168/168** in the worktree.
+Automated gate passed: **`flutter test` 264/264** on `main` (includes a
+dedicated `test/integration/` suite exercising real teacher→student flows
+against a shared fake Firestore — access-code round trip, pre/post-test
+retake rule, item analysis, and lesson-content delivery — so most of what
+used to require manual cross-target clicking is now covered by an automated
+test that runs on every `flutter test`).
 
 ### 5.1 Run locally
 
-From the worktree:
+From the repo root:
 ```powershell
-cd C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob\.claude\worktrees\phase1-scaffold-core-auth
+cd C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob
 flutter run -d chrome
 ```
 
 - [ ] **Sign in** with a teacher Firebase account (non-student email).
 - [ ] Walk all four nav sections:
       - **Lessons** — list shows built-ins (read-only badge) + teacher lessons;
-        create/edit/archive a teacher lesson; optional `.glb` preview if model index set.
+        create/edit/archive a teacher lesson; optional `.glb` preview if model index set;
+        empty roster shows a tailored empty state.
       - **Quizzes** — built-in banks read-only; create/edit/delete teacher quiz.
-      - **Students** — roster list, archived filter, create student, archive.
+      - **Students** — roster list, archived filter, create student, archive
+        (single-row archive now asks for confirmation, matching bulk archive).
       - **Access Codes** — issue all **3 code types**; confirm generated code
-        displays prominently (copyable).
+        displays prominently (copyable); a thrown error during issuance now
+        shows a real error toast instead of a stuck spinner.
+- [ ] **Item Analysis** — open a quiz's detail view; Item Analysis is reached
+      from there (intentionally not a top-level nav-rail entry — nested under
+      the quiz it belongs to, not a disabled placeholder).
 
-### 5.2 Cross-target round-trip (most important integration test)
+### 5.2 Optional manual spot-check of the automated cross-target flow
 
-- [ ] From **Access Codes** on Web, issue:
-      1. Subject-wide code
-      2. Lesson-targeted code (pick a student + lesson)
-      3. Quiz retake code (student must have ≥1 post-test attempt first)
-- [ ] On **Android student app**, redeem each code via the access-code entry
-      (Home or wherever redeem UI lives) and confirm content unlocks per Part 9.
+The real coverage now lives in `test/integration/` and runs automatically —
+this is only worth doing by hand if you want to see it happen live in two
+browser windows (or a browser + a device) rather than trust the test suite:
 
-### 5.3 Item Analysis nav entry
-
-- [ ] **Item Analysis** appears **disabled** in the side nav (Phase 5 placeholder) —
-      tooltip should indicate coming later. No action needed until Q1 confirmed.
+- [ ] From **Access Codes** on Web, issue a subject-wide code, a
+      lesson-targeted code, and a quiz-retake code (student needs ≥1 post-test
+      attempt first).
+- [ ] On the **Android student app**, redeem each and confirm content
+      unlocks per `PROJECT_FLOW.md` Part 9.
 
 ---
 
-## 6. Cloud Function — PPTX slide-image pipeline (Phase 5 Task 8)
+## 6. Cloud Function — PPTX slide-image pipeline (status: written, undeployed by decision)
 
 The code for this is written and committed (`functions/package.json`,
 `functions/src/index.js`, `functions/Dockerfile`, `functions/.gcloudignore`).
-It has **not** been deployed — deployment is a real billing/account action
-that only you can approve and run. `npm install` and `node --check
-src/index.js` both pass locally from `functions/`; that's as far as
-automated verification goes for this task.
+**It is intentionally not deployed** — this was a deliberate decision (not
+just "not gotten to yet"): deploying it requires the Firebase project to be
+on the **Blaze** (pay-as-you-go) plan, and the choice made during this
+session's planning was to stay on the free Spark plan for now. PDF lesson
+content works fully without this function (see §1's new PPTX decision); only
+`.pptx` uploads are gated behind this.
 
-**⚠️ UNVERIFIED ARCHITECTURE CONCERN — check this before 6.4.**
+**⚠️ UNVERIFIED ARCHITECTURE CONCERN — check this before 6.4, if/when you deploy.**
 `functions/Dockerfile` installs LibreOffice + poppler-utils, but
 `firebase deploy --only functions` builds Gen2 functions via **Google
 Cloud Buildpacks**, which — as far as could be determined without an
@@ -257,71 +319,83 @@ instead deploy `functions/` as a **plain Cloud Run service** (`gcloud run
 deploy --source functions/`, which *does* respect a `Dockerfile`) with a
 Storage-Eventarc trigger wired to it, rather than `onObjectFinalized`.
 That's a real restructure (different trigger wiring, different deploy
-command), not a config tweak — flag it for a follow-up session if it's
-needed.
+command), not a config tweak — this was scoped as a future follow-up, not
+done now, since deploying anything at all was deferred by decision (§1).
 
-- [ ] **6.1 Confirm/upgrade the Firebase project to the Blaze (pay-as-you-go)
-      plan.** Cloud Run-based functions (required here for a custom container
-      with LibreOffice + poppler-utils) are not available on the free "Spark"
-      plan. Firebase Console → Project Settings → Usage and billing → confirm
-      the project is on Blaze (or upgrade it there).
-- [ ] **6.2 Grant the Cloud Run service account signing permission.** The
-      function calls `getSignedUrl()` on each uploaded slide image. Gen2
-      functions run under the Compute Engine default service account with
-      no local key file (Application Default Credentials only), so signing
-      a URL fails unless that service account also holds the
-      **Service Account Token Creator** role (`iam.serviceAccounts.signBlob`
-      permission) — grant it to itself: IAM & Admin → find
+- [ ] **6.1 [CLIENT — billing decision]** Confirm/upgrade the Firebase project
+      to the Blaze (pay-as-you-go) plan. Cloud Run-based functions (required
+      here for a custom container with LibreOffice + poppler-utils) are not
+      available on the free Spark plan. Firebase Console → Project Settings
+      → Usage and billing. **Realistic cost at small/local-testing scale is
+      $0** — Cloud Run, Cloud Functions Gen2, and Cloud Build all have a free
+      tier well above what a handful of students would use — but a billing
+      card must be attached regardless of actual usage.
+- [ ] **6.2 [DEV or CLIENT, whoever has console access]** Grant the Cloud Run
+      service account signing permission. The function calls
+      `getSignedUrl()` on each uploaded slide image. Gen2 functions run
+      under the Compute Engine default service account with no local key
+      file (Application Default Credentials only), so signing a URL fails
+      unless that service account also holds the **Service Account Token
+      Creator** role (`iam.serviceAccounts.signBlob` permission) — grant it
+      to itself: IAM & Admin → find
       `PROJECT_NUMBER-compute@developer.gserviceaccount.com` → Edit → add
       role **Service Account Token Creator**. Without this, deploys succeed
       but every conversion will fail at the `getSignedUrl` call.
-- [ ] **6.3 Wire `functions/` into the Firebase CLI config.** `firebase.json`
-      in this repo is gitignored and currently only holds the FlutterFire
-      app-config (Android/Web app IDs) — it has no `"functions"` section
-      pointing at the `functions/` directory yet. Before `firebase deploy
-      --only functions` will find anything to deploy, add one, e.g. run
-      `firebase init functions` from the repo root (point it at the existing
-      `functions/` folder, don't let it overwrite `package.json`/`src/`), or
-      manually add:
+- [ ] **6.3 [DEV]** Wire `functions/` into the Firebase CLI config.
+      `firebase.json` in this repo is gitignored and currently only holds the
+      FlutterFire app-config (Android/Web app IDs) — it has no `"functions"`
+      section pointing at the `functions/` directory yet. Before
+      `firebase deploy --only functions` will find anything to deploy, add
+      one, e.g. run `firebase init functions` from the repo root (point it at
+      the existing `functions/` folder, don't let it overwrite
+      `package.json`/`src/`), or manually add:
       ```json
       "functions": [{ "source": "functions", "codebase": "default" }]
       ```
       to `firebase.json`.
-- [ ] **6.4 Deploy the function.** Once 6.1–6.3 are done, from the **repo
-      root** (not `functions/`) run:
+- [ ] **6.4 [DEV]** Deploy the function. Once 6.1–6.3 are done, from the
+      **repo root** run:
       ```powershell
       firebase deploy --only functions
       ```
       Expected: the function deploys successfully and the Firebase CLI
       reports the Cloud Run service URL/trigger is live
       (`convertLessonPptx`, region `us-central1`).
-- [ ] **6.5 Manual end-to-end verification.** Open the teacher lesson form,
-      upload a real `.pptx` for a test lesson, wait roughly 30-60 seconds,
-      then check that lesson's Firestore doc (`/lessons/{id}`) shows
-      `contentStatus: 'ready'` and `contentImageUrls` populated with real
-      slide image URLs. Then open that same lesson on the student side and
-      confirm the slide gallery (Task 7) actually renders the real slides,
-      not a placeholder.
-- [ ] **6.6 Re-deploy after future edits.** Any time
-      `functions/src/index.js` (or the Dockerfile) changes, you must manually
-      re-run `firebase deploy --only functions` from the repo root — this
-      does **not** happen automatically as part of any other workflow in
-      this repo.
+- [ ] **6.5 [DEV or CLIENT]** Manual end-to-end verification. Open the
+      teacher lesson form, upload a real `.pptx` for a test lesson, wait
+      roughly 30-60 seconds, then check that lesson's Firestore doc
+      (`/lessons/{id}`) shows `contentStatus: 'ready'` and
+      `contentImageUrls` populated with real slide image URLs. Then open
+      that same lesson on the student side and confirm the slide gallery
+      actually renders the real slides, not a placeholder.
+- [ ] **6.6 [DEV]** Re-deploy after future edits. Any time
+      `functions/src/index.js` (or the Dockerfile) changes, you must
+      manually re-run `firebase deploy --only functions` from the repo
+      root — this does **not** happen automatically as part of any other
+      workflow in this repo.
 
 ---
 
-## 7. Release / production (not needed for dev yet)
+## 7. Release / production
 
-- [ ] **Release signing keystore** for Play Store / production APK (debug signing
-      is wired for now).
-- [ ] **Firebase App Check** / production-hardening rules (if required by school IT).
-- [ ] **Merge worktree branch to `main`** and delete worktree when ready.
+- [ ] **7.1 [DEV] Repo visibility** — keep this **private** on GitHub; add
+      the client as a collaborator at handover rather than making it public
+      (decided: this repo carries internal architecture notes and a full
+      build history in `docs/superpowers/` not meant for public consumption).
+- [ ] **7.2 [DEV] Release signing keystore** for Play Store / production APK
+      (debug signing is wired for now) — only needed if this goes to the Play
+      Store; not required for a capstone demo via sideloaded APK.
+- [ ] **7.3 [CLIENT — pending §1's PPTX decision]** **Firebase App Check** /
+      production-hardening rules, if required by school IT — only relevant
+      once/if this moves beyond local testing.
+- [ ] **7.4 [DEV, already done]** ~~Merge worktree branch to `main`~~ — done,
+      `main` is now the only branch, all phases merged, worktree removed.
 
-### 7.1 Web hosting for Teacher Web (Firebase Hosting)
+### 7.5 Web hosting for Teacher Web (Firebase Hosting) — [DEV or CLIENT]
 
 Not configured yet — `firebase.json` is gitignored (machine-local, generated by
 `flutterfire configure`), so this can't be committed; add it by hand once. This
-is unrelated to the Cloud Function/Blaze conversation above — Hosting is a
+is **unrelated to the Cloud Function/Blaze decision above** — Hosting is a
 static-file host, free on the Spark plan, **no billing card required**.
 
 - [ ] Add a `"hosting"` block to your local `firebase.json` (alongside whatever
@@ -336,7 +410,7 @@ static-file host, free on the Spark plan, **no billing card required**.
       The `rewrites` entry is required for a Flutter Web app — it sends every
       route back through `index.html` so client-side routing (go_router) works
       on a hard refresh/direct link instead of 404ing.
-- [ ] Build and deploy, from the worktree:
+- [ ] Build and deploy, from the repo root:
       ```powershell
       flutter build web --release
       firebase deploy --only hosting
@@ -355,21 +429,21 @@ static-file host, free on the Spark plan, **no billing card required**.
 These affect how "complete" the app feels; no action required unless you want
 them fixed in a future phase:
 
-| Gap | Impact |
-|---|---|
-| **No student login screen** on Android | `main.dart` shows placeholder `Text('Sign in')` — `AuthService.signInStudent` exists but no UI wires it. Blocks real device testing until built or dev-signed-in another way. |
-| **Cloud Function not deployed** | `functions/` (PPTX → slide-image conversion, Task 8) is code-complete and committed but **not deployed** — needs Blaze-plan confirmation + `firebase deploy --only functions` (see §6). Until deployed, uploading a `.pptx` will leave the lesson stuck at `contentStatus: 'processing'` forever. |
-| **UI polish pass** | Spec calls for `/impeccable` design pass; screens are functional, not final visual polish. |
-| **BUILD.md** | Unity re-export doc referenced in spec not written yet; steps are in this file §3 instead. |
-| **Unity local patches** | ARM64-only checker + proguard line — reapply after Unity package reinstall or re-export (see `NICE_TO_HAVES.md`). |
+| Gap | Impact | Owner if fixed |
+|---|---|---|
+| **Cloud Function not deployed** | Undeployed **by decision**, not oversight (see §6/§1) — PDF works fully; PPTX gets stuck at `contentStatus: 'processing'` if picked. | [CLIENT] decision, [DEV] execution |
+| **No responsive/adaptive layout on Teacher Web** | `TeacherShell`'s fixed-width `NavigationRail` and `DataTable2` tables have no breakpoints — desktop/laptop-only by deliberate design (documented in-code and in `NICE_TO_HAVES.md`), not built for tablet/narrow viewports. | Future phase, if ever needed |
+| **Unity local patches** | ARM64-only export checker + proguard line — reapply after Unity package reinstall or re-export (see `NICE_TO_HAVES.md`). | [DEV], Unity-side only |
+| **Mangled em-dash encoding** | Cosmetic doc-comment artifact — resolved repo-wide, noted here only for history. | Resolved |
 
 ---
 
-## 9. Not needed from you
+## 9. Not needed from anyone
 
 - Dart/Flutter business logic, repositories, quiz rules, access-code validation,
   curriculum data port, Unity C# bridge edits (once pointed at the right scripts),
-  Gradle wiring (already committed), and automated tests — handled in-repo.
+  Gradle wiring (already committed), and automated tests (264/264, including
+  cross-target integration coverage) — handled in-repo.
 - Subagent-driven task briefs/reports live under
   `docs/superpowers/sdd/` — no manual maintenance required.
 
@@ -377,10 +451,11 @@ them fixed in a future phase:
 
 ## Quick reference — phase completion vs manual work
 
-| Phase | Code status | Your manual work remaining |
+| Phase | Code status | Manual work remaining |
 |---|---|---|
-| **1** Foundation | Done | Firebase configure, auth accounts |
-| **2** Student core | Done | Student login UI gap blocks easy device login |
-| **3** AR Lab | Build OK | Device AR scan test (§4) |
-| **4** Teacher Web | Done | Chrome smoke + Firestore rules + cross-redeem (§5) |
-| **5** Analytics/PPT | Cloud Function code done, not deployed | Blaze plan + `firebase deploy` + verification (§6) |
+| **1** Foundation | Done | Firebase configure, auth accounts (§2) |
+| **2** Student core | Done | None — real login screen exists |
+| **3** AR Lab | Build OK | Device AR scan test (§4) — the one un-automatable step |
+| **4** Teacher Web | Done, 7 critique rounds, 33/40 | Chrome smoke + Firestore rules (§5) |
+| **5** Analytics/PPT | Cloud Function code done, undeployed **by decision** | Client's PPTX decision (§1), then §6 if approved |
+| **Handover** | Not started | Client's own Firebase project, repo collaborator access, ownership transfer (§2.5) — see `PROJECT_HANDOVER.md` |
