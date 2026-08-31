@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -439,6 +440,53 @@ void main() {
 
       expect(find.textContaining('already exists'), findsOneWidget);
       expect(find.textContaining('Code issued'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'a thrown FirebaseException from issuance re-enables the Issue button '
+    'and shows a humanized error, not a stuck spinner (item 1)',
+    (tester) async {
+      await _pumpAccessCodesScreen(
+        tester,
+        viewModel: AccessCodesViewModel(
+          students: const [],
+          lessons: kBuiltInLessons,
+          issuedCodes: const [],
+          onIssueSubjectCode:
+              ({required subjects, lessonIds, customCode}) async {
+                throw FirebaseException(
+                  plugin: 'cloud_firestore',
+                  code: 'permission-denied',
+                );
+              },
+          onIssueLessonCode:
+              ({required lessonId, required studentId, customCode}) async =>
+                  'unused',
+          onIssueQuizRetakeCode:
+              ({required lessonId, required studentId}) async => 'unused',
+          checkRetakeEligible:
+              ({required studentId, required lessonId}) async => false,
+        ),
+      );
+
+      await _tapIssueButton(tester, 'Issue subject code');
+
+      // No raw exception text, no stuck-forever disabled spinner: a
+      // humanized error is shown and the button is enabled again.
+      expect(find.textContaining('FirebaseException'), findsNothing);
+      expect(
+        find.textContaining("don't have permission to issue this code"),
+        findsOneWidget,
+      );
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      final submitButton = tester.widget<ShadButton>(
+        find.ancestor(
+          of: find.text('Issue subject code'),
+          matching: find.byType(ShadButton),
+        ),
+      );
+      expect(submitButton.onPressed, isNotNull);
     },
   );
 

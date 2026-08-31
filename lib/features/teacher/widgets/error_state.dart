@@ -55,6 +55,17 @@ String humanizeLoadError(Object error, {required String subjectLabel}) {
 /// [actionLabel] describes the thing that failed to save, phrased to follow
 /// "Couldn't " (e.g. `'save this lesson'`, `'save this quiz'`).
 String humanizeSubmitError(Object error, {required String actionLabel}) {
+  // A `StateError` thrown by this app's own service layer (e.g.
+  // `AccessCodeIssuanceService`'s "code already exists" / "no post-test
+  // attempt yet" rejections) is already a deliberately-authored,
+  // teacher-safe sentence — unlike a raw `FirebaseException` or a generic
+  // `Exception`'s `toString()`, which is why only those two get mapped to a
+  // generic sentence below. Showing it verbatim keeps callers free to route
+  // every caught error through this one function uniformly (item 1) without
+  // losing the specific, actionable text a business-rule rejection needs.
+  if (error is StateError) {
+    return error.message;
+  }
   if (error is FirebaseException) {
     switch (error.code) {
       case 'permission-denied':

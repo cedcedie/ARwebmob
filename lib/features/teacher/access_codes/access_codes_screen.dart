@@ -42,14 +42,33 @@ class _AccessCodesBody extends HookWidget {
     final issuedCode = useState<String?>(null);
     final errorMessage = useState<String?>(null);
 
+    // Item 1: this used to only catch `StateError` (the eligibility-check
+    // and duplicate-code failures thrown by `AccessCodeIssuanceService`
+    // itself), leaving any `FirebaseException` from the underlying writes
+    // (permission-denied, unavailable, etc.) uncaught — which, since every
+    // call site below only flips `isSubmitting` back to false *after*
+    // `await onIssue(...)` returns, permanently stranded the Issue button
+    // in a disabled spinner state with no feedback at all. Catching `Object`
+    // here (not just `StateError`) closes that gap; each call site's own
+    // `finally` (below) is what actually guarantees the spinner always
+    // clears, independent of what this function does with the error.
+    //
+    // Both the StateError path (a deliberate business-rule rejection, e.g.
+    // "no post-test attempt yet") and any other thrown error are routed
+    // through `humanizeSubmitError` so the teacher never sees a raw
+    // `Error.toString()`/`error.message` — same rule this screen's error
+    // ErrorState/toast usage follows elsewhere in the app.
     Future<void> handleIssue(Future<String> Function() issue) async {
       errorMessage.value = null;
       try {
         final code = await issue();
         issuedCode.value = code;
-      } on StateError catch (error) {
+      } catch (error) {
         issuedCode.value = null;
-        errorMessage.value = error.message;
+        errorMessage.value = humanizeSubmitError(
+          error,
+          actionLabel: 'issue this code',
+        );
       }
     }
 
@@ -313,18 +332,25 @@ class _SubjectCodeForm extends HookWidget {
                 ? null
                 : () async {
                     isSubmitting.value = true;
-                    await onIssue(
-                      () => viewModel.onIssueSubjectCode(
-                        subjects: [subject.value.firestoreValue],
-                        lessonIds: selectedLessonIds.value.isEmpty
-                            ? null
-                            : selectedLessonIds.value.toList(),
-                        customCode: customCode.value.trim().isEmpty
-                            ? null
-                            : customCode.value.trim(),
-                      ),
-                    );
-                    isSubmitting.value = false;
+                    // try/finally (not just the try/catch inside
+                    // `handleIssue`) so the spinner clears no matter what —
+                    // belt-and-suspenders against any future change to
+                    // `handleIssue` that lets an exception escape (item 1).
+                    try {
+                      await onIssue(
+                        () => viewModel.onIssueSubjectCode(
+                          subjects: [subject.value.firestoreValue],
+                          lessonIds: selectedLessonIds.value.isEmpty
+                              ? null
+                              : selectedLessonIds.value.toList(),
+                          customCode: customCode.value.trim().isEmpty
+                              ? null
+                              : customCode.value.trim(),
+                        ),
+                      );
+                    } finally {
+                      isSubmitting.value = false;
+                    }
                   },
             child: isSubmitting.value
                 ? const SizedBox(
@@ -403,16 +429,19 @@ class _LessonCodeForm extends HookWidget {
                 ? null
                 : () async {
                     isSubmitting.value = true;
-                    await onIssue(
-                      () => viewModel.onIssueLessonCode(
-                        lessonId: lessonId.value!,
-                        studentId: studentId.value!,
-                        customCode: customCode.value.trim().isEmpty
-                            ? null
-                            : customCode.value.trim(),
-                      ),
-                    );
-                    isSubmitting.value = false;
+                    try {
+                      await onIssue(
+                        () => viewModel.onIssueLessonCode(
+                          lessonId: lessonId.value!,
+                          studentId: studentId.value!,
+                          customCode: customCode.value.trim().isEmpty
+                              ? null
+                              : customCode.value.trim(),
+                        ),
+                      );
+                    } finally {
+                      isSubmitting.value = false;
+                    }
                   },
             child: isSubmitting.value
                 ? const SizedBox(
@@ -520,13 +549,16 @@ class _RetakeCodeForm extends HookWidget {
             onPressed: canSubmit
                 ? () async {
                     isSubmitting.value = true;
-                    await onIssue(
-                      () => viewModel.onIssueQuizRetakeCode(
-                        lessonId: lessonId.value!,
-                        studentId: studentId.value!,
-                      ),
-                    );
-                    isSubmitting.value = false;
+                    try {
+                      await onIssue(
+                        () => viewModel.onIssueQuizRetakeCode(
+                          lessonId: lessonId.value!,
+                          studentId: studentId.value!,
+                        ),
+                      );
+                    } finally {
+                      isSubmitting.value = false;
+                    }
                   }
                 : null,
             child: isSubmitting.value
