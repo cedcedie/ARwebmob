@@ -36,23 +36,102 @@ sequence that ties those together specifically for the handover moment.
 
 ---
 
-## 1. [DEV] Repo access
+## 0.5 [CLIENT — only if they have their own technical person] Setting up their own machine, from zero
+
+Everything in this document that has terminal commands can be run by the
+client's own developer, on their own machine, without you — that's the
+whole point of the role labels in this doc. This section assumes **nothing
+is installed yet**, including not knowing what a "terminal" is.
+
+**What's a terminal, and how do I open one (Windows)?** A terminal is a
+text window where you type commands instead of clicking things — every
+gray code block below (like the ones with `flutter` or `npm` in them) gets
+typed into one, one line at a time, then Enter. To open one: press the
+Windows key, type `PowerShell`, press Enter. A blue-ish window opens with a
+blinking cursor — that's it, that's the terminal used for every command in
+this document.
+
+**What to install, in this order, with direct links:**
+
+1. **Git** — <https://git-scm.com/downloads> — download the Windows
+   installer, run it, click through with the defaults (no settings need
+   changing). This is what lets you download (`clone`) and update the
+   project's code.
+2. **Flutter SDK** — <https://docs.flutter.dev/get-started/install/windows>
+   — follow that page's Windows instructions exactly (it walks through
+   downloading a zip, extracting it somewhere permanent like `C:\src\flutter`,
+   and adding it to your PATH — the page explains what PATH means and how,
+   don't skip that part). This is the toolkit that builds and runs the
+   actual app. **Dart** (a second, related tool this project also uses)
+   installs automatically as part of Flutter — nothing extra to do for it.
+3. **Node.js** — <https://nodejs.org> — download the **LTS** version,
+   run the installer, defaults are fine. This is what **`npm`** comes
+   bundled with — you don't install npm separately; installing Node.js
+   gives you npm automatically. Node.js/npm here is only used to install
+   one tool (`firebase-tools`, step 5 below) — nothing about this project
+   itself runs on Node.js day-to-day.
+4. **Verify the first three installed correctly** — open a **new**
+   PowerShell window (close and reopen if one was already open, so it
+   picks up the changes) and type each of these one at a time, pressing
+   Enter after each:
+   ```powershell
+   git --version
+   flutter --version
+   node --version
+   npm --version
+   ```
+   Each should print a version number, not an error like "not recognized."
+   If `flutter --version` fails, run `flutter doctor` — it explains exactly
+   what's still missing and how to fix it.
+5. **Install two more command-line tools this project needs** (both via
+   `npm`/`dart`, which you now have from steps 2-3):
+   ```powershell
+   dart pub global activate flutterfire_cli
+   npm install -g firebase-tools
+   ```
+6. **Get the project's code** — see §1 below for the exact `git clone`
+   command once repo access has been granted.
+7. **From inside the cloned project folder**, install the project's own
+   dependencies and confirm it's healthy before touching Firebase at all:
+   ```powershell
+   cd <folder you cloned into>
+   flutter pub get
+   flutter test
+   ```
+   This should end with `264/264` (or higher) tests passing — if it
+   doesn't, stop and investigate before proceeding; something's wrong with
+   the checkout itself, not anything Firebase-related yet.
+8. **Android Studio/SDK** and **Unity 6000.4.0f1** are only needed if
+   doing the Android/AR side (§8) — not needed for Teacher Web (§7) or
+   Firebase setup (§3-§5), and are a much bigger install; skip them
+   entirely if that's not the goal right now.
+
+Once steps 1-7 are done, the client's developer can run §3 (their own
+Firebase project), §4 (`flutterfire configure`), §5 (rules/accounts), and
+§7 (Hosting deploy) entirely themselves, using the exact commands given in
+each section below — copy each gray block into the same PowerShell window,
+one at a time.
+
+---
+
+## 1. Repo access
 
 The repo stays **private** on GitHub — it carries internal build history
 (`docs/superpowers/`) and architecture notes not meant for public
 consumption.
 
-1. If this repo isn't pushed to GitHub yet, create a private repo there and
-   push `main`:
+1. **[DEV]** If this repo isn't pushed to GitHub yet, create a private repo
+   there and push `main`:
    ```powershell
    cd C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob
    git remote add origin <your-private-repo-url>
    git push -u origin main
    ```
-2. GitHub repo → Settings → Collaborators → add the client's GitHub account
-   with at least **Write** access (or transfer the repo to their GitHub
-   organization/account entirely, if that's the arrangement).
-3. Confirm the client can clone it:
+2. **[DEV]** GitHub repo → Settings → Collaborators → add the client's
+   GitHub account with at least **Write** access (or transfer the repo to
+   their GitHub organization/account entirely, if that's the arrangement).
+   Only the repo owner can do this step.
+3. **[CLIENT]** Once added, clone it onto their own machine:
    ```powershell
    git clone <repo-url>
    ```
