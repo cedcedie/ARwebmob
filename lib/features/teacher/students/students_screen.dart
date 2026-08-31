@@ -6,6 +6,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/models/student_record.dart';
 import '../../../core/models/subject_key.dart';
 import '../../../core/theme/app_theme.dart';
+import '../widgets/error_state.dart';
 import 'student_form.dart';
 import 'student_id_format.dart';
 import 'students_providers.dart';
@@ -20,8 +21,10 @@ class StudentsScreen extends ConsumerWidget {
     return Scaffold(
       body: asyncVm.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) =>
-            Center(child: Text('Error loading students: $error')),
+        error: (error, _) => ErrorState(
+          message: humanizeLoadError(error, subjectLabel: 'students'),
+          onRetry: () => ref.invalidate(studentsViewModelProvider),
+        ),
         data: (vm) => _StudentsBody(viewModel: vm),
       ),
     );
