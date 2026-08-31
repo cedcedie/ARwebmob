@@ -13,7 +13,10 @@ String formatStudentIdForDisplay(String studentId) {
 /// `00-0000` while the teacher types.
 class StudentIdInputFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     // A literal email (per Part 3.2, the field also accepts a full
     // "@arscience.school" address) must pass through unformatted — stripping
     // non-digits would destroy it.

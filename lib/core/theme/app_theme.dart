@@ -139,6 +139,17 @@ final ThemeData appMaterialTheme = ThemeData(
     surfaceTintColor: Colors.transparent,
     margin: EdgeInsets.zero,
   ),
+  // `Chip`/`FilterChip` have no direct shadcn_ui equivalent (no chip/toggle
+  // component exists in this package version) — themed to match the
+  // palette here instead of forcing a bad shadcn fit.
+  chipTheme: ChipThemeData(
+    backgroundColor: AppColors.muted,
+    selectedColor: AppColors.physics.withValues(alpha: 0.16),
+    disabledColor: AppColors.muted,
+    labelStyle: const TextStyle(color: AppColors.ink),
+    side: const BorderSide(color: AppColors.border),
+    shape: const StadiumBorder(),
+  ),
   navigationRailTheme: NavigationRailThemeData(
     backgroundColor: AppColors.surface,
     indicatorColor: AppColors.physics.withValues(alpha: 0.16),

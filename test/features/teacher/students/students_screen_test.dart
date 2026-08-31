@@ -2,6 +2,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:ar_science_explorer/core/models/quiz_attempt.dart';
 import 'package:ar_science_explorer/core/models/student_record.dart';
 import 'package:ar_science_explorer/core/services/student_repository.dart';
@@ -23,8 +24,7 @@ StudentRecord _sampleStudent({
     studentId: id,
     grade: '7',
     section: 'Rizal',
-    scores: scores ??
-        const {'chemistry': 85, 'biology': null, 'physics': 72},
+    scores: scores ?? const {'chemistry': 85, 'biology': null, 'physics': 72},
     completedLessonIds: completedLessonIds ?? const [],
     completedLabExperimentIds: const [],
     completedQuizIds: const [],
@@ -61,10 +61,12 @@ Future<void> _pumpStudentsScreen(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        studentsViewModelProvider.overrideWith((ref) => Stream.value(viewModel)),
+        studentsViewModelProvider.overrideWith(
+          (ref) => Stream.value(viewModel),
+        ),
         ...extraOverrides,
       ],
-      child: const MaterialApp(home: StudentsScreen()),
+      child: const ShadApp(home: StudentsScreen()),
     ),
   );
   await tester.pump();
@@ -74,16 +76,18 @@ void main() {
   testWidgets('table shows non-archived students by default', (tester) async {
     await _pumpStudentsScreen(
       tester,
-      viewModel: _viewModel(students: [
-        _sampleStudent(id: '123456', name: 'Active One'),
-      ]),
+      viewModel: _viewModel(
+        students: [_sampleStudent(id: '123456', name: 'Active One')],
+      ),
     );
 
     expect(find.text('Active One'), findsOneWidget);
     expect(find.text('Archived One'), findsNothing);
   });
 
-  testWidgets('archived filter toggle calls include-archived handler', (tester) async {
+  testWidgets('archived filter toggle calls include-archived handler', (
+    tester,
+  ) async {
     var includeArchived = false;
     await _pumpStudentsScreen(
       tester,
@@ -100,7 +104,9 @@ void main() {
     expect(includeArchived, isTrue);
   });
 
-  testWidgets('table includes archived students when includeArchived is true', (tester) async {
+  testWidgets('table includes archived students when includeArchived is true', (
+    tester,
+  ) async {
     await _pumpStudentsScreen(
       tester,
       viewModel: _viewModel(
@@ -116,7 +122,9 @@ void main() {
     expect(find.text('Archived One'), findsOneWidget);
   });
 
-  testWidgets('create form validates student id is exactly 6 digits', (tester) async {
+  testWidgets('create form validates student id is exactly 6 digits', (
+    tester,
+  ) async {
     await _pumpStudentsScreen(
       tester,
       viewModel: _viewModel(students: const []),
@@ -125,7 +133,10 @@ void main() {
     await tester.tap(find.text('Add Student'));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('student_name')), 'New Student');
+    await tester.enterText(
+      find.byKey(const Key('student_name')),
+      'New Student',
+    );
     await tester.enterText(find.byKey(const Key('student_id')), '12345');
     await tester.enterText(find.byKey(const Key('student_grade')), '7');
     await tester.enterText(find.byKey(const Key('student_section')), 'Rizal');
@@ -136,7 +147,9 @@ void main() {
     expect(find.text('Student ID must be exactly 6 digits'), findsOneWidget);
   });
 
-  testWidgets('submit calls createStudent with empty activity fields', (tester) async {
+  testWidgets('submit calls createStudent with empty activity fields', (
+    tester,
+  ) async {
     final firestore = FakeFirebaseFirestore();
     final repo = StudentRepository(firestore: firestore);
     StudentRecord? created;
@@ -158,13 +171,20 @@ void main() {
     await tester.enterText(find.byKey(const Key('student_name')), 'Ana Reyes');
     await tester.enterText(find.byKey(const Key('student_id')), '12-3456');
     await tester.enterText(find.byKey(const Key('student_grade')), '8');
-    await tester.enterText(find.byKey(const Key('student_section')), 'Bonifacio');
+    await tester.enterText(
+      find.byKey(const Key('student_section')),
+      'Bonifacio',
+    );
 
     await tester.tap(find.text('Create'));
     await tester.pumpAndSettle();
 
     expect(created, isNotNull);
-    expect(created!.scores, const {'chemistry': null, 'biology': null, 'physics': null});
+    expect(created!.scores, const {
+      'chemistry': null,
+      'biology': null,
+      'physics': null,
+    });
     expect(created!.completedLessonIds, isEmpty);
     expect(created!.quizAttempts, isEmpty);
     expect(created!.studentId, '123456');
@@ -174,7 +194,9 @@ void main() {
     expect(formatStudentIdForDisplay('123456'), '12-3456');
   });
 
-  testWidgets('archiving a row removes it from the default view', (tester) async {
+  testWidgets('archiving a row removes it from the default view', (
+    tester,
+  ) async {
     final archivedIds = <String>[];
 
     await _pumpStudentsScreen(
@@ -193,42 +215,46 @@ void main() {
     expect(archivedIds, ['123456']);
   });
 
-  testWidgets('roster shows lesson-completion count and quiz-attempt count', (tester) async {
+  testWidgets('roster shows lesson-completion count and quiz-attempt count', (
+    tester,
+  ) async {
     await _pumpStudentsScreen(
       tester,
-      viewModel: _viewModel(students: [
-        _sampleStudent(
-          id: '123456',
-          name: 'Progressed Student',
-          completedLessonIds: const ['lesson-1', 'lesson-2', 'lesson-3'],
-          quizAttempts: [
-            QuizAttempt(
-              id: 'a1',
-              quizId: 'chemistry-lesson-1-pre',
-              studentId: '123456',
-              attemptNumber: 1,
-              score: 8,
-              totalQuestions: 10,
-              correctAnswers: 8,
-              answers: const [0, 1, 2],
-              timestamp: '2026-08-01T10:00:00.000Z',
-              locked: false,
-            ),
-            QuizAttempt(
-              id: 'a2',
-              quizId: 'chemistry-lesson-1-post',
-              studentId: '123456',
-              attemptNumber: 1,
-              score: 9,
-              totalQuestions: 10,
-              correctAnswers: 9,
-              answers: const [0, 1, 2],
-              timestamp: '2026-08-02T10:00:00.000Z',
-              locked: true,
-            ),
-          ],
-        ),
-      ]),
+      viewModel: _viewModel(
+        students: [
+          _sampleStudent(
+            id: '123456',
+            name: 'Progressed Student',
+            completedLessonIds: const ['lesson-1', 'lesson-2', 'lesson-3'],
+            quizAttempts: [
+              QuizAttempt(
+                id: 'a1',
+                quizId: 'chemistry-lesson-1-pre',
+                studentId: '123456',
+                attemptNumber: 1,
+                score: 8,
+                totalQuestions: 10,
+                correctAnswers: 8,
+                answers: const [0, 1, 2],
+                timestamp: '2026-08-01T10:00:00.000Z',
+                locked: false,
+              ),
+              QuizAttempt(
+                id: 'a2',
+                quizId: 'chemistry-lesson-1-post',
+                studentId: '123456',
+                attemptNumber: 1,
+                score: 9,
+                totalQuestions: 10,
+                correctAnswers: 9,
+                answers: const [0, 1, 2],
+                timestamp: '2026-08-02T10:00:00.000Z',
+                locked: true,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
 
     expect(find.text('Lessons: 3'), findsOneWidget);
@@ -244,12 +270,14 @@ void main() {
     expect(find.textContaining('chemistry-lesson-1-post'), findsOneWidget);
   });
 
-  testWidgets('roster shows zero-progress state for a brand-new student', (tester) async {
+  testWidgets('roster shows zero-progress state for a brand-new student', (
+    tester,
+  ) async {
     await _pumpStudentsScreen(
       tester,
-      viewModel: _viewModel(students: [
-        _sampleStudent(id: '654321', name: 'Fresh Student'),
-      ]),
+      viewModel: _viewModel(
+        students: [_sampleStudent(id: '654321', name: 'Fresh Student')],
+      ),
     );
 
     expect(find.text('Lessons: 0'), findsOneWidget);

@@ -1,9 +1,11 @@
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/models/student_record.dart';
+import '../../../core/models/subject_key.dart';
+import '../../../core/theme/app_theme.dart';
 import 'student_form.dart';
 import 'student_id_format.dart';
 import 'students_providers.dart';
@@ -18,7 +20,8 @@ class StudentsScreen extends ConsumerWidget {
     return Scaffold(
       body: asyncVm.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Error loading students: $error')),
+        error: (error, _) =>
+            Center(child: Text('Error loading students: $error')),
         data: (vm) => _StudentsBody(viewModel: vm),
       ),
     );
@@ -39,21 +42,28 @@ class _StudentsBody extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('Students', style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                'Students',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
               const Spacer(),
+              // `FilterChip` has no direct shadcn_ui equivalent (no
+              // chip/toggle component in this package version) — themed via
+              // appMaterialTheme's chipTheme to match the palette instead of
+              // forcing a bad shadcn fit.
               FilterChip(
                 label: const Text('Show archived'),
                 selected: viewModel.includeArchived,
                 onSelected: viewModel.onToggleIncludeArchived,
               ),
               const SizedBox(width: 12),
-              FilledButton.icon(
+              ShadButton(
                 onPressed: () => StudentFormSheet.show(
                   context,
                   onSubmit: viewModel.onCreateStudent,
                 ),
-                icon: const Icon(LucideIcons.userPlus),
-                label: const Text('Add Student'),
+                leading: const Icon(LucideIcons.userPlus, size: 16),
+                child: const Text('Add Student'),
               ),
             ],
           ),
@@ -78,7 +88,9 @@ class _StudentsBody extends StatelessWidget {
                   return DataRow(
                     cells: [
                       DataCell(Text(student.name)),
-                      DataCell(Text(formatStudentIdForDisplay(student.studentId))),
+                      DataCell(
+                        Text(formatStudentIdForDisplay(student.studentId)),
+                      ),
                       DataCell(Text(student.grade)),
                       DataCell(Text(student.section)),
                       DataCell(_ScoreChips(scores: student.scores)),
@@ -90,20 +102,26 @@ class _StudentsBody extends StatelessWidget {
                             _CompactIconButton(
                               tooltip: 'View progress details',
                               icon: LucideIcons.listChecks,
-                              onPressed: () => _showProgressDetails(context, student),
+                              onPressed: () =>
+                                  _showProgressDetails(context, student),
                             ),
                             if (!student.isArchived)
                               _CompactIconButton(
                                 tooltip: 'Archive',
                                 icon: LucideIcons.archive,
-                                onPressed: () => viewModel.onArchiveStudent(student.studentId),
+                                onPressed: () => viewModel.onArchiveStudent(
+                                  student.studentId,
+                                ),
                               )
                             else
                               const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 4),
                                 child: Text(
                                   'Archived',
-                                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                           ],
@@ -121,9 +139,9 @@ class _StudentsBody extends StatelessWidget {
   }
 }
 
-/// Narrower `IconButton` (default has a 48x48 touch target) so two of them
-/// plus an "Archived" label fit inside the roster's Actions column without
-/// overflowing.
+/// Narrower `ShadIconButton` (the default touch target is roomier) so two of
+/// them plus an "Archived" label fit inside the roster's Actions column
+/// without overflowing.
 class _CompactIconButton extends StatelessWidget {
   const _CompactIconButton({
     required this.tooltip,
@@ -137,20 +155,20 @@ class _CompactIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tooltip,
-      icon: Icon(icon, size: 18),
-      iconSize: 18,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-      visualDensity: VisualDensity.compact,
-      onPressed: onPressed,
+    return Tooltip(
+      message: tooltip,
+      child: ShadIconButton.ghost(
+        width: 32,
+        height: 32,
+        icon: Icon(icon, size: 18),
+        onPressed: onPressed,
+      ),
     );
   }
 }
 
 void _showProgressDetails(BuildContext context, StudentRecord student) {
-  showDialog<void>(
+  showShadDialog<void>(
     context: context,
     builder: (context) => _ProgressDetailsDialog(student: student),
   );
@@ -204,9 +222,15 @@ class _ProgressDetailsDialog extends StatelessWidget {
     final attempts = [...student.quizAttempts]
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-    return AlertDialog(
+    return ShadDialog(
       title: Text('${student.name} — Progress'),
-      content: SizedBox(
+      actions: [
+        ShadButton.outline(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+      child: SizedBox(
         width: 420,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -214,40 +238,41 @@ class _ProgressDetailsDialog extends StatelessWidget {
           children: [
             Text('Lessons completed: ${student.completedLessonIds.length}'),
             const SizedBox(height: 12),
-            Text('Quiz attempts (${attempts.length})',
-                style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Quiz attempts (${attempts.length})',
+              style: ShadTheme.of(context).textTheme.small,
+            ),
             const SizedBox(height: 8),
             if (attempts.isEmpty)
               const Text('No quiz attempts yet.')
             else
               ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 300),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: attempts.length,
-                  itemBuilder: (context, index) {
-                    final attempt = attempts[index];
-                    return ListTile(
-                      dense: true,
-                      title: Text('${attempt.quizId} — attempt ${attempt.attemptNumber}'),
-                      subtitle: Text(
-                        'Score ${attempt.correctAnswers}/${attempt.totalQuestions} '
-                        '(${attempt.score.round()}) · ${attempt.timestamp}'
-                        '${attempt.locked ? ' · locked' : ''}',
-                      ),
-                    );
-                  },
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: attempts.length,
+                    itemBuilder: (context, index) {
+                      final attempt = attempts[index];
+                      return ListTile(
+                        dense: true,
+                        title: Text(
+                          '${attempt.quizId} — attempt ${attempt.attemptNumber}',
+                        ),
+                        subtitle: Text(
+                          'Score ${attempt.correctAnswers}/${attempt.totalQuestions} '
+                          '(${attempt.score.round()}) · ${attempt.timestamp}'
+                          '${attempt.locked ? ' · locked' : ''}',
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-      ],
     );
   }
 }
@@ -263,17 +288,20 @@ class _ScoreChips extends StatelessWidget {
       spacing: 4,
       runSpacing: 4,
       children: [
-        _subjectChip('Chem', scores['chemistry']),
-        _subjectChip('Bio', scores['biology']),
-        _subjectChip('Phys', scores['physics']),
+        _subjectChip('Chem', scores['chemistry'], SubjectKey.chemistry),
+        _subjectChip('Bio', scores['biology'], SubjectKey.biology),
+        _subjectChip('Phys', scores['physics'], SubjectKey.physics),
       ],
     );
   }
 
-  Widget _subjectChip(String label, num? score) {
+  Widget _subjectChip(String label, num? score, SubjectKey subject) {
     final text = score != null ? '$label ${score.round()}' : '$label —';
+    final accent = subjectColor(subject);
     return Chip(
-      label: Text(text, style: const TextStyle(fontSize: 11)),
+      label: Text(text, style: TextStyle(fontSize: 11, color: accent)),
+      side: BorderSide(color: accent.withValues(alpha: 0.4)),
+      backgroundColor: accent.withValues(alpha: 0.10),
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );

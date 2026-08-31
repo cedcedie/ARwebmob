@@ -22,19 +22,23 @@ class StudentsViewModel {
 /// UI toggle for whether archived students appear in the roster table.
 final studentsIncludeArchivedProvider = StateProvider<bool>((ref) => false);
 
-final studentsViewModelProvider = StreamProvider.autoDispose<StudentsViewModel>((ref) {
-  throw UnimplementedError(
-    'studentsViewModelProvider must be overridden at app startup — see '
-    'teacherProviderOverridesFor.',
-  );
-});
+final studentsViewModelProvider = StreamProvider.autoDispose<StudentsViewModel>(
+  (ref) {
+    throw UnimplementedError(
+      'studentsViewModelProvider must be overridden at app startup — see '
+      'teacherProviderOverridesFor.',
+    );
+  },
+);
 
 Stream<StudentsViewModel> buildStudentsViewModel({
   required StudentRepository studentRepository,
   required bool includeArchived,
   required void Function(bool includeArchived) onToggleIncludeArchived,
 }) {
-  return studentRepository.watchAllStudents(includeArchived: includeArchived).map(
+  return studentRepository
+      .watchAllStudents(includeArchived: includeArchived)
+      .map(
         (students) => StudentsViewModel(
           students: students,
           includeArchived: includeArchived,
