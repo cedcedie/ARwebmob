@@ -18,6 +18,8 @@ import '../widgets/dynamic_string_list_field.dart';
 import '../widgets/error_state.dart';
 import 'lessons_providers.dart';
 
+typedef _UploadResult = ({String url, bool isConversionNeeded});
+
 class LessonForm extends StatefulWidget {
   const LessonForm({
     super.key,
@@ -64,6 +66,7 @@ class LessonFormState extends State<LessonForm> {
   int? _week;
   String? _uploadedContentUrl;
   bool _uploadedContentNeedsConversion = false;
+  bool _isUploadingContent = false;
   late final String _lessonId;
 
   @override
@@ -92,42 +95,70 @@ class LessonFormState extends State<LessonForm> {
   );
 
   Future<void> _pickAndUploadContent() async {
-    final ({String url, bool isConversionNeeded}) uploadResult;
+    // Guard against a double-tap firing a second, concurrent upload while
+    // one is already in flight.
+    if (_isUploadingContent) return;
 
-    // Test-only injection point: when provided, skip the real
-    // file_picker/Storage round trip entirely so widget tests can simulate
-    // "a file was picked and uploaded" without a platform channel handler.
-    if (widget.uploadContentOverride != null) {
-      uploadResult = await widget.uploadContentOverride!(
-        _lessonId,
-        'content',
-        Uint8List(0),
-      );
-    } else {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pptx', 'pdf'],
-        withData: true,
-      );
-      final file = result?.files.single;
-      if (file?.bytes == null) return;
+    setState(() => _isUploadingContent = true);
 
-      final isConversionNeeded = file!.extension?.toLowerCase() == 'pptx';
-      final service = LessonContentUploadService(
-        uploader: FirebaseStorageUploader(),
+    try {
+      final _UploadResult? uploadResult;
+
+      // Test-only injection point: when provided, skip the real
+      // file_picker/Storage round trip entirely so widget tests can
+      // simulate "a file was picked and uploaded" without a platform
+      // channel handler.
+      if (widget.uploadContentOverride != null) {
+        uploadResult = await widget.uploadContentOverride!(
+          _lessonId,
+          'content',
+          Uint8List(0),
+        );
+      } else {
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pptx', 'pdf'],
+          withData: true,
+        );
+        final file = result?.files.single;
+        if (file?.bytes == null) {
+          uploadResult = null;
+        } else {
+          final isConversionNeeded = file!.extension?.toLowerCase() == 'pptx';
+          final service = LessonContentUploadService(
+            uploader: FirebaseStorageUploader(),
+          );
+          final url = await service.uploadLessonContent(
+            lessonId: _lessonId,
+            fileName: file.name,
+            bytes: file.bytes!,
+          );
+          uploadResult = (url: url, isConversionNeeded: isConversionNeeded);
+        }
+      }
+
+      if (!mounted) return;
+      if (uploadResult == null) {
+        setState(() => _isUploadingContent = false);
+        return;
+      }
+
+      setState(() {
+        _uploadedContentUrl = uploadResult!.url;
+        _uploadedContentNeedsConversion = uploadResult.isConversionNeeded;
+        _isUploadingContent = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isUploadingContent = false);
+      ShadToaster.of(context).show(
+        ShadToast.destructive(
+          description: Text(
+            humanizeSubmitError(error, actionLabel: 'upload this file'),
+          ),
+        ),
       );
-      final url = await service.uploadLessonContent(
-        lessonId: _lessonId,
-        fileName: file.name,
-        bytes: file.bytes!,
-      );
-      uploadResult = (url: url, isConversionNeeded: isConversionNeeded);
     }
-
-    setState(() {
-      _uploadedContentUrl = uploadResult.url;
-      _uploadedContentNeedsConversion = uploadResult.isConversionNeeded;
-    });
   }
 
   Future<void> _handleSubmit() async {
@@ -340,12 +371,20 @@ class LessonFormState extends State<LessonForm> {
             const SizedBox(height: 12),
             ShadButton.outline(
               key: const Key('lesson-upload-content'),
-              onPressed: _pickAndUploadContent,
-              leading: const Icon(LucideIcons.upload, size: 16),
+              onPressed: _isUploadingContent ? null : _pickAndUploadContent,
+              leading: _isUploadingContent
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(LucideIcons.upload, size: 16),
               child: Text(
-                _uploadedContentUrl == null
-                    ? 'Upload PPTX or PDF'
-                    : 'Content uploaded',
+                _isUploadingContent
+                    ? 'Uploading...'
+                    : (_uploadedContentUrl == null
+                          ? 'Upload PPTX or PDF'
+                          : 'Content uploaded'),
               ),
             ),
             if (_previewPath != null) ...[

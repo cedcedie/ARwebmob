@@ -146,4 +146,48 @@ void main() {
     expect(submitted!.contentStatus, 'ready');
     expect(submitted!.contentImageUrls, ['https://fake-storage.example/slide-1.png']);
   });
+
+  testWidgets(
+      'shows an error toast and re-enables the button when the upload throws',
+      (tester) async {
+    // Regression test for round 6's item 1: a throwing upload used to be an
+    // unhandled Future error with zero feedback. It must now surface a
+    // human-readable error toast and leave the button re-enabled (not stuck
+    // in a permanent busy state) so the teacher can retry.
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    TeacherLesson? submitted;
+
+    await tester.pumpWidget(
+      ShadApp(
+        home: Scaffold(
+          body: LessonForm(
+            quizOptions: const [],
+            onSubmit: (lesson) async => submitted = lesson,
+            uploadContentOverride: (lessonId, fileName, bytes) async {
+              throw Exception('storage permission denied');
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byKey(const Key('lesson-title')), 'Volcanoes');
+    await tester.tap(find.byKey(const Key('lesson-upload-content')));
+    await tester.pumpAndSettle();
+
+    // No unhandled exception reached the test binding (pumpAndSettle above
+    // would have surfaced it), and an error toast is shown.
+    expect(find.byType(ShadToast), findsOneWidget);
+
+    // The button re-enabled (not stuck disabled in a permanent busy state).
+    final button = tester.widget<ShadButton>(
+      find.byKey(const Key('lesson-upload-content')),
+    );
+    expect(button.onPressed, isNotNull);
+
+    expect(submitted, isNull);
+  });
 }
