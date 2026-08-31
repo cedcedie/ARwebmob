@@ -227,6 +227,82 @@ void main() {
     );
   });
 
+  testWidgets(
+    'Quarter/Week sort always places a lesson missing quarter/week at the '
+    'end, in both directions (item 5)',
+    (tester) async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = LessonRepository(firestore: firestore);
+      await repo.createLesson(
+        const TeacherLesson(
+          id: 'teacher-early',
+          title: 'Early Lesson',
+          subject: SubjectKey.physics,
+          quarter: 1,
+          week: 1,
+        ),
+      );
+      await repo.createLesson(
+        const TeacherLesson(
+          id: 'teacher-late',
+          title: 'Late Lesson',
+          subject: SubjectKey.physics,
+          quarter: 4,
+          week: 3,
+        ),
+      );
+      await repo.createLesson(
+        const TeacherLesson(
+          id: 'teacher-unset',
+          title: 'Unset Lesson',
+          subject: SubjectKey.physics,
+          // No quarter/week set.
+        ),
+      );
+
+      await _pumpLessonsScreen(tester, firestore: firestore);
+
+      await tester.tap(find.text('Quarter/Week'));
+      await tester.pumpAndSettle();
+
+      final earlyTop = tester.getTopLeft(find.text('Early Lesson')).dy;
+      final lateTop = tester.getTopLeft(find.text('Late Lesson')).dy;
+      final unsetTop = tester.getTopLeft(find.text('Unset Lesson')).dy;
+      expect(
+        earlyTop,
+        lessThan(lateTop),
+        reason: 'ascending sort should place Q1W1 above Q4W3',
+      );
+      expect(
+        lateTop,
+        lessThan(unsetTop),
+        reason:
+            'ascending sort must still place the unset lesson after every '
+            'scheduled lesson, not before Quarter 1',
+      );
+
+      // Tapping again reverses to descending.
+      await tester.tap(find.text('Quarter/Week'));
+      await tester.pumpAndSettle();
+
+      final earlyTop2 = tester.getTopLeft(find.text('Early Lesson')).dy;
+      final lateTop2 = tester.getTopLeft(find.text('Late Lesson')).dy;
+      final unsetTop2 = tester.getTopLeft(find.text('Unset Lesson')).dy;
+      expect(
+        lateTop2,
+        lessThan(earlyTop2),
+        reason: 'descending sort should place Q4W3 above Q1W1',
+      );
+      expect(
+        earlyTop2,
+        lessThan(unsetTop2),
+        reason:
+            'the unset lesson must stay last even on a descending sort, not '
+            'jump to the front',
+      );
+    },
+  );
+
   testWidgets('archiving a teacher lesson removes it from the default view', (tester) async {
     final firestore = FakeFirebaseFirestore();
     final repo = LessonRepository(firestore: firestore);

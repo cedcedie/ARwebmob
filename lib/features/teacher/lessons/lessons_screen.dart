@@ -117,18 +117,42 @@ class _LessonsBody extends HookWidget {
     final sortAscending = useState(true);
 
     final rows = [...viewModel.rows];
+    final List<DisplayLesson> displayRows;
     if (sortColumnIndex.value == 0) {
       rows.sort(
         (a, b) => a.lesson.title.toLowerCase().compareTo(
           b.lesson.title.toLowerCase(),
         ),
       );
+      displayRows = sortAscending.value ? rows : rows.reversed.toList();
     } else if (sortColumnIndex.value == 2) {
-      int key(DisplayLesson row) =>
-          (row.lesson.quarter ?? 0) * 100 + (row.lesson.week ?? 0);
-      rows.sort((a, b) => key(a).compareTo(key(b)));
+      // A lesson missing quarter/week has no place in the curriculum
+      // ordering — it must sort to the END regardless of direction, never
+      // "before Quarter 1" the way `(quarter ?? 0) * 100 + (week ?? 0)`
+      // used to place it on an ascending sort. So the direction flip is
+      // baked into this comparator (rather than reversed afterward like
+      // the other columns below) and only applies to the two-value
+      // comparison; the null-goes-last branches are direction-independent.
+      int? key(DisplayLesson row) {
+        final quarter = row.lesson.quarter;
+        final week = row.lesson.week;
+        if (quarter == null || week == null) return null;
+        return quarter * 100 + week;
+      }
+
+      rows.sort((a, b) {
+        final keyA = key(a);
+        final keyB = key(b);
+        if (keyA == null && keyB == null) return 0;
+        if (keyA == null) return 1;
+        if (keyB == null) return -1;
+        final cmp = keyA.compareTo(keyB);
+        return sortAscending.value ? cmp : -cmp;
+      });
+      displayRows = rows;
+    } else {
+      displayRows = sortAscending.value ? rows : rows.reversed.toList();
     }
-    final displayRows = sortAscending.value ? rows : rows.reversed.toList();
 
     void handleSort(int columnIndex, bool ascending) {
       sortColumnIndex.value = columnIndex;
