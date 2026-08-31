@@ -345,7 +345,23 @@ Async, no meeting needed.
    - The Teacher Web URL from 3.4, if you deployed it, plus the teacher
      login you created in 1.5.
    - Confirmation their GitHub access is set up, if you did step 1.
-3. Done — they test it themselves from here.
+3. **If they (or their own dev) ever want to run Teacher Web locally**
+   instead of using the deployed URL — e.g. to see it without a live
+   deploy, or while making their own changes later — this is the terminal
+   command, **but it needs Flutter installed on whoever runs it** (see
+   Prerequisites at the top — this is the one case where that applies to
+   the client's side, not yours):
+   ```powershell
+   git clone <repo-url>
+   cd <folder you cloned into>
+   flutter pub get
+   flutter run -d chrome
+   ```
+   This opens Teacher Web in Chrome, live-reloading, already pointed at
+   *their* Firebase project (since `firebase_options.dart` was
+   reconfigured and pushed in Phase 3.1/3.2) — no extra setup needed
+   beyond having Flutter itself installed.
+4. Done — they test it themselves from here.
 
 ---
 
