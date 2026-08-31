@@ -317,6 +317,49 @@ void main() {
 
       expect(archived, unorderedEquals(['000001', '000002']));
       expect(find.textContaining('Archive selected'), findsNothing);
+      // Item 4: success feedback after a bulk archive.
+      expect(find.text('2 students archived'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'bulk archive with a partial failure shows an error toast and keeps the '
+    'failed student selected for retry (item 4)',
+    (tester) async {
+      final archived = <String>[];
+      await _pumpStudentsScreen(
+        tester,
+        viewModel: _viewModel(
+          students: [
+            _sampleStudent(id: '000001', name: 'Alice'),
+            _sampleStudent(id: '000002', name: 'Bob'),
+          ],
+          onArchiveStudent: (id) async {
+            if (id == '000002') throw Exception('boom');
+            archived.add(id);
+          },
+        ),
+      );
+
+      await tester.tap(find.byType(Checkbox).at(1));
+      await tester.pump();
+      await tester.tap(find.byType(Checkbox).at(2));
+      await tester.pump();
+
+      await tester.tap(find.text('Archive selected (2)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Archive'));
+      await tester.pumpAndSettle();
+
+      expect(archived, ['000001']);
+      expect(find.textContaining('Exception'), findsNothing);
+      expect(
+        find.textContaining("couldn't be archived"),
+        findsOneWidget,
+      );
+      // The failed student stays selected — "Archive selected" still shows
+      // for just that one — so the teacher can retry it directly.
+      expect(find.text('Archive selected (1)'), findsOneWidget);
     },
   );
 

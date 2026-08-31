@@ -64,10 +64,60 @@ class _StudentsBody extends HookWidget {
     );
     if (confirmed != true) return;
 
+    // Item 4 (bulk-archive feedback): every other mutating action on this
+    // surface gives feedback (create-student's success toast, item 3's
+    // error toasts) — this loop previously had none at all, and any
+    // mid-loop throw would silently abandon the rest with no sign anything
+    // went wrong.
+    //
+    // Partial-failure choice: keep archiving the remaining selected
+    // students even after one fails (best-effort), rather than aborting the
+    // whole batch on the first error. A single bad student (e.g. a
+    // Firestore doc that's already been deleted elsewhere) shouldn't block
+    // a teacher from archiving the rest of a large selection — that failure
+    // mode is worse than "some archived, one reported as failed, retry just
+    // that one".
+    var succeededCount = 0;
+    final failedIds = <String>{};
     for (final studentId in selectedIds) {
-      await viewModel.onArchiveStudent(studentId);
+      try {
+        await viewModel.onArchiveStudent(studentId);
+        succeededCount++;
+      } catch (_) {
+        failedIds.add(studentId);
+      }
     }
-    selection.value = {};
+
+    // Only the students that actually archived leave the selection — a
+    // failed one stays selected so "Archive selected" can be retried
+    // against just the students that didn't go through.
+    selection.value = failedIds;
+
+    if (!context.mounted) return;
+    if (failedIds.isEmpty) {
+      ShadToaster.of(context).show(
+        ShadToast(
+          description: Text(
+            succeededCount == 1
+                ? '1 student archived'
+                : '$succeededCount students archived',
+          ),
+        ),
+      );
+    } else {
+      ShadToaster.of(context).show(
+        ShadToast.destructive(
+          description: Text(
+            succeededCount == 0
+                ? "Couldn't archive ${failedIds.length} student(s) — check "
+                      'your connection and try again.'
+                : '$succeededCount archived, but ${failedIds.length} '
+                      "couldn't be archived — check your connection and try "
+                      'again.',
+          ),
+        ),
+      );
+    }
   }
 
   @override
