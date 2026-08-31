@@ -5,6 +5,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/models/student_record.dart';
 import '../../../core/services/auth_service.dart' show normalizeStudentIdInput;
+import '../widgets/error_state.dart';
 import 'student_id_format.dart';
 import 'students_providers.dart';
 
@@ -53,7 +54,26 @@ class StudentFormSheet extends StatelessWidget {
               grade: values['grade'] as String,
               section: values['section'] as String,
             );
-            await onSubmit(student);
+            // Item 3 (silent-failure dialog trap): this dialog uses
+            // `barrierDismissible: false`, so a throwing `onSubmit` used to
+            // leave it stuck open with zero feedback and only Cancel as an
+            // escape. Only pop (and only show the success toast) once
+            // `onSubmit` actually succeeds; on failure, show a
+            // human-readable error toast and leave the dialog open — and
+            // the entered values intact — so the teacher can retry.
+            try {
+              await onSubmit(student);
+            } catch (error) {
+              if (!context.mounted) return;
+              ShadToaster.of(context).show(
+                ShadToast.destructive(
+                  description: Text(
+                    humanizeSubmitError(error, actionLabel: 'save this student'),
+                  ),
+                ),
+              );
+              return;
+            }
             if (!context.mounted) return;
             // Capture the toaster before popping — `context` is this
             // dialog's own build context, which unmounts the instant

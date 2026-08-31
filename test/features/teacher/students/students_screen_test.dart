@@ -196,6 +196,48 @@ void main() {
     expect(find.text('Student saved'), findsOneWidget);
   });
 
+  testWidgets(
+    'a throwing onCreateStudent keeps the dialog open with an error message '
+    '(item 3: silent-failure dialog trap)',
+    (tester) async {
+      await _pumpStudentsScreen(
+        tester,
+        viewModel: _viewModel(
+          students: const [],
+          onCreateStudent: (_) async {
+            throw Exception('boom');
+          },
+        ),
+      );
+
+      await tester.tap(find.text('Add Student'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('student_name')),
+        'Ana Reyes',
+      );
+      await tester.enterText(find.byKey(const Key('student_id')), '123456');
+      await tester.enterText(find.byKey(const Key('student_grade')), '8');
+      await tester.enterText(
+        find.byKey(const Key('student_section')),
+        'Bonifacio',
+      );
+
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      // Dialog stays open (barrierDismissible: false + failed submit), the
+      // entered values are preserved, and a human-readable error is shown
+      // instead of the dialog silently doing nothing.
+      expect(find.byKey(const Key('student_name')), findsOneWidget);
+      expect(find.text('Ana Reyes'), findsOneWidget);
+      expect(find.text('Student saved'), findsNothing);
+      expect(find.textContaining('Exception'), findsNothing);
+      expect(find.textContaining("Couldn't save this student"), findsOneWidget);
+    },
+  );
+
   testWidgets('Add Student dialog does not dismiss on an outside tap', (
     tester,
   ) async {

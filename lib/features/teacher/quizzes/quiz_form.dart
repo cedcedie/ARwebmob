@@ -10,6 +10,7 @@ import '../../../core/models/teacher_quiz.dart';
 import '../../../core/models/teacher_quiz_question.dart';
 import '../lessons/lessons_providers.dart' show subjectKeyLabel;
 import '../widgets/dynamic_string_list_field.dart';
+import '../widgets/error_state.dart';
 
 class QuizQuestionDraft {
   QuizQuestionDraft({
@@ -128,7 +129,21 @@ class QuizFormState extends State<QuizForm> {
       questions: _questions.map((q) => q.toModel()).toList(),
     );
 
-    await widget.onSubmit(quiz);
+    // See lesson_form.dart's `_handleSubmit` for why this is wrapped: the
+    // owning dialog only pops on success, so a throwing `onSubmit` must be
+    // caught here and surfaced, not left as a silent, stuck-open dialog.
+    try {
+      await widget.onSubmit(quiz);
+    } catch (error) {
+      if (!mounted) return;
+      ShadToaster.of(context).show(
+        ShadToast.destructive(
+          description: Text(
+            humanizeSubmitError(error, actionLabel: 'save this quiz'),
+          ),
+        ),
+      );
+    }
   }
 
   @override

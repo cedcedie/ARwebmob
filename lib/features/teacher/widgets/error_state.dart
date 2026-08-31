@@ -46,6 +46,42 @@ String humanizeLoadError(Object error, {required String subjectLabel}) {
       'and try again.';
 }
 
+/// Maps a caught error from a create/update submit action (a dialog's
+/// `onSubmit`) to a short, plain-English sentence suitable for a
+/// `ShadToaster` error toast — never a raw exception `toString()`. Mirrors
+/// [humanizeLoadError]'s Firebase-code handling but phrased for a save
+/// action rather than a load.
+///
+/// [actionLabel] describes the thing that failed to save, phrased to follow
+/// "Couldn't " (e.g. `'save this lesson'`, `'save this quiz'`).
+String humanizeSubmitError(Object error, {required String actionLabel}) {
+  if (error is FirebaseException) {
+    switch (error.code) {
+      case 'permission-denied':
+        return "You don't have permission to $actionLabel. Try signing out "
+            'and back in.';
+      case 'unavailable':
+        return 'The connection to the server was interrupted. Check your '
+            'network and try again.';
+      case 'unauthenticated':
+        return 'Your session has expired. Please sign in again.';
+      default:
+        return "Couldn't $actionLabel — check your connection and try "
+            'again.';
+    }
+  }
+
+  final message = error.toString().toLowerCase();
+  if (message.contains('socket') ||
+      message.contains('network') ||
+      message.contains('connection')) {
+    return "Couldn't reach the server — check your connection and try "
+        'again.';
+  }
+
+  return "Couldn't $actionLabel — check your connection and try again.";
+}
+
 /// Consistent full-space error display for a teacher list screen: an icon,
 /// a human-readable message, and an optional retry action.
 class ErrorState extends StatelessWidget {

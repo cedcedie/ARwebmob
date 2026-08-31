@@ -15,6 +15,7 @@ import '../../../core/models/teacher_lesson.dart';
 import '../../../core/models/teacher_quiz.dart';
 import '../../../core/services/lesson_content_upload_service.dart';
 import '../widgets/dynamic_string_list_field.dart';
+import '../widgets/error_state.dart';
 import 'lessons_providers.dart';
 
 class LessonForm extends StatefulWidget {
@@ -199,7 +200,26 @@ class LessonFormState extends State<LessonForm> {
       contentStatus: contentStatus,
     );
 
-    await widget.onSubmit(lesson);
+    // Item 3 (silent-failure dialog trap): the dialog wrapping this form
+    // uses `barrierDismissible: false` and only pops on a *successful*
+    // `onSubmit` (see lessons_screen.dart's `_openForm`) — but without this
+    // try/catch, a throwing `onSubmit` became an unhandled Future error with
+    // no UI feedback at all, leaving the teacher stuck looking at a dialog
+    // that silently did nothing. Show a human-readable toast instead and
+    // leave the dialog open (state untouched) so the teacher can retry
+    // without re-entering the whole form.
+    try {
+      await widget.onSubmit(lesson);
+    } catch (error) {
+      if (!mounted) return;
+      ShadToaster.of(context).show(
+        ShadToast.destructive(
+          description: Text(
+            humanizeSubmitError(error, actionLabel: 'save this lesson'),
+          ),
+        ),
+      );
+    }
   }
 
   @override
