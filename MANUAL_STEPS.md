@@ -247,7 +247,29 @@ automated verification goes for this task.
       with LibreOffice + poppler-utils) are not available on the free "Spark"
       plan. Firebase Console → Project Settings → Usage and billing → confirm
       the project is on Blaze (or upgrade it there).
-- [ ] **6.2 Deploy the function.** Once Blaze is confirmed, from the **repo
+- [ ] **6.2 Grant the Cloud Run service account signing permission.** The
+      function calls `getSignedUrl()` on each uploaded slide image. Gen2
+      functions run under the Compute Engine default service account with
+      no local key file (Application Default Credentials only), so signing
+      a URL fails unless that service account also holds the
+      **Service Account Token Creator** role (`iam.serviceAccounts.signBlob`
+      permission) — grant it to itself: IAM & Admin → find
+      `PROJECT_NUMBER-compute@developer.gserviceaccount.com` → Edit → add
+      role **Service Account Token Creator**. Without this, deploys succeed
+      but every conversion will fail at the `getSignedUrl` call.
+- [ ] **6.3 Wire `functions/` into the Firebase CLI config.** `firebase.json`
+      in this repo is gitignored and currently only holds the FlutterFire
+      app-config (Android/Web app IDs) — it has no `"functions"` section
+      pointing at the `functions/` directory yet. Before `firebase deploy
+      --only functions` will find anything to deploy, add one, e.g. run
+      `firebase init functions` from the repo root (point it at the existing
+      `functions/` folder, don't let it overwrite `package.json`/`src/`), or
+      manually add:
+      ```json
+      "functions": [{ "source": "functions", "codebase": "default" }]
+      ```
+      to `firebase.json`.
+- [ ] **6.4 Deploy the function.** Once 6.1–6.3 are done, from the **repo
       root** (not `functions/`) run:
       ```powershell
       firebase deploy --only functions
@@ -255,14 +277,14 @@ automated verification goes for this task.
       Expected: the function deploys successfully and the Firebase CLI
       reports the Cloud Run service URL/trigger is live
       (`convertLessonPptx`, region `us-central1`).
-- [ ] **6.3 Manual end-to-end verification.** Open the teacher lesson form,
+- [ ] **6.5 Manual end-to-end verification.** Open the teacher lesson form,
       upload a real `.pptx` for a test lesson, wait roughly 30-60 seconds,
       then check that lesson's Firestore doc (`/lessons/{id}`) shows
       `contentStatus: 'ready'` and `contentImageUrls` populated with real
       slide image URLs. Then open that same lesson on the student side and
       confirm the slide gallery (Task 7) actually renders the real slides,
       not a placeholder.
-- [ ] **6.4 Re-deploy after future edits.** Any time
+- [ ] **6.6 Re-deploy after future edits.** Any time
       `functions/src/index.js` (or the Dockerfile) changes, you must manually
       re-run `firebase deploy --only functions` from the repo root — this
       does **not** happen automatically as part of any other workflow in
