@@ -31,10 +31,7 @@ class _QuizzesBody extends StatelessWidget {
 
   final QuizzesViewModel viewModel;
 
-  Future<void> _openForm(
-    BuildContext context, {
-    TeacherQuiz? initial,
-  }) async {
+  Future<void> _openForm(BuildContext context, {TeacherQuiz? initial}) async {
     await showShadDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -70,7 +67,9 @@ class _QuizzesBody extends StatelessWidget {
       context: context,
       builder: (context) => ShadDialog.alert(
         title: const Text('Delete quiz?'),
-        description: const Text('This permanently removes the teacher-authored quiz.'),
+        description: const Text(
+          'This permanently removes the teacher-authored quiz.',
+        ),
         actions: [
           ShadButton.outline(
             onPressed: () => Navigator.pop(context, false),
@@ -130,14 +129,19 @@ class _QuizzesBody extends StatelessWidget {
                 ],
                 rows: viewModel.rows.map((row) {
                   final quiz = row.quiz;
-                  final phaseLabel = quiz.phase == QuizPhase.pre ? 'Pre-Test' : 'Post-Test';
+                  final phaseLabel = quiz.phase == QuizPhase.pre
+                      ? 'Pre-Test'
+                      : 'Post-Test';
 
                   return DataRow(
                     cells: [
                       DataCell(
                         SubjectAccentCell(
                           subject: quiz.subject,
-                          child: Text(quiz.title, overflow: TextOverflow.ellipsis),
+                          child: Text(
+                            quiz.title,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                       DataCell(Text(subjectKeyLabel(quiz.subject))),
@@ -167,14 +171,16 @@ class _QuizzesBody extends StatelessWidget {
                                 message: 'Edit',
                                 child: ShadIconButton.ghost(
                                   icon: const Icon(LucideIcons.pencil),
-                                  onPressed: () => _openForm(context, initial: quiz),
+                                  onPressed: () =>
+                                      _openForm(context, initial: quiz),
                                 ),
                               ),
                               Tooltip(
                                 message: 'Delete',
                                 child: ShadIconButton.ghost(
                                   icon: const Icon(LucideIcons.trash2),
-                                  onPressed: () => _confirmDelete(context, quiz.id),
+                                  onPressed: () =>
+                                      _confirmDelete(context, quiz.id),
                                 ),
                               ),
                             ],

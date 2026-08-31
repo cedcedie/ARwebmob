@@ -28,10 +28,7 @@ class _LessonsBody extends StatelessWidget {
 
   final LessonsViewModel viewModel;
 
-  Future<void> _openForm(
-    BuildContext context, {
-    TeacherLesson? initial,
-  }) async {
+  Future<void> _openForm(BuildContext context, {TeacherLesson? initial}) async {
     await showShadDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -133,7 +130,8 @@ class _LessonsBody extends StatelessWidget {
                 ],
                 rows: viewModel.rows.map((row) {
                   final lesson = row.lesson;
-                  final quarterWeek = lesson.quarter != null && lesson.week != null
+                  final quarterWeek =
+                      lesson.quarter != null && lesson.week != null
                       ? 'Q${lesson.quarter}W${lesson.week}'
                       : '—';
                   final hasAr = lesson.hasAR;
@@ -143,7 +141,10 @@ class _LessonsBody extends StatelessWidget {
                       DataCell(
                         SubjectAccentCell(
                           subject: lesson.subject,
-                          child: Text(lesson.title, overflow: TextOverflow.ellipsis),
+                          child: Text(
+                            lesson.title,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                       DataCell(Text(subjectKeyLabel(lesson.subject))),
@@ -174,7 +175,8 @@ class _LessonsBody extends StatelessWidget {
                                     message: 'Archive',
                                     child: ShadIconButton.ghost(
                                       icon: const Icon(LucideIcons.archive),
-                                      onPressed: () => _confirmArchive(context, lesson.id),
+                                      onPressed: () =>
+                                          _confirmArchive(context, lesson.id),
                                     ),
                                   ),
                                 ],

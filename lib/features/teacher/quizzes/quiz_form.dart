@@ -123,7 +123,8 @@ class QuizFormState extends State<QuizForm> {
       topicId: (values['topicId'] as String?)?.trim().isEmpty == true
           ? null
           : (values['topicId'] as String?)?.trim(),
-      createdAt: widget.initial?.createdAt ?? DateTime.now().toUtc().toIso8601String(),
+      createdAt:
+          widget.initial?.createdAt ?? DateTime.now().toUtc().toIso8601String(),
       questions: _questions.map((q) => q.toModel()).toList(),
     );
 
@@ -170,7 +171,9 @@ class QuizFormState extends State<QuizForm> {
                   .map(
                     (phase) => DropdownMenuItem(
                       value: phase,
-                      child: Text(phase == QuizPhase.pre ? 'Pre-Test' : 'Post-Test'),
+                      child: Text(
+                        phase == QuizPhase.pre ? 'Pre-Test' : 'Post-Test',
+                      ),
                     ),
                   )
                   .toList(),
@@ -180,7 +183,9 @@ class QuizFormState extends State<QuizForm> {
               key: const Key('quiz-topic-id'),
               name: 'topicId',
               initialValue: initial?.topicId,
-              decoration: const InputDecoration(labelText: 'Topic ID (optional)'),
+              decoration: const InputDecoration(
+                labelText: 'Topic ID (optional)',
+              ),
             ),
             const SizedBox(height: 16),
             Text('Questions', style: Theme.of(context).textTheme.titleMedium),
@@ -200,7 +205,8 @@ class QuizFormState extends State<QuizForm> {
               alignment: Alignment.centerLeft,
               child: ShadButton.ghost(
                 key: const Key('quiz-add-question'),
-                onPressed: () => setState(() => _questions.add(QuizQuestionDraft())),
+                onPressed: () =>
+                    setState(() => _questions.add(QuizQuestionDraft())),
                 leading: const Icon(LucideIcons.plus, size: 16),
                 child: const Text('Add question'),
               ),
@@ -209,7 +215,9 @@ class QuizFormState extends State<QuizForm> {
               const SizedBox(height: 8),
               Text(
                 _validationMessage!,
-                style: TextStyle(color: ShadTheme.of(context).colorScheme.destructive),
+                style: TextStyle(
+                  color: ShadTheme.of(context).colorScheme.destructive,
+                ),
               ),
             ],
             const SizedBox(height: 16),
@@ -292,7 +300,10 @@ class _QuestionEditorState extends State<_QuestionEditor> {
       children: [
         Row(
           children: [
-            Text('Question ${index + 1}', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Question ${index + 1}',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const Spacer(),
             if (widget.canRemove)
               Tooltip(
@@ -362,8 +373,14 @@ class _QuestionEditorState extends State<_QuestionEditor> {
           value: draft.type,
           decoration: const InputDecoration(labelText: 'Type'),
           items: const [
-            DropdownMenuItem(value: QuestionType.mc, child: Text('Multiple choice')),
-            DropdownMenuItem(value: QuestionType.tf, child: Text('True / false')),
+            DropdownMenuItem(
+              value: QuestionType.mc,
+              child: Text('Multiple choice'),
+            ),
+            DropdownMenuItem(
+              value: QuestionType.tf,
+              child: Text('True / false'),
+            ),
           ],
           onChanged: (value) {
             if (value == null) return;

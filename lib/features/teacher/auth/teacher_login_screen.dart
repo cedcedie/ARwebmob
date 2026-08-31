@@ -14,7 +14,9 @@ class TeacherLoginScreen extends HookConsumerWidget {
     final authState = ref.watch(teacherAuthViewModelProvider);
     final auth = ref.read(teacherAuthViewModelProvider.notifier);
     final emailController = useTextEditingController(text: authState.email);
-    final passwordController = useTextEditingController(text: authState.password);
+    final passwordController = useTextEditingController(
+      text: authState.password,
+    );
 
     Future<void> onSubmit() async {
       auth.email = emailController.text;
@@ -47,7 +49,9 @@ class TeacherLoginScreen extends HookConsumerWidget {
                     if (authState.errorMessage != null) ...[
                       Text(
                         authState.errorMessage!,
-                        style: TextStyle(color: ShadTheme.of(context).colorScheme.destructive),
+                        style: TextStyle(
+                          color: ShadTheme.of(context).colorScheme.destructive,
+                        ),
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -72,7 +76,9 @@ class TeacherLoginScreen extends HookConsumerWidget {
                     ShadButton(
                       width: double.infinity,
                       onPressed: authState.isSubmitting ? null : onSubmit,
-                      child: Text(authState.isSubmitting ? 'Signing in…' : 'Sign in'),
+                      child: Text(
+                        authState.isSubmitting ? 'Signing in…' : 'Sign in',
+                      ),
                     ),
                   ],
                 ),

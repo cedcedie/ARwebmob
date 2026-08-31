@@ -24,9 +24,7 @@ import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const ProviderScope(child: ArScienceExplorerApp()));
 }
 
@@ -53,10 +51,14 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
     if (_studentServices != null && _servicesStudentId == studentId) {
       return _studentServices!;
     }
-    final quizAttemptService = QuizAttemptService(firestore: FirebaseFirestore.instance);
+    final quizAttemptService = QuizAttemptService(
+      firestore: FirebaseFirestore.instance,
+    );
     final services = StudentServices(
       lessonRepository: LessonRepository(firestore: FirebaseFirestore.instance),
-      studentRepository: StudentRepository(firestore: FirebaseFirestore.instance),
+      studentRepository: StudentRepository(
+        firestore: FirebaseFirestore.instance,
+      ),
       quizAttemptService: quizAttemptService,
       accessCodeService: AccessCodeService(
         firestore: FirebaseFirestore.instance,
@@ -86,7 +88,9 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
     if (kIsWeb) {
       return Consumer(
         builder: (context, ref, _) {
-          final teacherEmail = ref.watch(currentTeacherEmailProvider).valueOrNull;
+          final teacherEmail = ref
+              .watch(currentTeacherEmailProvider)
+              .valueOrNull;
           if (teacherEmail == null) {
             // Single app-level themed shell: the teacher router (below)
             // isn't built until a teacher is signed in, so the sign-in gate

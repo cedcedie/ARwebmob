@@ -36,7 +36,8 @@ class LessonForm extends StatefulWidget {
     String lessonId,
     String fileName,
     Uint8List bytes,
-  )? uploadContentOverride;
+  )?
+  uploadContentOverride;
 
   /// Re-fetches a lesson doc's current server state by id, right before
   /// submit — guards against the save-after-conversion race (final
@@ -79,14 +80,15 @@ class LessonFormState extends State<LessonForm> {
     // `DateTime.now()`-based id at different wall-clock moments, uploading
     // Storage content under one lesson id while submitting the Firestore
     // doc under a different one.
-    _lessonId = initial?.id ?? 'teacher-${DateTime.now().millisecondsSinceEpoch}';
+    _lessonId =
+        initial?.id ?? 'teacher-${DateTime.now().millisecondsSinceEpoch}';
   }
 
   String? get _previewPath => resolveGlbPreviewPath(
-        quarter: _quarter,
-        week: _week,
-        modelIndex: _modelIndex,
-      );
+    quarter: _quarter,
+    week: _week,
+    modelIndex: _modelIndex,
+  );
 
   Future<void> _pickAndUploadContent() async {
     final ({String url, bool isConversionNeeded}) uploadResult;
@@ -95,7 +97,11 @@ class LessonFormState extends State<LessonForm> {
     // file_picker/Storage round trip entirely so widget tests can simulate
     // "a file was picked and uploaded" without a platform channel handler.
     if (widget.uploadContentOverride != null) {
-      uploadResult = await widget.uploadContentOverride!(_lessonId, 'content', Uint8List(0));
+      uploadResult = await widget.uploadContentOverride!(
+        _lessonId,
+        'content',
+        Uint8List(0),
+      );
     } else {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -106,9 +112,13 @@ class LessonFormState extends State<LessonForm> {
       if (file?.bytes == null) return;
 
       final isConversionNeeded = file!.extension?.toLowerCase() == 'pptx';
-      final service = LessonContentUploadService(uploader: FirebaseStorageUploader());
+      final service = LessonContentUploadService(
+        uploader: FirebaseStorageUploader(),
+      );
       final url = await service.uploadLessonContent(
-        lessonId: _lessonId, fileName: file.name, bytes: file.bytes!,
+        lessonId: _lessonId,
+        fileName: file.name,
+        bytes: file.bytes!,
       );
       uploadResult = (url: url, isConversionNeeded: isConversionNeeded);
     }
@@ -133,7 +143,10 @@ class LessonFormState extends State<LessonForm> {
     final week = int.tryParse('${values['week'] ?? ''}');
     final linkedQuizId = values['linkedQuizId'] as String?;
     final modelIndexRaw = int.tryParse('${values['modelIndex'] ?? ''}');
-    final steps = _steps.map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    final steps = _steps
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
 
     var contentImageUrls = _uploadedContentUrl != null
         ? [_uploadedContentUrl!]
@@ -166,14 +179,18 @@ class LessonFormState extends State<LessonForm> {
       quarter: quarter,
       week: week,
       linkedQuizId: linkedQuizId?.isEmpty == true ? null : linkedQuizId,
-      createdAt: widget.initial?.createdAt ?? DateTime.now().toUtc().toIso8601String(),
+      createdAt:
+          widget.initial?.createdAt ?? DateTime.now().toUtc().toIso8601String(),
       arModelIndex: modelIndexRaw,
       arPayload: modelIndexRaw == null
           ? widget.initial?.arPayload
           : ARPayload(
               modelIndex: modelIndexRaw,
-              detectionMode: widget.initial?.arPayload?.detectionMode ?? 'marker',
-              anchorHint: widget.initial?.arPayload?.anchorHint ?? 'Scan the lesson marker.',
+              detectionMode:
+                  widget.initial?.arPayload?.detectionMode ?? 'marker',
+              anchorHint:
+                  widget.initial?.arPayload?.anchorHint ??
+                  'Scan the lesson marker.',
               lessonSteps: steps.isEmpty ? const ['View the 3D model'] : steps,
             ),
       hasAR: modelIndexRaw != null || widget.initial?.hasAR == true,
@@ -236,7 +253,8 @@ class LessonFormState extends State<LessonForm> {
               label: 'Steps',
               values: _steps,
               addLabel: 'Add step',
-              onChanged: (values) => setState(() => _steps = values.isEmpty ? [''] : values),
+              onChanged: (values) =>
+                  setState(() => _steps = values.isEmpty ? [''] : values),
             ),
             const SizedBox(height: 12),
             Row(
@@ -248,7 +266,8 @@ class LessonFormState extends State<LessonForm> {
                     initialValue: initial?.quarter?.toString(),
                     decoration: const InputDecoration(labelText: 'Quarter'),
                     keyboardType: TextInputType.number,
-                    onChanged: (value) => setState(() => _quarter = int.tryParse(value ?? '')),
+                    onChanged: (value) =>
+                        setState(() => _quarter = int.tryParse(value ?? '')),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -259,7 +278,8 @@ class LessonFormState extends State<LessonForm> {
                     initialValue: initial?.week?.toString(),
                     decoration: const InputDecoration(labelText: 'Week'),
                     keyboardType: TextInputType.number,
-                    onChanged: (value) => setState(() => _week = int.tryParse(value ?? '')),
+                    onChanged: (value) =>
+                        setState(() => _week = int.tryParse(value ?? '')),
                   ),
                 ),
               ],
@@ -268,9 +288,14 @@ class LessonFormState extends State<LessonForm> {
             FormBuilderDropdown<String?>(
               name: 'linkedQuizId',
               initialValue: initial?.linkedQuizId,
-              decoration: const InputDecoration(labelText: 'Linked quiz (optional)'),
+              decoration: const InputDecoration(
+                labelText: 'Linked quiz (optional)',
+              ),
               items: [
-                const DropdownMenuItem<String?>(value: null, child: Text('None')),
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('None'),
+                ),
                 ...widget.quizOptions.map(
                   (quiz) => DropdownMenuItem(
                     value: quiz.id,
@@ -285,21 +310,30 @@ class LessonFormState extends State<LessonForm> {
               initialValue: _modelIndex?.toString(),
               decoration: const InputDecoration(
                 labelText: 'AR model index (optional)',
-                helperText: 'Read-only preview — does not change the Unity mapping.',
+                helperText:
+                    'Read-only preview — does not change the Unity mapping.',
               ),
               keyboardType: TextInputType.number,
-              onChanged: (value) => setState(() => _modelIndex = int.tryParse(value ?? '')),
+              onChanged: (value) =>
+                  setState(() => _modelIndex = int.tryParse(value ?? '')),
             ),
             const SizedBox(height: 12),
             ShadButton.outline(
               key: const Key('lesson-upload-content'),
               onPressed: _pickAndUploadContent,
               leading: const Icon(LucideIcons.upload, size: 16),
-              child: Text(_uploadedContentUrl == null ? 'Upload PPTX or PDF' : 'Content uploaded'),
+              child: Text(
+                _uploadedContentUrl == null
+                    ? 'Upload PPTX or PDF'
+                    : 'Content uploaded',
+              ),
             ),
             if (_previewPath != null) ...[
               const SizedBox(height: 12),
-              Text('3D model preview', style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                '3D model preview',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 8),
               SizedBox(
                 height: 240,
