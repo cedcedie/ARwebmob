@@ -146,35 +146,44 @@ class _DetectedLessonOverlay extends StatelessWidget {
     final payload = lesson.arPayload;
     final keyIdeas = payload?.keyIdeas;
 
+    // Capped and scrollable rather than sized to content: a lesson with a
+    // long description plus several key ideas would otherwise grow tall
+    // enough to cover most of the live Unity camera feed above it.
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              payload?.title ?? lesson.title,
-              style: textTheme.titleLarge,
-            ),
-            if (payload?.subtitle != null)
-              Text(payload!.subtitle!, style: textTheme.titleMedium),
-            if (payload?.description != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(payload!.description!, style: textTheme.bodyLarge),
-              ),
-            if (keyIdeas != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final idea in keyIdeas) Text('• $idea', style: textTheme.bodyLarge),
-                  ],
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.32),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  payload?.title ?? lesson.title,
+                  style: textTheme.titleMedium,
                 ),
-              ),
-          ],
+                if (payload?.subtitle != null)
+                  Text(payload!.subtitle!, style: textTheme.bodyMedium),
+                if (payload?.description != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(payload!.description!, style: textTheme.bodyMedium),
+                  ),
+                if (keyIdeas != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final idea in keyIdeas)
+                          Text('• $idea', style: textTheme.bodySmall),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
