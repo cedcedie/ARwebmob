@@ -2,8 +2,10 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../../core/data/curriculum_data.dart';
 import '../../../core/models/built_in_question.dart';
+import '../../../core/models/quiz_phase.dart';
 import '../../../core/quiz_id.dart';
 import '../../../core/services/item_analysis_calculator.dart';
+import '../../../core/services/quiz_repository.dart';
 import '../../../core/services/student_repository.dart';
 
 class ItemAnalysisViewModel {
@@ -32,15 +34,22 @@ Stream<ItemAnalysisViewModel> buildItemAnalysisViewModel({
   required String quizId,
   required String quizTitle,
   required StudentRepository studentRepository,
-}) {
+  required QuizRepository quizRepository,
+}) async* {
   final parsed = parseBuiltinId(quizId);
-  final questions = parsed.isBuiltin && parsed.lessonId != null
-      ? (parsed.phase.name == 'pre'
-          ? kPreTestQuestionsByLesson[parsed.lessonId!] ?? const <BuiltInQuestion>[]
-          : kPostTestQuestionsByLesson[parsed.lessonId!] ?? const <BuiltInQuestion>[])
-      : const <BuiltInQuestion>[]; // teacher-linked quiz question resolution — see Task 2 note below
+  List<BuiltInQuestion> questions;
+  if (parsed.isBuiltin && parsed.lessonId != null) {
+    questions = parsed.phase == QuizPhase.pre
+        ? kPreTestQuestionsByLesson[parsed.lessonId!] ?? const <BuiltInQuestion>[]
+        : kPostTestQuestionsByLesson[parsed.lessonId!] ?? const <BuiltInQuestion>[];
+  } else {
+    final teacherQuiz = await quizRepository.fetchQuizById(quizId);
+    questions = teacherQuiz == null
+        ? const <BuiltInQuestion>[]
+        : quizRepository.questionsFromTeacherQuiz(teacherQuiz, lessonId: quizId);
+  }
 
-  return studentRepository.watchAllStudents(includeArchived: true).map((students) {
+  yield* studentRepository.watchAllStudents(includeArchived: true).map((students) {
     final attempts = [
       for (final student in students)
         for (final attempt in student.quizAttempts)

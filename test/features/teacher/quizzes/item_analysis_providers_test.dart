@@ -3,8 +3,13 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ar_science_explorer/core/models/student_record.dart';
 import 'package:ar_science_explorer/core/models/quiz_attempt.dart';
+import 'package:ar_science_explorer/core/models/subject_key.dart';
+import 'package:ar_science_explorer/core/models/teacher_quiz.dart';
+import 'package:ar_science_explorer/core/models/teacher_quiz_question.dart';
+import 'package:ar_science_explorer/core/models/question_type.dart';
 import 'package:ar_science_explorer/core/quiz_id.dart';
 import 'package:ar_science_explorer/core/models/quiz_phase.dart';
+import 'package:ar_science_explorer/core/services/quiz_repository.dart';
 import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/features/teacher/quizzes/item_analysis_providers.dart';
 
@@ -39,6 +44,7 @@ void main() {
       quizId: quizId,
       quizTitle: 'Q1W1 Post-Test',
       studentRepository: studentRepo,
+      quizRepository: QuizRepository(firestore: firestore),
     );
     final vm = await stream.first;
 
@@ -65,9 +71,70 @@ void main() {
       quizId: postId,
       quizTitle: 'Q1W1 Post-Test',
       studentRepository: studentRepo,
+      quizRepository: QuizRepository(firestore: firestore),
     );
     final vm = await stream.first;
 
+    expect(vm.attemptCount, 0);
+  });
+
+  test('resolves a teacher-authored quiz\'s real questions via QuizRepository', () async {
+    final firestore = FakeFirebaseFirestore();
+    final studentRepo = StudentRepository(firestore: firestore);
+    final quizRepo = QuizRepository(firestore: firestore);
+    const quizId = 'teacher-quiz-1';
+
+    await quizRepo.createQuiz(TeacherQuiz(
+      id: quizId,
+      title: 'Custom Chemistry Quiz',
+      subject: SubjectKey.chemistry,
+      questions: [
+        TeacherQuizQuestion(
+          question: 'What is H2O?',
+          options: const ['Water', 'Oxygen', 'Hydrogen', 'Salt'],
+          correctIndex: 0,
+          hint: 'hint',
+          type: QuestionType.mc,
+        ),
+      ],
+      createdAt: DateTime(2026, 8, 20).toIso8601String(),
+    ));
+
+    await studentRepo.saveStudent(_studentWith('333333', QuizAttempt(
+      id: 'a3', quizId: quizId, studentId: '333333', attemptNumber: 1,
+      score: 100, totalQuestions: 1, correctAnswers: 1,
+      answers: const [0],
+      timestamp: DateTime(2026, 8, 20).toIso8601String(), locked: true,
+    )));
+
+    final stream = buildItemAnalysisViewModel(
+      quizId: quizId,
+      quizTitle: 'Custom Chemistry Quiz',
+      studentRepository: studentRepo,
+      quizRepository: quizRepo,
+    );
+    final vm = await stream.first;
+
+    expect(vm.attemptCount, 1);
+    expect(vm.questions, hasLength(1));
+    expect(vm.questions.first.question, 'What is H2O?');
+    expect(vm.results, hasLength(1));
+  });
+
+  test('degrades to an empty question list for a dangling teacher quiz id', () async {
+    final firestore = FakeFirebaseFirestore();
+    final studentRepo = StudentRepository(firestore: firestore);
+    final quizRepo = QuizRepository(firestore: firestore);
+
+    final stream = buildItemAnalysisViewModel(
+      quizId: 'missing-quiz',
+      quizTitle: 'Missing Quiz',
+      studentRepository: studentRepo,
+      quizRepository: quizRepo,
+    );
+    final vm = await stream.first;
+
+    expect(vm.questions, isEmpty);
     expect(vm.attemptCount, 0);
   });
 }

@@ -1,7 +1,9 @@
 import 'package:go_router/go_router.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../access_codes/access_codes_screen.dart';
 import '../lessons/lessons_screen.dart';
+import '../quizzes/item_analysis_screen.dart';
 import '../quizzes/quizzes_screen.dart';
 import '../students/students_screen.dart';
 import 'teacher_providers.dart';
@@ -39,6 +41,19 @@ GoRouter buildTeacherRouter({required TeacherServices services}) {
             builder: (context, state) => const AccessCodesScreen(),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/teacher/quizzes/:quizId/item-analysis',
+        builder: (context, state) {
+          final quizId = state.pathParameters['quizId']!;
+          final quizTitle = (state.extra as String?) ?? quizId;
+          return ProviderScope(
+            overrides: [
+              itemAnalysisOverrideFor(quizId, quizTitle: quizTitle, services: services),
+            ],
+            child: ItemAnalysisScreen(quizId: quizId, quizTitle: quizTitle),
+          );
+        },
       ),
     ],
   );

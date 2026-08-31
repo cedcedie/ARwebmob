@@ -1,5 +1,6 @@
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -107,14 +108,14 @@ class _QuizzesBody extends StatelessWidget {
               child: DataTable2(
                 columnSpacing: 12,
                 horizontalMargin: 16,
-                minWidth: 900,
+                minWidth: 960,
                 columns: const [
                   DataColumn2(label: Text('Title'), size: ColumnSize.L),
                   DataColumn2(label: Text('Subject'), size: ColumnSize.S),
                   DataColumn2(label: Text('Phase'), size: ColumnSize.S),
                   DataColumn2(label: Text('Questions'), size: ColumnSize.S),
                   DataColumn2(label: Text('Built-in?'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Actions'), size: ColumnSize.S),
+                  DataColumn2(label: Text('Actions'), size: ColumnSize.M),
                 ],
                 rows: viewModel.rows.map((row) {
                   final quiz = row.quiz;
@@ -132,23 +133,31 @@ class _QuizzesBody extends StatelessWidget {
                             : const Text('—'),
                       ),
                       DataCell(
-                        row.isBuiltIn
-                            ? const SizedBox.shrink()
-                            : Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    tooltip: 'Edit',
-                                    icon: const Icon(LucideIcons.pencil),
-                                    onPressed: () => _openForm(context, initial: quiz),
-                                  ),
-                                  IconButton(
-                                    tooltip: 'Delete',
-                                    icon: const Icon(LucideIcons.trash2),
-                                    onPressed: () => _confirmDelete(context, quiz.id),
-                                  ),
-                                ],
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: 'Item analysis',
+                              icon: const Icon(LucideIcons.barChart),
+                              onPressed: () => context.push(
+                                '/teacher/quizzes/${quiz.id}/item-analysis',
+                                extra: quiz.title,
                               ),
+                            ),
+                            if (!row.isBuiltIn) ...[
+                              IconButton(
+                                tooltip: 'Edit',
+                                icon: const Icon(LucideIcons.pencil),
+                                onPressed: () => _openForm(context, initial: quiz),
+                              ),
+                              IconButton(
+                                tooltip: 'Delete',
+                                icon: const Icon(LucideIcons.trash2),
+                                onPressed: () => _confirmDelete(context, quiz.id),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ],
                   );
