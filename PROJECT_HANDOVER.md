@@ -301,22 +301,59 @@ flutter build apk --debug
 Expect the full ~24-minute IL2CPP compile (fresh build environment, no
 cache). Output: `build/app/outputs/flutter-apk/app-debug.apk` (~806 MB).
 
-### 3.4 (Optional) Deploy Teacher Web
+### 3.4 (Optional) Deploy Teacher Web — full step-by-step
 
-```powershell
-flutter build web --release
-firebase deploy --only hosting
-```
-Needs a `"hosting"` block added to your local `firebase.json` first (once):
-```json
-"hosting": {
-  "public": "build/web",
-  "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-  "rewrites": [{ "source": "**", "destination": "/index.html" }]
-}
-```
-Firebase prints a live `https://<project-id>.web.app` URL on success — a
-real link for the teacher account instead of running the app locally.
+This makes Teacher Web a real, permanent, internet-reachable website (see
+the explanation above this Phase for why that's different from
+`flutter run -d chrome`). Do this after 3.1/3.2, from the repo root.
+
+1. **Find (or create) `firebase.json`.** It should already exist at the
+   repo root (`C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob\firebase.json`)
+   — `flutterfire configure` (3.1) creates or updates it automatically. If
+   it's missing entirely, running the deploy command in step 3 below will
+   fail with a clear "no Firebase project" error — if that happens, run
+   `firebase init hosting` first and let it detect the existing project.
+2. **Open it in a text editor** — right-click the file in File Explorer →
+   Open with → Notepad (or VS Code if you have it) — and add a
+   `"hosting"` entry. It'll already have other content
+   (`flutterfire configure` writes things there too) — add this as a new
+   key alongside whatever's already there, not replacing the whole file:
+   ```json
+   "hosting": {
+     "public": "build/web",
+     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+     "rewrites": [{ "source": "**", "destination": "/index.html" }]
+   }
+   ```
+   Save and close. This only needs doing once — future deploys reuse it.
+3. **Build the web app** (produces `build/web`, the static files that
+   actually get uploaded):
+   ```powershell
+   flutter build web --release
+   ```
+   Takes roughly 1-3 minutes. You'll see a line ending in
+   `√ Built build\web` when it's done.
+4. **Deploy it:**
+   ```powershell
+   firebase deploy --only hosting
+   ```
+   Takes about 30-60 seconds. Watch the terminal output — near the end
+   you'll see a line that looks like:
+   ```
+   ✔  Deploy complete!
+
+   Project Console: https://console.firebase.google.com/project/<project-id>/overview
+   Hosting URL: https://<project-id>.web.app
+   ```
+   **That `Hosting URL` line is the real, live link** — copy it exactly.
+5. **Verify it actually works before handing it off** — paste that URL
+   into a browser yourself right now. You should see the Teacher Web
+   login screen. Sign in with the teacher account you created in 1.5 to
+   confirm it fully loads and connects to the client's Firestore, not
+   just that the page renders.
+6. **Re-run steps 3-4** any time you want a future code change to go
+   live — nothing auto-deploys on a git push, this is always a manual
+   two-command step.
 
 ### 3.5 Checkpoint — upload the APK to Drive
 
