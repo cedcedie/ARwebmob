@@ -12,6 +12,7 @@ import 'core/services/lesson_repository.dart';
 import 'core/services/quiz_attempt_service.dart';
 import 'core/services/quiz_repository.dart';
 import 'core/services/student_repository.dart';
+import 'core/theme/app_theme.dart';
 import 'features/student/app/router.dart';
 import 'features/student/app/student_providers.dart';
 import 'features/student/auth/student_login_screen.dart';
@@ -87,7 +88,18 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
         builder: (context, ref, _) {
           final teacherEmail = ref.watch(currentTeacherEmailProvider).valueOrNull;
           if (teacherEmail == null) {
-            return const TeacherLoginScreen();
+            // Single app-level themed shell: the teacher router (below)
+            // isn't built until a teacher is signed in, so the sign-in gate
+            // gets its own `ShadApp` instance here — but both instances
+            // share the exact same `appShadTheme`/`appMaterialTheme`, so
+            // there is one themed shell definition, not two independent
+            // ones (TeacherLoginScreen no longer builds its own).
+            return ShadApp(
+              title: 'AR Science Explorer — Teacher',
+              theme: appShadTheme,
+              materialThemeBuilder: (context, theme) => appMaterialTheme,
+              home: const TeacherLoginScreen(),
+            );
           }
 
           final services = _teacherServicesFor(teacherEmail);
@@ -97,6 +109,8 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
             overrides: teacherProviderOverridesFor(services: services),
             child: ShadApp.router(
               title: 'AR Science Explorer',
+              theme: appShadTheme,
+              materialThemeBuilder: (context, theme) => appMaterialTheme,
               routerConfig: _teacherRouter!,
             ),
           );

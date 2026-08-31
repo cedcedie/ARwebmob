@@ -22,10 +22,15 @@ class TeacherLoginScreen extends HookConsumerWidget {
       await auth.submit();
     }
 
-    return ShadApp(
-      title: 'AR Science Explorer — Teacher',
-      home: Scaffold(
-        body: Center(
+    // `SizedBox.expand` forces the Scaffold body to take on the full
+    // available size before `Center` runs — without it, `Center`'s render
+    // object can collapse to its child's size when it receives unbounded
+    // constraints, which is what produced the "card pinned near the top,
+    // ~70% blank space below" bug this replaces (Center still centers
+    // correctly, but only within whatever size it was actually given).
+    return Scaffold(
+      body: SizedBox.expand(
+        child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: Padding(
@@ -36,12 +41,13 @@ class TeacherLoginScreen extends HookConsumerWidget {
                   'Use your school email to manage lessons, quizzes, and students.',
                 ),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (authState.errorMessage != null) ...[
                       Text(
                         authState.errorMessage!,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        style: TextStyle(color: ShadTheme.of(context).colorScheme.destructive),
                       ),
                       const SizedBox(height: 16),
                     ],
