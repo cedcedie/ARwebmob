@@ -33,11 +33,22 @@ abstract final class AppColors {
   static const destructiveForeground = Color(0xFFFFFFFF);
 
   /// Positive-affect confirmation color (e.g. "code issued", "saved").
-  /// A teal-leaning green, deliberately shifted away from [biology]'s
-  /// leaf-green hue (~152°) toward teal (~174°) so the two never read as
-  /// the same color — one is a subject accent, the other is a status
-  /// signal, and they must never be mistaken for each other.
-  static const success = Color(0xFF0D8A72);
+  ///
+  /// Item 6: the previous value (`0xFF0D8A72`) was only ~168° hue — a mere
+  /// ~16° from [biology]'s ~152°, too close for the two to read as
+  /// unambiguously different colors when they appear together (e.g. the
+  /// access-codes screen's success banner alongside biology-accented
+  /// table rows). Widened by hue shift rather than a lightness/saturation
+  /// delta: keeping saturation and lightness identical to the original
+  /// (82.8% / 29.6%) isolates the change to hue alone, so this stays
+  /// exactly as vivid/dark as before and no other visual property (contrast
+  /// against `successForeground`, "how saturated/dark does this look" next
+  /// to the rest of the palette) shifts as a side effect — only which hue
+  /// family it reads as. Moved to ~195°, a cyan-leaning teal-blue, which
+  /// widens the separation from biology to ~43° (and stays ~38° clear of
+  /// [physics]'s ~233° indigo-blue on the other side) while still reading
+  /// as a cool, calm "this worked" color rather than a warning tone.
+  static const success = Color(0xFF0D6B8A);
   static const successForeground = Color(0xFFFFFFFF);
 
   // Named subject-accent colors — chosen to be distinguishable and
