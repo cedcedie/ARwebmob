@@ -164,21 +164,55 @@ void main() {
     await tester.tap(find.text('Add Quiz'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('quiz-title')));
+    // These taps only exist to focus each field immediately before
+    // enterText() below (which locates and drives the field directly by
+    // Finder, independent of hit-testing) — they are not themselves under
+    // test. On this densely-nested, Shad-themed form the tap's on-screen
+    // offset can land on an overlapping RenderSemanticsAnnotations node
+    // (an invisible overlay/portal region, not the field itself) rather
+    // than the field's own render object — a real but harmless hit-test
+    // collision, not a sign enterText below isn't exercising the intended
+    // field. `warnIfMissed: false` silences that expected collision here
+    // without weakening what the test actually asserts.
+    await tester.tap(
+      find.byKey(const Key('quiz-title')),
+      warnIfMissed: false,
+    );
     await tester.enterText(find.byKey(const Key('quiz-title')), 'Complete Quiz');
-    await tester.tap(find.byKey(const Key('quiz-topic-id')));
+    await tester.tap(
+      find.byKey(const Key('quiz-topic-id')),
+      warnIfMissed: false,
+    );
     await tester.enterText(find.byKey(const Key('quiz-topic-id')), 'c2');
-    await tester.tap(find.byKey(const Key('quiz-question-0-text')));
+    await tester.tap(
+      find.byKey(const Key('quiz-question-0-text')),
+      warnIfMissed: false,
+    );
     await tester.enterText(find.byKey(const Key('quiz-question-0-text')), 'Pick one');
-    await tester.tap(find.byKey(const Key('quiz-q0-option-0')));
+    await tester.tap(
+      find.byKey(const Key('quiz-q0-option-0')),
+      warnIfMissed: false,
+    );
     await tester.enterText(find.byKey(const Key('quiz-q0-option-0')), 'Alpha');
-    await tester.tap(find.byKey(const Key('quiz-q0-option-1')));
+    await tester.tap(
+      find.byKey(const Key('quiz-q0-option-1')),
+      warnIfMissed: false,
+    );
     await tester.enterText(find.byKey(const Key('quiz-q0-option-1')), 'Beta');
-    await tester.tap(find.byKey(const Key('quiz-q0-option-2')));
+    await tester.tap(
+      find.byKey(const Key('quiz-q0-option-2')),
+      warnIfMissed: false,
+    );
     await tester.enterText(find.byKey(const Key('quiz-q0-option-2')), 'Gamma');
-    await tester.tap(find.byKey(const Key('quiz-q0-option-3')));
+    await tester.tap(
+      find.byKey(const Key('quiz-q0-option-3')),
+      warnIfMissed: false,
+    );
     await tester.enterText(find.byKey(const Key('quiz-q0-option-3')), 'Delta');
-    await tester.tap(find.byKey(const Key('quiz-question-0-hint')));
+    await tester.tap(
+      find.byKey(const Key('quiz-question-0-hint')),
+      warnIfMissed: false,
+    );
     await tester.enterText(find.byKey(const Key('quiz-question-0-hint')), 'First letter');
 
     await tester.scrollUntilVisible(
