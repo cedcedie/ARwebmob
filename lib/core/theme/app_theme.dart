@@ -150,6 +150,45 @@ final ThemeData appMaterialTheme = ThemeData(
     side: const BorderSide(color: AppColors.border),
     shape: const StadiumBorder(),
   ),
+  // Every `FormBuilderTextField`/`FormBuilderDropdown`/
+  // `DropdownButtonFormField`/`TextField` in the teacher forms is a plain
+  // Material form field (no shadcn_ui form-field component exists in this
+  // package version) — themed here once so every field inherits it
+  // automatically, filled + rounded to match the rest of the palette rather
+  // than falling back to stock Material's underline/outline defaults.
+  inputDecorationTheme: InputDecorationTheme(
+    filled: true,
+    fillColor: AppColors.muted,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    border: OutlineInputBorder(
+      borderRadius: _kBrandRadius,
+      borderSide: const BorderSide(color: AppColors.border),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: _kBrandRadius,
+      borderSide: const BorderSide(color: AppColors.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: _kBrandRadius,
+      borderSide: const BorderSide(color: AppColors.physics, width: 2),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: _kBrandRadius,
+      borderSide: const BorderSide(color: AppColors.destructive),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: _kBrandRadius,
+      borderSide: const BorderSide(color: AppColors.destructive, width: 2),
+    ),
+    disabledBorder: OutlineInputBorder(
+      borderRadius: _kBrandRadius,
+      borderSide: const BorderSide(color: AppColors.muted),
+    ),
+    labelStyle: const TextStyle(color: AppColors.inkMuted),
+    floatingLabelStyle: const TextStyle(color: AppColors.physics),
+    hintStyle: const TextStyle(color: AppColors.inkMuted),
+    errorStyle: const TextStyle(color: AppColors.destructive),
+  ),
   navigationRailTheme: NavigationRailThemeData(
     backgroundColor: AppColors.surface,
     indicatorColor: AppColors.physics.withValues(alpha: 0.16),
