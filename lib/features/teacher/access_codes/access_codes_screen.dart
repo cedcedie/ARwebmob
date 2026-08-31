@@ -214,8 +214,14 @@ class _IssuedCodeBanner extends StatelessWidget {
                 icon: const Icon(LucideIcons.copy),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: code));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Code copied to clipboard')),
+                  // This app's ShadApp/ShadApp.router shell has no
+                  // ScaffoldMessenger ancestor — `ShadToaster.of(context)` is
+                  // the app's actual toast mechanism (same pattern as
+                  // lesson_form.dart/quiz_form.dart/student_form.dart).
+                  ShadToaster.of(context).show(
+                    const ShadToast(
+                      description: Text('Code copied to clipboard'),
+                    ),
                   );
                 },
               ),

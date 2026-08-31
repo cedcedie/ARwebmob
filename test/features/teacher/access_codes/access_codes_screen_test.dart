@@ -111,6 +111,64 @@ void main() {
   });
 
   testWidgets(
+    'copy button shows a toast and does not throw (no ScaffoldMessenger ancestor)',
+    (tester) async {
+      final firestore = FakeFirebaseFirestore();
+      final services = teacherServicesFromFirestore(firestore);
+
+      await _pumpAccessCodesScreen(
+        tester,
+        viewModel: AccessCodesViewModel(
+          students: const [],
+          lessons: kBuiltInLessons,
+          issuedCodes: const [],
+          onIssueSubjectCode: ({required subjects, lessonIds, customCode}) =>
+              services.accessCodeIssuanceService.issueSubjectCode(
+                subjects: subjects,
+                lessonIds: lessonIds,
+                customCode: customCode,
+              ),
+          onIssueLessonCode:
+              ({required lessonId, required studentId, customCode}) =>
+                  services.accessCodeIssuanceService.issueLessonCode(
+                    lessonId: lessonId,
+                    studentId: studentId,
+                    customCode: customCode,
+                  ),
+          onIssueQuizRetakeCode: ({required lessonId, required studentId}) =>
+              services.accessCodeIssuanceService.issueQuizRetakeCode(
+                lessonId: lessonId,
+                studentId: studentId,
+              ),
+          checkRetakeEligible:
+              ({required studentId, required lessonId}) async => true,
+        ),
+      );
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Custom code (optional)'),
+        'CHEM02',
+      );
+      await _tapIssueButton(tester, 'Issue subject code');
+      expect(find.text('CHEM02'), findsWidgets);
+
+      // Regression guard for the ScaffoldMessenger crash: this app's
+      // ShadApp shell has no ScaffoldMessenger ancestor, so tapping copy
+      // must not throw and must surface a ShadToaster toast instead.
+      final exceptions = <FlutterErrorDetails>[];
+      final originalOnError = FlutterError.onError;
+      FlutterError.onError = (details) => exceptions.add(details);
+      addTearDown(() => FlutterError.onError = originalOnError);
+
+      await tester.tap(find.byTooltip('Copy code'));
+      await tester.pump();
+
+      expect(exceptions, isEmpty);
+      expect(find.text('Code copied to clipboard'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'lesson targeted form issues a code for the selected student and lesson',
     (tester) async {
       final firestore = FakeFirebaseFirestore();
