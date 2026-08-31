@@ -514,4 +514,18 @@ void main() {
     expect(find.text('Lessons: 0'), findsOneWidget);
     expect(find.text('Quizzes taken: 0'), findsOneWidget);
   });
+
+  testWidgets('an empty roster shows a tailored empty state (item 5)', (
+    tester,
+  ) async {
+    await _pumpStudentsScreen(
+      tester,
+      viewModel: _viewModel(students: const []),
+    );
+
+    expect(
+      find.text('No students yet — add your first student to get started.'),
+      findsOneWidget,
+    );
+  });
 }

@@ -6,6 +6,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/models/quiz_phase.dart';
 import '../../../core/models/teacher_quiz.dart';
+import '../../../core/theme/app_theme.dart';
 import '../lessons/lessons_providers.dart' show subjectKeyLabel;
 import '../widgets/error_state.dart';
 import '../widgets/subject_accent_cell.dart';
@@ -108,9 +109,9 @@ class _QuizzesBody extends StatelessWidget {
     try {
       await viewModel.onDeleteQuiz(quizId);
       if (!context.mounted) return;
-      ShadToaster.of(context).show(
-        const ShadToast(description: Text('Quiz deleted')),
-      );
+      ShadToaster.of(
+        context,
+      ).show(const ShadToast(description: Text('Quiz deleted')));
     } catch (error) {
       if (!context.mounted) return;
       ShadToaster.of(context).show(
@@ -151,82 +152,97 @@ class _QuizzesBody extends StatelessWidget {
           Expanded(
             child: Card(
               clipBehavior: Clip.antiAlias,
-              child: DataTable2(
-                columnSpacing: 12,
-                horizontalMargin: 16,
-                minWidth: 960,
-                columns: const [
-                  DataColumn2(label: Text('Title'), size: ColumnSize.L),
-                  DataColumn2(label: Text('Subject'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Phase'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Questions'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Built-in?'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Actions'), size: ColumnSize.M),
-                ],
-                rows: viewModel.rows.map((row) {
-                  final quiz = row.quiz;
-                  final phaseLabel = quiz.phase == QuizPhase.pre
-                      ? 'Pre-Test'
-                      : 'Post-Test';
-
-                  return DataRow(
-                    cells: [
-                      DataCell(
-                        SubjectAccentCell(
-                          subject: quiz.subject,
-                          child: Text(
-                            quiz.title,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+              // Item 5: same empty-state gap as lessons_screen.dart — no
+              // rows previously meant a bare header row with no explanation.
+              child: viewModel.rows.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No quizzes yet — add your first quiz to get started.',
+                        style: TextStyle(color: AppColors.inkMuted),
+                      ),
+                    )
+                  : DataTable2(
+                      columnSpacing: 12,
+                      horizontalMargin: 16,
+                      minWidth: 960,
+                      columns: const [
+                        DataColumn2(label: Text('Title'), size: ColumnSize.L),
+                        DataColumn2(label: Text('Subject'), size: ColumnSize.S),
+                        DataColumn2(label: Text('Phase'), size: ColumnSize.S),
+                        DataColumn2(
+                          label: Text('Questions'),
+                          size: ColumnSize.S,
                         ),
-                      ),
-                      DataCell(Text(subjectKeyLabel(quiz.subject))),
-                      DataCell(Text(phaseLabel)),
-                      DataCell(Text('${quiz.questions.length}')),
-                      DataCell(
-                        row.isBuiltIn
-                            ? const ShadBadge(child: Text('Built-in'))
-                            : const Text('—'),
-                      ),
-                      DataCell(
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Tooltip(
-                              message: 'Item analysis',
-                              child: ShadIconButton.ghost(
-                                icon: const Icon(LucideIcons.barChart),
-                                onPressed: () => context.push(
-                                  '/teacher/quizzes/${quiz.id}/item-analysis',
-                                  extra: quiz.title,
+                        DataColumn2(
+                          label: Text('Built-in?'),
+                          size: ColumnSize.S,
+                        ),
+                        DataColumn2(label: Text('Actions'), size: ColumnSize.M),
+                      ],
+                      rows: viewModel.rows.map((row) {
+                        final quiz = row.quiz;
+                        final phaseLabel = quiz.phase == QuizPhase.pre
+                            ? 'Pre-Test'
+                            : 'Post-Test';
+
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              SubjectAccentCell(
+                                subject: quiz.subject,
+                                child: Text(
+                                  quiz.title,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
-                            if (!row.isBuiltIn) ...[
-                              Tooltip(
-                                message: 'Edit',
-                                child: ShadIconButton.ghost(
-                                  icon: const Icon(LucideIcons.pencil),
-                                  onPressed: () =>
-                                      _openForm(context, initial: quiz),
-                                ),
+                            DataCell(Text(subjectKeyLabel(quiz.subject))),
+                            DataCell(Text(phaseLabel)),
+                            DataCell(Text('${quiz.questions.length}')),
+                            DataCell(
+                              row.isBuiltIn
+                                  ? const ShadBadge(child: Text('Built-in'))
+                                  : const Text('—'),
+                            ),
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Tooltip(
+                                    message: 'Item analysis',
+                                    child: ShadIconButton.ghost(
+                                      icon: const Icon(LucideIcons.barChart),
+                                      onPressed: () => context.push(
+                                        '/teacher/quizzes/${quiz.id}/item-analysis',
+                                        extra: quiz.title,
+                                      ),
+                                    ),
+                                  ),
+                                  if (!row.isBuiltIn) ...[
+                                    Tooltip(
+                                      message: 'Edit',
+                                      child: ShadIconButton.ghost(
+                                        icon: const Icon(LucideIcons.pencil),
+                                        onPressed: () =>
+                                            _openForm(context, initial: quiz),
+                                      ),
+                                    ),
+                                    Tooltip(
+                                      message: 'Delete',
+                                      child: ShadIconButton.ghost(
+                                        icon: const Icon(LucideIcons.trash2),
+                                        onPressed: () =>
+                                            _confirmDelete(context, quiz.id),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                              Tooltip(
-                                message: 'Delete',
-                                child: ShadIconButton.ghost(
-                                  icon: const Icon(LucideIcons.trash2),
-                                  onPressed: () =>
-                                      _confirmDelete(context, quiz.id),
-                                ),
-                              ),
-                            ],
+                            ),
                           ],
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
+                        );
+                      }).toList(),
+                    ),
             ),
           ),
         ],

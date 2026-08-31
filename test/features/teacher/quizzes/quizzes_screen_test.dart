@@ -317,4 +317,32 @@ void main() {
       expect(find.textContaining("Couldn't delete this quiz"), findsOneWidget);
     },
   );
+
+  testWidgets('an empty quiz list shows a tailored empty state (item 5)', (
+    tester,
+  ) async {
+    final viewModel = QuizzesViewModel(
+      rows: const [],
+      onCreateQuiz: (_) async {},
+      onUpdateQuiz: (_) async {},
+      onDeleteQuiz: (_) async {},
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          quizzesViewModelProvider.overrideWith(
+            (ref) => Stream.value(viewModel),
+          ),
+        ],
+        child: ShadApp(home: Scaffold(body: const QuizzesScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('No quizzes yet — add your first quiz to get started.'),
+      findsOneWidget,
+    );
+  });
 }

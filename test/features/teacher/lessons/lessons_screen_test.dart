@@ -397,4 +397,35 @@ void main() {
       expect(find.textContaining("Couldn't archive this lesson"), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'an empty lesson list shows a tailored empty state (item 5)',
+    (tester) async {
+      final viewModel = LessonsViewModel(
+        rows: const [],
+        quizOptions: const <TeacherQuiz>[],
+        onCreateLesson: (_) async {},
+        onUpdateLesson: (_) async {},
+        onArchiveLesson: (_) async {},
+        fetchLessonById: (_) async => null,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            lessonsViewModelProvider.overrideWith(
+              (ref) => Stream.value(viewModel),
+            ),
+          ],
+          child: ShadApp(home: Scaffold(body: const LessonsScreen())),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('No lessons yet — add your first lesson to get started.'),
+        findsOneWidget,
+      );
+    },
+  );
 }

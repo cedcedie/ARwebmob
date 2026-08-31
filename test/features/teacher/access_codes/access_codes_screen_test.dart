@@ -531,4 +531,34 @@ void main() {
     expect(find.text('111111'), findsOneWidget);
     expect(find.text('Retake'), findsOneWidget);
   });
+
+  testWidgets(
+    'an empty issued-codes table shows a tailored empty state (item 5)',
+    (tester) async {
+      await _pumpAccessCodesScreen(
+        tester,
+        viewModel: AccessCodesViewModel(
+          students: const [],
+          lessons: kBuiltInLessons,
+          issuedCodes: const [],
+          onIssueSubjectCode:
+              ({required subjects, lessonIds, customCode}) async => 'unused',
+          onIssueLessonCode:
+              ({required lessonId, required studentId, customCode}) async =>
+                  'unused',
+          onIssueQuizRetakeCode:
+              ({required lessonId, required studentId}) async => 'unused',
+          checkRetakeEligible:
+              ({required studentId, required lessonId}) async => false,
+        ),
+      );
+
+      expect(
+        find.text(
+          'No access codes issued yet — issue one above to get started.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 }

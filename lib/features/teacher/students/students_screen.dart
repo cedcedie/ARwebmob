@@ -150,9 +150,9 @@ class _StudentsBody extends HookWidget {
     try {
       await viewModel.onArchiveStudent(studentId);
       if (!context.mounted) return;
-      ShadToaster.of(context).show(
-        const ShadToast(description: Text('Student archived')),
-      );
+      ShadToaster.of(
+        context,
+      ).show(const ShadToast(description: Text('Student archived')));
     } catch (error) {
       if (!context.mounted) return;
       ShadToaster.of(context).show(
@@ -249,98 +249,125 @@ class _StudentsBody extends HookWidget {
           Expanded(
             child: Card(
               clipBehavior: Clip.antiAlias,
-              child: DataTable2(
-                columnSpacing: 12,
-                horizontalMargin: 16,
-                minWidth: 900,
-                showCheckboxColumn: true,
-                sortColumnIndex: sortColumnIndex.value,
-                sortAscending: sortAscending.value,
-                onSelectAll: (selectAll) {
-                  selection.value = selectAll == true ? selectableIds : {};
-                },
-                columns: [
-                  DataColumn2(
-                    label: const Text('Name'),
-                    size: ColumnSize.L,
-                    onSort: handleSort,
-                  ),
-                  const DataColumn2(
-                    label: Text('Student ID'),
-                    size: ColumnSize.S,
-                  ),
-                  DataColumn2(
-                    label: const Text('Grade'),
-                    size: ColumnSize.S,
-                    onSort: handleSort,
-                  ),
-                  const DataColumn2(label: Text('Section'), size: ColumnSize.S),
-                  const DataColumn2(label: Text('Scores'), size: ColumnSize.M),
-                  const DataColumn2(
-                    label: Text('Progress'),
-                    size: ColumnSize.M,
-                  ),
-                  const DataColumn2(label: Text('Actions'), size: ColumnSize.M),
-                ],
-                rows: displayStudents.map((student) {
-                  final canSelect = !student.isArchived;
-                  return DataRow(
-                    selected: selection.value.contains(student.studentId),
-                    onSelectChanged: canSelect
-                        ? (value) {
-                            final next = {...selection.value};
-                            if (value == true) {
-                              next.add(student.studentId);
-                            } else {
-                              next.remove(student.studentId);
-                            }
-                            selection.value = next;
-                          }
-                        : null,
-                    cells: [
-                      DataCell(Text(student.name)),
-                      DataCell(
-                        Text(formatStudentIdForDisplay(student.studentId)),
+              // Item 5: same empty-state gap as lessons/quizzes — no rows
+              // previously meant a bare header row with no explanation
+              // (e.g. every student archived and "Show archived" is off).
+              child: displayStudents.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No students yet — add your first student to get started.',
+                        style: TextStyle(color: AppColors.inkMuted),
                       ),
-                      DataCell(Text(student.grade)),
-                      DataCell(Text(student.section)),
-                      DataCell(_ScoreChips(scores: student.scores)),
-                      DataCell(_ProgressSummary(student: student)),
-                      DataCell(
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _CompactIconButton(
-                              tooltip: 'View progress details',
-                              icon: LucideIcons.listChecks,
-                              onPressed: () =>
-                                  _showProgressDetails(context, student),
-                            ),
-                            if (!student.isArchived)
-                              _CompactIconButton(
-                                tooltip: 'Archive',
-                                icon: LucideIcons.archive,
-                                onPressed: () =>
-                                    _archiveOne(context, student.studentId),
-                              )
-                            else
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 4),
-                                child: Text(
-                                  'Archived',
-                                  style: TextStyle(
-                                    color: AppColors.inkMuted,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                          ],
+                    )
+                  : DataTable2(
+                      columnSpacing: 12,
+                      horizontalMargin: 16,
+                      minWidth: 900,
+                      showCheckboxColumn: true,
+                      sortColumnIndex: sortColumnIndex.value,
+                      sortAscending: sortAscending.value,
+                      onSelectAll: (selectAll) {
+                        selection.value = selectAll == true
+                            ? selectableIds
+                            : {};
+                      },
+                      columns: [
+                        DataColumn2(
+                          label: const Text('Name'),
+                          size: ColumnSize.L,
+                          onSort: handleSort,
                         ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
+                        const DataColumn2(
+                          label: Text('Student ID'),
+                          size: ColumnSize.S,
+                        ),
+                        DataColumn2(
+                          label: const Text('Grade'),
+                          size: ColumnSize.S,
+                          onSort: handleSort,
+                        ),
+                        const DataColumn2(
+                          label: Text('Section'),
+                          size: ColumnSize.S,
+                        ),
+                        const DataColumn2(
+                          label: Text('Scores'),
+                          size: ColumnSize.M,
+                        ),
+                        const DataColumn2(
+                          label: Text('Progress'),
+                          size: ColumnSize.M,
+                        ),
+                        const DataColumn2(
+                          label: Text('Actions'),
+                          size: ColumnSize.M,
+                        ),
+                      ],
+                      rows: displayStudents.map((student) {
+                        final canSelect = !student.isArchived;
+                        return DataRow(
+                          selected: selection.value.contains(student.studentId),
+                          onSelectChanged: canSelect
+                              ? (value) {
+                                  final next = {...selection.value};
+                                  if (value == true) {
+                                    next.add(student.studentId);
+                                  } else {
+                                    next.remove(student.studentId);
+                                  }
+                                  selection.value = next;
+                                }
+                              : null,
+                          cells: [
+                            DataCell(Text(student.name)),
+                            DataCell(
+                              Text(
+                                formatStudentIdForDisplay(student.studentId),
+                              ),
+                            ),
+                            DataCell(Text(student.grade)),
+                            DataCell(Text(student.section)),
+                            DataCell(_ScoreChips(scores: student.scores)),
+                            DataCell(_ProgressSummary(student: student)),
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _CompactIconButton(
+                                    tooltip: 'View progress details',
+                                    icon: LucideIcons.listChecks,
+                                    onPressed: () =>
+                                        _showProgressDetails(context, student),
+                                  ),
+                                  if (!student.isArchived)
+                                    _CompactIconButton(
+                                      tooltip: 'Archive',
+                                      icon: LucideIcons.archive,
+                                      onPressed: () => _archiveOne(
+                                        context,
+                                        student.studentId,
+                                      ),
+                                    )
+                                  else
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                      ),
+                                      child: Text(
+                                        'Archived',
+                                        style: TextStyle(
+                                          color: AppColors.inkMuted,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
             ),
           ),
         ],

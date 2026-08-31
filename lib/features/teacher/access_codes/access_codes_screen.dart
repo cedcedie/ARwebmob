@@ -141,40 +141,53 @@ class _AccessCodesBody extends HookWidget {
           Expanded(
             child: Card(
               clipBehavior: Clip.antiAlias,
-              child: DataTable2(
-                columnSpacing: 12,
-                horizontalMargin: 16,
-                minWidth: 800,
-                columns: const [
-                  DataColumn2(label: Text('Code'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Type'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Target'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Status'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Issued At'), size: ColumnSize.M),
-                ],
-                rows: viewModel.issuedCodes.map((row) {
-                  return DataRow(
-                    cells: [
-                      DataCell(
-                        // Every issued code belongs to a subject/lesson (or,
-                        // for a multi-subject code, to none in particular) —
-                        // accent the row the same way lesson/quiz tables do
-                        // when a single subject is resolvable.
-                        row.subject != null
-                            ? SubjectAccentCell(
-                                subject: row.subject!,
-                                child: Text(row.code),
-                              )
-                            : Text(row.code),
+              // Item 5: same empty-state gap as the other three primary
+              // tables — a brand-new teacher account (no codes issued yet)
+              // previously saw a bare header row with no explanation.
+              child: viewModel.issuedCodes.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No access codes issued yet — issue one above to get started.',
+                        style: TextStyle(color: AppColors.inkMuted),
                       ),
-                      DataCell(Text(issuedCodeTypeLabel(row.type))),
-                      DataCell(Text(row.target)),
-                      DataCell(Text(row.status)),
-                      DataCell(Text(row.issuedAt)),
-                    ],
-                  );
-                }).toList(),
-              ),
+                    )
+                  : DataTable2(
+                      columnSpacing: 12,
+                      horizontalMargin: 16,
+                      minWidth: 800,
+                      columns: const [
+                        DataColumn2(label: Text('Code'), size: ColumnSize.S),
+                        DataColumn2(label: Text('Type'), size: ColumnSize.S),
+                        DataColumn2(label: Text('Target'), size: ColumnSize.S),
+                        DataColumn2(label: Text('Status'), size: ColumnSize.S),
+                        DataColumn2(
+                          label: Text('Issued At'),
+                          size: ColumnSize.M,
+                        ),
+                      ],
+                      rows: viewModel.issuedCodes.map((row) {
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              // Every issued code belongs to a subject/lesson (or,
+                              // for a multi-subject code, to none in particular) —
+                              // accent the row the same way lesson/quiz tables do
+                              // when a single subject is resolvable.
+                              row.subject != null
+                                  ? SubjectAccentCell(
+                                      subject: row.subject!,
+                                      child: Text(row.code),
+                                    )
+                                  : Text(row.code),
+                            ),
+                            DataCell(Text(issuedCodeTypeLabel(row.type))),
+                            DataCell(Text(row.target)),
+                            DataCell(Text(row.status)),
+                            DataCell(Text(row.issuedAt)),
+                          ],
+                        );
+                      }).toList(),
+                    ),
             ),
           ),
         ],

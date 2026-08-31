@@ -5,6 +5,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/models/teacher_lesson.dart';
+import '../../../core/theme/app_theme.dart';
 import '../widgets/error_state.dart';
 import '../widgets/subject_accent_cell.dart';
 import 'lesson_form.dart';
@@ -111,9 +112,9 @@ class _LessonsBody extends HookWidget {
     try {
       await viewModel.onArchiveLesson(lessonId);
       if (!context.mounted) return;
-      ShadToaster.of(context).show(
-        const ShadToast(description: Text('Lesson archived')),
-      );
+      ShadToaster.of(
+        context,
+      ).show(const ShadToast(description: Text('Lesson archived')));
     } catch (error) {
       if (!context.mounted) return;
       ShadToaster.of(context).show(
@@ -204,86 +205,117 @@ class _LessonsBody extends HookWidget {
           Expanded(
             child: Card(
               clipBehavior: Clip.antiAlias,
-              child: DataTable2(
-                columnSpacing: 12,
-                horizontalMargin: 16,
-                minWidth: 900,
-                sortColumnIndex: sortColumnIndex.value,
-                sortAscending: sortAscending.value,
-                columns: [
-                  DataColumn2(
-                    label: const Text('Title'),
-                    size: ColumnSize.L,
-                    onSort: handleSort,
-                  ),
-                  const DataColumn2(label: Text('Subject'), size: ColumnSize.S),
-                  DataColumn2(
-                    label: const Text('Quarter/Week'),
-                    size: ColumnSize.S,
-                    onSort: handleSort,
-                  ),
-                  const DataColumn2(label: Text('AR?'), size: ColumnSize.S),
-                  const DataColumn2(label: Text('Built-in?'), size: ColumnSize.S),
-                  const DataColumn2(label: Text('Actions'), size: ColumnSize.S),
-                ],
-                rows: displayRows.map((row) {
-                  final lesson = row.lesson;
-                  final quarterWeek =
-                      lesson.quarter != null && lesson.week != null
-                      ? 'Q${lesson.quarter}W${lesson.week}'
-                      : '—';
-                  final hasAr = lesson.hasAR;
-
-                  return DataRow(
-                    cells: [
-                      DataCell(
-                        SubjectAccentCell(
-                          subject: lesson.subject,
-                          child: Text(
-                            lesson.title,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+              // Item 5: an empty lesson list (a brand-new teacher account,
+              // or every lesson archived) previously rendered a DataTable2
+              // with headers but zero rows — no cue that this is the
+              // expected empty state rather than a stuck/broken load.
+              // Mirrors item_analysis_screen.dart's "No attempts yet on
+              // this quiz." pattern.
+              child: displayRows.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No lessons yet — add your first lesson to get started.',
+                        style: TextStyle(color: AppColors.inkMuted),
+                      ),
+                    )
+                  : DataTable2(
+                      columnSpacing: 12,
+                      horizontalMargin: 16,
+                      minWidth: 900,
+                      sortColumnIndex: sortColumnIndex.value,
+                      sortAscending: sortAscending.value,
+                      columns: [
+                        DataColumn2(
+                          label: const Text('Title'),
+                          size: ColumnSize.L,
+                          onSort: handleSort,
                         ),
-                      ),
-                      DataCell(Text(subjectKeyLabel(lesson.subject))),
-                      DataCell(Text(quarterWeek)),
-                      DataCell(Text(hasAr ? 'Yes' : 'No')),
-                      DataCell(
-                        row.isBuiltIn
-                            ? const ShadBadge(child: Text('Built-in'))
-                            : const Text('—'),
-                      ),
-                      DataCell(
-                        row.isBuiltIn
-                            ? const SizedBox.shrink()
-                            : Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Tooltip(
-                                    message: 'Edit',
-                                    child: ShadIconButton.ghost(
-                                      icon: const Icon(LucideIcons.pencil),
-                                      onPressed: () => _openForm(
-                                        context,
-                                        initial: row.teacherLesson,
-                                      ),
-                                    ),
-                                  ),
-                                  Tooltip(
-                                    message: 'Archive',
-                                    child: ShadIconButton.ghost(
-                                      icon: const Icon(LucideIcons.archive),
-                                      onPressed: () =>
-                                          _confirmArchive(context, lesson.id),
-                                    ),
-                                  ),
-                                ],
+                        const DataColumn2(
+                          label: Text('Subject'),
+                          size: ColumnSize.S,
+                        ),
+                        DataColumn2(
+                          label: const Text('Quarter/Week'),
+                          size: ColumnSize.S,
+                          onSort: handleSort,
+                        ),
+                        const DataColumn2(
+                          label: Text('AR?'),
+                          size: ColumnSize.S,
+                        ),
+                        const DataColumn2(
+                          label: Text('Built-in?'),
+                          size: ColumnSize.S,
+                        ),
+                        const DataColumn2(
+                          label: Text('Actions'),
+                          size: ColumnSize.S,
+                        ),
+                      ],
+                      rows: displayRows.map((row) {
+                        final lesson = row.lesson;
+                        final quarterWeek =
+                            lesson.quarter != null && lesson.week != null
+                            ? 'Q${lesson.quarter}W${lesson.week}'
+                            : '—';
+                        final hasAr = lesson.hasAR;
+
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              SubjectAccentCell(
+                                subject: lesson.subject,
+                                child: Text(
+                                  lesson.title,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
+                            ),
+                            DataCell(Text(subjectKeyLabel(lesson.subject))),
+                            DataCell(Text(quarterWeek)),
+                            DataCell(Text(hasAr ? 'Yes' : 'No')),
+                            DataCell(
+                              row.isBuiltIn
+                                  ? const ShadBadge(child: Text('Built-in'))
+                                  : const Text('—'),
+                            ),
+                            DataCell(
+                              row.isBuiltIn
+                                  ? const SizedBox.shrink()
+                                  : Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Tooltip(
+                                          message: 'Edit',
+                                          child: ShadIconButton.ghost(
+                                            icon: const Icon(
+                                              LucideIcons.pencil,
+                                            ),
+                                            onPressed: () => _openForm(
+                                              context,
+                                              initial: row.teacherLesson,
+                                            ),
+                                          ),
+                                        ),
+                                        Tooltip(
+                                          message: 'Archive',
+                                          child: ShadIconButton.ghost(
+                                            icon: const Icon(
+                                              LucideIcons.archive,
+                                            ),
+                                            onPressed: () => _confirmArchive(
+                                              context,
+                                              lesson.id,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
             ),
           ),
         ],
