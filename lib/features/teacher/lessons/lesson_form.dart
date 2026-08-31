@@ -1,5 +1,7 @@
 import 'dart:io' show Platform;
+import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
@@ -10,6 +12,7 @@ import '../../../core/models/ar_payload.dart';
 import '../../../core/models/subject_key.dart';
 import '../../../core/models/teacher_lesson.dart';
 import '../../../core/models/teacher_quiz.dart';
+import '../../../core/services/lesson_content_upload_service.dart';
 import '../widgets/dynamic_string_list_field.dart';
 import 'lessons_providers.dart';
 
@@ -20,12 +23,15 @@ class LessonForm extends StatefulWidget {
     required this.quizOptions,
     required this.onSubmit,
     this.submitLabel = 'Save',
+    this.uploadContentOverride, // test-only injection point
   });
 
   final TeacherLesson? initial;
   final List<TeacherQuiz> quizOptions;
   final Future<void> Function(TeacherLesson lesson) onSubmit;
   final String submitLabel;
+  final Future<({String url, bool isConversionNeeded})> Function(String fileName, Uint8List bytes)?
+      uploadContentOverride;
 
   @override
   State<LessonForm> createState() => LessonFormState();
@@ -37,6 +43,8 @@ class LessonFormState extends State<LessonForm> {
   int? _modelIndex;
   int? _quarter;
   int? _week;
+  String? _uploadedContentUrl;
+  bool _uploadedContentNeedsConversion = false;
 
   @override
   void initState() {
@@ -54,6 +62,38 @@ class LessonFormState extends State<LessonForm> {
         week: _week,
         modelIndex: _modelIndex,
       );
+
+  Future<void> _pickAndUploadContent() async {
+    final ({String url, bool isConversionNeeded}) uploadResult;
+
+    // Test-only injection point: when provided, skip the real
+    // file_picker/Storage round trip entirely so widget tests can simulate
+    // "a file was picked and uploaded" without a platform channel handler.
+    if (widget.uploadContentOverride != null) {
+      uploadResult = await widget.uploadContentOverride!('content', Uint8List(0));
+    } else {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pptx', 'pdf'],
+        withData: true,
+      );
+      final file = result?.files.single;
+      if (file?.bytes == null) return;
+
+      final isConversionNeeded = file!.extension?.toLowerCase() == 'pptx';
+      final lessonId = widget.initial?.id ?? 'teacher-${DateTime.now().millisecondsSinceEpoch}';
+      final service = LessonContentUploadService(uploader: FirebaseStorageUploader());
+      final url = await service.uploadLessonContent(
+        lessonId: lessonId, fileName: file.name, bytes: file.bytes!,
+      );
+      uploadResult = (url: url, isConversionNeeded: isConversionNeeded);
+    }
+
+    setState(() {
+      _uploadedContentUrl = uploadResult.url;
+      _uploadedContentNeedsConversion = uploadResult.isConversionNeeded;
+    });
+  }
 
   Future<void> _handleSubmit() async {
     final formState = _formKey.currentState;
@@ -93,6 +133,12 @@ class LessonFormState extends State<LessonForm> {
             ),
       hasAR: modelIndexRaw != null || widget.initial?.hasAR == true,
       isArchived: widget.initial?.isArchived ?? false,
+      contentImageUrls: _uploadedContentUrl != null
+          ? [_uploadedContentUrl!]
+          : widget.initial?.contentImageUrls,
+      contentStatus: _uploadedContentUrl == null
+          ? widget.initial?.contentStatus
+          : (_uploadedContentNeedsConversion ? 'processing' : 'ready'),
     );
 
     await widget.onSubmit(lesson);
@@ -202,6 +248,13 @@ class LessonFormState extends State<LessonForm> {
               ),
               keyboardType: TextInputType.number,
               onChanged: (value) => setState(() => _modelIndex = int.tryParse(value ?? '')),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              key: const Key('lesson-upload-content'),
+              onPressed: _pickAndUploadContent,
+              icon: const Icon(Icons.upload_file),
+              label: Text(_uploadedContentUrl == null ? 'Upload PPTX or PDF' : 'Content uploaded'),
             ),
             if (_previewPath != null) ...[
               const SizedBox(height: 12),
