@@ -52,6 +52,8 @@ dependencies:
   flutter_embed_unity: ^2.0.0
   flutter_embed_unity_6000_0_android: ^2.0.0
   flutter_tts: ^4.2.0
+  firebase_storage: ^12.3.0
+  file_picker: ^8.1.0
 
   # Phase 4 (Teacher Web) UI packages
   shadcn_ui: ^0.56.2
