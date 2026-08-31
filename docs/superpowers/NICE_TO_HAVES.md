@@ -59,10 +59,10 @@ history to backfill here.)*
   resolve. Currently harmless because (a) it's a dead path in production
   data today, and (b) `scan_tab.dart` (Task 7) never actually renders a
   marker image at all — Unity handles marker detection, Flutter only
-  shows `title`/`subtitle`/`description`/`keyIdeas` text. Status: open,
-  low priority — worth a real fix (either normalize the data or the
-  fallback scheme) only if something starts consuming `markerImage` for
-  real, e.g. a marker-preview thumbnail somewhere.
+  shows `title`/`subtitle`/`description`/`keyIdeas` text. Status: resolved
+  in this session (commit `f6b5cb0`) — fallback branch now returns
+  `/markers/Q{quarter}W{week}.jpg` (root-relative, no `assets/` prefix),
+  matching the scheme every explicit override already uses.
 
 - **`android:configChanges` on `MainActivity` needs `orientation` added.**
   Noted while reviewing Task 7 (`scan_tab.dart`)'s `EmbedUnity` widget
@@ -81,9 +81,9 @@ history to backfill here.)*
   around this by deriving AR-availability from `arPayload != null`
   instead of trusting the `hasAR` field. Not fixed at the data-model level
   (i.e. `hasAR` itself is still unused/misleading in the source data).
-  Status: open, cosmetic — only worth touching if something else in a
-  later phase starts trusting `hasAR` directly instead of deriving from
-  `arPayload`.
+  Status: resolved (commit `25df56a`, prior to this cleanup session) —
+  `hasAR: true` now set on all 23 lessons with a populated `arPayload`;
+  confirmed still correct and left untouched during this session's pass.
 
 - **`ArLabScreen` never stops/disposes its `VoiceOverController`.**
   `_ArLabScreenState` creates a `VoiceOverController(tts: FlutterTts())` in
@@ -92,10 +92,11 @@ history to backfill here.)*
   narration is mid-playback, the TTS engine may keep speaking after the
   screen is gone. Matches the plan's own sample code exactly (the plan's
   Task 10 Step 3 sample also has no `dispose()`), so not a Task 10
-  implementation deviation — it's a gap in the plan itself. Status: open,
-  low priority — worth a one-line fix (`@override void dispose() {
-  _voiceOverController.stop(); super.dispose(); }`) whenever `ArLabScreen`
-  is next touched.
+  implementation deviation — it's a gap in the plan itself. Status:
+  resolved (commit `b8f38de`, prior to this cleanup session) —
+  `dispose()` now calls `_voiceOverController.stop()`, with a widget test
+  asserting it; confirmed still correct and left untouched during this
+  session's pass.
 
 - **Stale `router.dart` comment fixed opportunistically during Task 10.**
   A doc comment in the `/quiz/:lessonId/:phase` no-bank fallback path
