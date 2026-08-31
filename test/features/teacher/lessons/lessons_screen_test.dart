@@ -4,10 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:ar_science_explorer/core/data/curriculum_data.dart';
+import 'package:ar_science_explorer/core/models/lesson.dart';
 import 'package:ar_science_explorer/core/models/subject_key.dart';
 import 'package:ar_science_explorer/core/models/teacher_lesson.dart';
+import 'package:ar_science_explorer/core/models/teacher_quiz.dart';
 import 'package:ar_science_explorer/core/services/lesson_repository.dart';
 import 'package:ar_science_explorer/features/teacher/app/teacher_providers.dart';
+import 'package:ar_science_explorer/features/teacher/lessons/lessons_providers.dart';
 import 'package:ar_science_explorer/features/teacher/lessons/lessons_screen.dart';
 
 Future<void> _scrollTo(WidgetTester tester, Finder finder) async {
@@ -327,5 +330,71 @@ void main() {
 
     final doc = await firestore.collection('lessons').doc('teacher-archive-1').get();
     expect(doc.data()!['isArchived'], true);
+    // Item 2: success feedback after a successful archive.
+    expect(find.text('Lesson archived'), findsOneWidget);
   });
+
+  testWidgets(
+    'a throwing onArchiveLesson shows an error toast instead of silently '
+    'doing nothing (item 2)',
+    (tester) async {
+      final lesson = Lesson(
+        id: 'teacher-archive-fail',
+        title: 'Archive Me Too',
+        subject: SubjectKey.chemistry,
+        summary: 'Summary',
+        steps: const [],
+        quarter: 1,
+        week: 1,
+      );
+      final teacherLesson = TeacherLesson(
+        id: lesson.id,
+        title: lesson.title,
+        subject: lesson.subject,
+        summary: lesson.summary,
+        quarter: lesson.quarter,
+        week: lesson.week,
+      );
+      final viewModel = LessonsViewModel(
+        rows: [
+          DisplayLesson(
+            lesson: lesson,
+            isBuiltIn: false,
+            teacherLesson: teacherLesson,
+          ),
+        ],
+        quizOptions: const <TeacherQuiz>[],
+        onCreateLesson: (_) async {},
+        onUpdateLesson: (_) async {},
+        onArchiveLesson: (_) async {
+          throw Exception('boom');
+        },
+        fetchLessonById: (_) async => null,
+      );
+
+      await tester.binding.setSurfaceSize(const Size(1280, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            lessonsViewModelProvider.overrideWith(
+              (ref) => Stream.value(viewModel),
+            ),
+          ],
+          child: ShadApp(home: Scaffold(body: const LessonsScreen())),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _scrollTo(tester, find.byTooltip('Archive'));
+      await tester.tap(find.byTooltip('Archive'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Archive'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Archive Me Too'), findsOneWidget);
+      expect(find.textContaining('Exception'), findsNothing);
+      expect(find.textContaining("Couldn't archive this lesson"), findsOneWidget);
+    },
+  );
 }

@@ -102,8 +102,27 @@ class _LessonsBody extends HookWidget {
         ],
       ),
     );
-    if (confirmed == true) {
+    if (confirmed != true) return;
+
+    // Item 2: mirrors students_screen.dart's `_archiveSelected` feedback
+    // pattern — this previously had no try/catch and no success toast at
+    // all, so a failed archive silently did nothing and a successful one
+    // gave no confirmation either.
+    try {
       await viewModel.onArchiveLesson(lessonId);
+      if (!context.mounted) return;
+      ShadToaster.of(context).show(
+        const ShadToast(description: Text('Lesson archived')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ShadToaster.of(context).show(
+        ShadToast.destructive(
+          description: Text(
+            humanizeSubmitError(error, actionLabel: 'archive this lesson'),
+          ),
+        ),
+      );
     }
   }
 
