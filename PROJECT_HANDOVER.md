@@ -33,6 +33,47 @@ everything.
 
 ---
 
+## Prerequisites — what needs to be installed, and where
+
+**On your own machine** — all of this is already installed and verified
+working as of this session (confirmed via `flutter doctor`), listed here
+only so it's reproducible if you're ever setting up a new/different
+machine:
+
+| Tool | Get it from | Why |
+|---|---|---|
+| **Git** | <https://git-scm.com/downloads> | clone/push the repo |
+| **Flutter SDK** | <https://docs.flutter.dev/get-started/install/windows> | builds/runs the app (Dart comes bundled, no separate install) |
+| **Android SDK + `cmdline-tools`** | via `flutter doctor --android-licenses`, or Android Studio's SDK Manager if you install that too | needed for `flutter build apk`; run `flutter doctor` and fix anything it flags red |
+| **Unity Hub + Unity 6000.4.0f1** | <https://unity.com/download> (add version 6000.4.0f1 via Hub), with the **Android Build Support** module ticked during install | Unity ships its own bundled Android SDK/NDK/OpenJDK inside that module — nothing extra to install for it |
+| **Node.js (LTS)** | <https://nodejs.org> | brings `npm`, which installs `firebase-tools` (Node.js isn't otherwise used by this project) |
+| **Firebase CLI + FlutterFire CLI** | after Node.js/Flutter above: | drives `flutterfire configure` / `firebase deploy` |
+
+```powershell
+dart pub global activate flutterfire_cli
+npm install -g firebase-tools
+firebase login
+```
+
+Verify everything at once:
+```powershell
+git --version
+flutter --version
+node --version
+npm --version
+flutter doctor
+```
+`flutter doctor` should show no red `[!]`/`[X]` lines under Android
+toolchain, Chrome, or Windows.
+
+**On the client's machine** — **nothing needs installing.** They only ever
+need: a way to open a `.apk` file on their Android phone (built-in), and
+whatever browser is already there for you to drive during the AnyDesk
+session (Phase 1). No Flutter, no Git, no Node — none of it touches their
+machine.
+
+---
+
 ## PHASE 0 — Solo, on your own machine, anytime before the meeting
 
 Nothing here needs the client. Budget: ~30 min, mostly the Unity export.
