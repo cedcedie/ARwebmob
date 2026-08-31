@@ -28,21 +28,14 @@ filesystem check, not assumed) — most of this is already done:
 
 - [x] **Flutter SDK** on PATH — confirmed working: Flutter 3.44.0, Dart
       3.12.0. Nothing to do.
-- [ ] **Android SDK / Android Studio — one real gap.** The SDK itself
-      exists (`C:\Users\cedri\AppData\Local\Android\sdk`), but
-      `flutter doctor` flags two things still needed:
-      1. `cmdline-tools` component is missing — install via Android
-         Studio's SDK Manager (Settings → Languages & Frameworks → Android
-         SDK → SDK Tools tab → check "Android SDK Command-line Tools"), or
-         download standalone from
-         <https://developer.android.com/studio#command-line-tools-only>.
-      2. Android license status is unknown — run:
-         ```powershell
-         flutter doctor --android-licenses
-         ```
-         and accept each one.
-      Re-run `flutter doctor` after both to confirm the Android toolchain
-      turns green.
+- [x] **Android SDK / Android Studio** — confirmed fully green. No Android
+      Studio is installed on this machine (the SDK folder was standalone),
+      which is why `cmdline-tools` was missing — fixed by downloading the
+      standalone command-line tools
+      (<https://developer.android.com/studio#command-line-tools-only>) into
+      `sdk\cmdline-tools\latest\`, then running
+      `flutter doctor --android-licenses` and accepting all prompts.
+      `flutter doctor` now shows `[√] Android toolchain`, no warnings.
 - [x] **Chrome** — confirmed installed
       (`C:\Program Files\Google\Chrome\Application\chrome.exe`).
 - [ ] **Physical Android phone** (recommended over emulator for AR/Unity
