@@ -1,5 +1,6 @@
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -27,7 +28,7 @@ class LessonsScreen extends ConsumerWidget {
   }
 }
 
-class _LessonsBody extends StatelessWidget {
+class _LessonsBody extends HookWidget {
   const _LessonsBody({required this.viewModel});
 
   final LessonsViewModel viewModel;
@@ -108,6 +109,32 @@ class _LessonsBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Column sorting (heuristic 7 — acceleration for a teacher managing a
+    // growing lesson list): index 0 = Title (alphabetical), index 2 =
+    // Quarter/Week (curriculum order) — the two orderings a teacher
+    // actually reaches for for this table.
+    final sortColumnIndex = useState<int?>(null);
+    final sortAscending = useState(true);
+
+    final rows = [...viewModel.rows];
+    if (sortColumnIndex.value == 0) {
+      rows.sort(
+        (a, b) => a.lesson.title.toLowerCase().compareTo(
+          b.lesson.title.toLowerCase(),
+        ),
+      );
+    } else if (sortColumnIndex.value == 2) {
+      int key(DisplayLesson row) =>
+          (row.lesson.quarter ?? 0) * 100 + (row.lesson.week ?? 0);
+      rows.sort((a, b) => key(a).compareTo(key(b)));
+    }
+    final displayRows = sortAscending.value ? rows : rows.reversed.toList();
+
+    void handleSort(int columnIndex, bool ascending) {
+      sortColumnIndex.value = columnIndex;
+      sortAscending.value = ascending;
+    }
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -138,15 +165,25 @@ class _LessonsBody extends StatelessWidget {
                 columnSpacing: 12,
                 horizontalMargin: 16,
                 minWidth: 900,
-                columns: const [
-                  DataColumn2(label: Text('Title'), size: ColumnSize.L),
-                  DataColumn2(label: Text('Subject'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Quarter/Week'), size: ColumnSize.S),
-                  DataColumn2(label: Text('AR?'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Built-in?'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Actions'), size: ColumnSize.S),
+                sortColumnIndex: sortColumnIndex.value,
+                sortAscending: sortAscending.value,
+                columns: [
+                  DataColumn2(
+                    label: const Text('Title'),
+                    size: ColumnSize.L,
+                    onSort: handleSort,
+                  ),
+                  const DataColumn2(label: Text('Subject'), size: ColumnSize.S),
+                  DataColumn2(
+                    label: const Text('Quarter/Week'),
+                    size: ColumnSize.S,
+                    onSort: handleSort,
+                  ),
+                  const DataColumn2(label: Text('AR?'), size: ColumnSize.S),
+                  const DataColumn2(label: Text('Built-in?'), size: ColumnSize.S),
+                  const DataColumn2(label: Text('Actions'), size: ColumnSize.S),
                 ],
-                rows: viewModel.rows.map((row) {
+                rows: displayRows.map((row) {
                   final lesson = row.lesson;
                   final quarterWeek =
                       lesson.quarter != null && lesson.week != null

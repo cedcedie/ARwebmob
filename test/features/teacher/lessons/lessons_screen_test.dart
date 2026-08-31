@@ -177,6 +177,56 @@ void main() {
     expect(find.text('Updated Lesson Title'), findsOneWidget);
   });
 
+  testWidgets('tapping the Title column header sorts rows alphabetically', (
+    tester,
+  ) async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = LessonRepository(firestore: firestore);
+    await repo.createLesson(
+      const TeacherLesson(
+        id: 'teacher-zeta',
+        title: 'Zeta Lesson',
+        subject: SubjectKey.physics,
+      ),
+    );
+    await repo.createLesson(
+      const TeacherLesson(
+        id: 'teacher-alpha',
+        title: 'Alpha Lesson',
+        subject: SubjectKey.physics,
+      ),
+    );
+
+    await _pumpLessonsScreen(tester, firestore: firestore);
+
+    // Both rows exist before any sort is applied.
+    expect(find.text('Zeta Lesson'), findsOneWidget);
+    expect(find.text('Alpha Lesson'), findsOneWidget);
+
+    await tester.tap(find.text('Title'));
+    await tester.pumpAndSettle();
+
+    final alphaTop = tester.getTopLeft(find.text('Alpha Lesson')).dy;
+    final zetaTop = tester.getTopLeft(find.text('Zeta Lesson')).dy;
+    expect(
+      alphaTop,
+      lessThan(zetaTop),
+      reason: 'ascending sort should place Alpha above Zeta',
+    );
+
+    // Tapping again reverses to descending.
+    await tester.tap(find.text('Title'));
+    await tester.pumpAndSettle();
+
+    final alphaTop2 = tester.getTopLeft(find.text('Alpha Lesson')).dy;
+    final zetaTop2 = tester.getTopLeft(find.text('Zeta Lesson')).dy;
+    expect(
+      zetaTop2,
+      lessThan(alphaTop2),
+      reason: 'descending sort should place Zeta above Alpha',
+    );
+  });
+
   testWidgets('archiving a teacher lesson removes it from the default view', (tester) async {
     final firestore = FakeFirebaseFirestore();
     final repo = LessonRepository(firestore: firestore);
