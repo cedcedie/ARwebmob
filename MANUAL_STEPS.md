@@ -242,6 +242,24 @@ that only you can approve and run. `npm install` and `node --check
 src/index.js` both pass locally from `functions/`; that's as far as
 automated verification goes for this task.
 
+**⚠️ UNVERIFIED ARCHITECTURE CONCERN — check this before 6.4.**
+`functions/Dockerfile` installs LibreOffice + poppler-utils, but
+`firebase deploy --only functions` builds Gen2 functions via **Google
+Cloud Buildpacks**, which — as far as could be determined without an
+actual deploy — ignores any `Dockerfile` present in the function's source
+directory. If that holds, the deployed function will lack `soffice`/
+`pdftoppm` entirely and every conversion will fail with `ENOENT`, even
+though the deploy itself reports success. Before relying on this pipeline:
+run a real test deploy and a real `.pptx` upload (step 6.5) and check the
+Cloud Functions logs for an `ENOENT` on `soffice`/`pdftoppm`. If that's
+what happens, the fix is to stop deploying this as a Firebase Function and
+instead deploy `functions/` as a **plain Cloud Run service** (`gcloud run
+deploy --source functions/`, which *does* respect a `Dockerfile`) with a
+Storage-Eventarc trigger wired to it, rather than `onObjectFinalized`.
+That's a real restructure (different trigger wiring, different deploy
+command), not a config tweak — flag it for a follow-up session if it's
+needed.
+
 - [ ] **6.1 Confirm/upgrade the Firebase project to the Blaze (pay-as-you-go)
       plan.** Cloud Run-based functions (required here for a custom container
       with LibreOffice + poppler-utils) are not available on the free "Spark"
