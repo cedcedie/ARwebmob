@@ -120,6 +120,51 @@ class _StudentsBody extends HookWidget {
     }
   }
 
+  // Item 4: the single-row archive action used to skip confirmation
+  // entirely and had no try/catch/toast — inconsistent with the bulk path
+  // above, which confirms first and always gives feedback. Mirrors that
+  // same pattern for a single student.
+  Future<void> _archiveOne(BuildContext context, String studentId) async {
+    final confirmed = await showShadDialog<bool>(
+      context: context,
+      builder: (context) => ShadDialog.alert(
+        title: const Text('Archive student?'),
+        description: const Text(
+          'Archived students disappear from the default roster but remain '
+          'referenced elsewhere.',
+        ),
+        actions: [
+          ShadButton.outline(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ShadButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Archive'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await viewModel.onArchiveStudent(studentId);
+      if (!context.mounted) return;
+      ShadToaster.of(context).show(
+        const ShadToast(description: Text('Student archived')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ShadToaster.of(context).show(
+        ShadToast.destructive(
+          description: Text(
+            humanizeSubmitError(error, actionLabel: 'archive this student'),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Column sorting (heuristic 7 — acceleration for a teacher managing a
@@ -275,9 +320,8 @@ class _StudentsBody extends HookWidget {
                               _CompactIconButton(
                                 tooltip: 'Archive',
                                 icon: LucideIcons.archive,
-                                onPressed: () => viewModel.onArchiveStudent(
-                                  student.studentId,
-                                ),
+                                onPressed: () =>
+                                    _archiveOne(context, student.studentId),
                               )
                             else
                               const Padding(

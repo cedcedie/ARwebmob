@@ -363,26 +363,88 @@ void main() {
     },
   );
 
-  testWidgets('archiving a row removes it from the default view', (
-    tester,
-  ) async {
-    final archivedIds = <String>[];
+  testWidgets(
+    'archiving a row confirms first, then calls the archive handler with '
+    'success feedback (item 4)',
+    (tester) async {
+      final archivedIds = <String>[];
 
-    await _pumpStudentsScreen(
-      tester,
-      viewModel: _viewModel(
-        students: [_sampleStudent(id: '123456', name: 'To Archive')],
-        onArchiveStudent: (id) async => archivedIds.add(id),
-      ),
-    );
+      await _pumpStudentsScreen(
+        tester,
+        viewModel: _viewModel(
+          students: [_sampleStudent(id: '123456', name: 'To Archive')],
+          onArchiveStudent: (id) async => archivedIds.add(id),
+        ),
+      );
 
-    expect(find.text('To Archive'), findsOneWidget);
+      expect(find.text('To Archive'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Archive'));
-    await tester.pump();
+      await tester.tap(find.byTooltip('Archive'));
+      await tester.pumpAndSettle();
 
-    expect(archivedIds, ['123456']);
-  });
+      // Confirmation dialog now guards a single-row archive, matching the
+      // bulk-archive path — the archive must not happen until confirmed.
+      expect(find.text('Archive student?'), findsOneWidget);
+      expect(archivedIds, isEmpty);
+
+      await tester.tap(find.text('Archive'));
+      await tester.pumpAndSettle();
+
+      expect(archivedIds, ['123456']);
+      expect(find.text('Student archived'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'archiving a row shows Cancel keeps the student unarchived',
+    (tester) async {
+      final archivedIds = <String>[];
+
+      await _pumpStudentsScreen(
+        tester,
+        viewModel: _viewModel(
+          students: [_sampleStudent(id: '123456', name: 'Keep Me')],
+          onArchiveStudent: (id) async => archivedIds.add(id),
+        ),
+      );
+
+      await tester.tap(find.byTooltip('Archive'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(archivedIds, isEmpty);
+      expect(find.text('Keep Me'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'a throwing single-row archive shows an error toast instead of '
+    'silently doing nothing (item 4)',
+    (tester) async {
+      await _pumpStudentsScreen(
+        tester,
+        viewModel: _viewModel(
+          students: [_sampleStudent(id: '123456', name: 'Fails To Archive')],
+          onArchiveStudent: (_) async {
+            throw Exception('boom');
+          },
+        ),
+      );
+
+      await tester.tap(find.byTooltip('Archive'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Archive'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fails To Archive'), findsOneWidget);
+      expect(find.textContaining('Exception'), findsNothing);
+      expect(
+        find.textContaining("Couldn't archive this student"),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('roster shows lesson-completion count and quiz-attempt count', (
     tester,
