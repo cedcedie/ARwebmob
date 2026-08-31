@@ -48,12 +48,8 @@ class TeacherShell extends StatelessWidget {
                 label: Text('Access Codes'),
               ),
               NavigationRailDestination(
-                icon: Tooltip(
-                  message: 'Coming in Phase 5',
-                  child: Icon(LucideIcons.chartColumn),
-                ),
+                icon: Icon(LucideIcons.chartColumn),
                 label: Text('Item Analysis'),
-                disabled: true,
               ),
             ],
           ),

@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/models/built_in_question.dart';
 import '../../../core/models/question_type.dart';
@@ -22,29 +23,63 @@ class ItemAnalysisScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncViewModel = ref.watch(itemAnalysisViewModelProvider(quizId));
 
+    // No own `AppBar`/top-level `Scaffold` chrome — like every other screen
+    // nested under `TeacherShell`, the shell's persistent side nav is the
+    // app's chrome. A plain `Navigator.maybePop` back arrow (rather than a
+    // `go_router` `context.pop()`) covers this screen still being reached
+    // by push from the quiz table, without requiring a `GoRouter` ancestor
+    // in isolated widget tests.
     return Scaffold(
-      appBar: AppBar(title: Text('Item Analysis — $quizTitle')),
-      body: asyncViewModel.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) =>
-            Center(child: Text('Could not load item analysis: $error')),
-        data: (vm) {
-          if (vm.attemptCount == 0) {
-            return const Center(child: Text('No attempts yet on this quiz.'));
-          }
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Text('${vm.attemptCount} attempts analyzed'),
-              const SizedBox(height: 16),
-              for (var i = 0; i < vm.questions.length; i++)
-                _QuestionAnalysisCard(
-                  question: vm.questions[i],
-                  result: vm.results[i],
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(LucideIcons.arrowLeft),
+                  tooltip: 'Back',
+                  onPressed: () => Navigator.of(context).maybePop(),
                 ),
-            ],
-          );
-        },
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'Item Analysis — $quizTitle',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: asyncViewModel.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, stack) =>
+                    Center(child: Text('Could not load item analysis: $error')),
+                data: (vm) {
+                  if (vm.attemptCount == 0) {
+                    return const Center(
+                      child: Text('No attempts yet on this quiz.'),
+                    );
+                  }
+                  return ListView(
+                    children: [
+                      Text('${vm.attemptCount} attempts analyzed'),
+                      const SizedBox(height: 16),
+                      for (var i = 0; i < vm.questions.length; i++)
+                        _QuestionAnalysisCard(
+                          question: vm.questions[i],
+                          result: vm.results[i],
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
