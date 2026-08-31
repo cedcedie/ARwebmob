@@ -7,6 +7,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/models/quiz_phase.dart';
 import '../../../core/models/teacher_quiz.dart';
 import '../lessons/lessons_providers.dart' show subjectKeyLabel;
+import '../widgets/error_state.dart';
 import '../widgets/subject_accent_cell.dart';
 import 'quiz_form.dart';
 import 'quizzes_providers.dart';
@@ -20,7 +21,10 @@ class QuizzesScreen extends ConsumerWidget {
 
     return asyncVm.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(child: Text('Error loading quizzes: $error')),
+      error: (error, _) => ErrorState(
+        message: humanizeLoadError(error, subjectLabel: 'quizzes'),
+        onRetry: () => ref.invalidate(quizzesViewModelProvider),
+      ),
       data: (vm) => _QuizzesBody(viewModel: vm),
     );
   }
@@ -32,11 +36,16 @@ class _QuizzesBody extends StatelessWidget {
   final QuizzesViewModel viewModel;
 
   Future<void> _openForm(BuildContext context, {TeacherQuiz? initial}) async {
+    final isCreate = initial == null;
     await showShadDialog<void>(
       context: context,
+      // Require the explicit Cancel action (or a successful submit) to
+      // close — an accidental outside click shouldn't silently discard an
+      // in-progress multi-question quiz edit.
+      barrierDismissible: false,
       builder: (dialogContext) {
         return ShadDialog(
-          title: Text(initial == null ? 'Add quiz' : 'Edit quiz'),
+          title: Text(isCreate ? 'Add quiz' : 'Edit quiz'),
           child: SizedBox(
             width: 720,
             // See lessons_screen.dart's `_openForm` for why the transparent
@@ -45,14 +54,23 @@ class _QuizzesBody extends StatelessWidget {
               type: MaterialType.transparency,
               child: QuizForm(
                 initial: initial,
-                submitLabel: initial == null ? 'Create' : 'Save',
+                submitLabel: isCreate ? 'Create' : 'Save',
                 onSubmit: (quiz) async {
-                  if (initial == null) {
+                  if (isCreate) {
                     await viewModel.onCreateQuiz(quiz);
                   } else {
                     await viewModel.onUpdateQuiz(quiz);
                   }
                   if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                  if (context.mounted) {
+                    ShadToaster.of(context).show(
+                      ShadToast(
+                        description: Text(
+                          isCreate ? 'Quiz created' : 'Quiz saved',
+                        ),
+                      ),
+                    );
+                  }
                 },
               ),
             ),

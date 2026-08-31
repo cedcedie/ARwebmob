@@ -106,6 +106,26 @@ void main() {
     expect(docs.docs, hasLength(1));
     expect(docs.docs.single.data()['title'], 'New Teacher Lesson');
     expect(find.text('New Teacher Lesson'), findsOneWidget);
+    // Success feedback after a successful create (Fix 4).
+    expect(find.text('Lesson created'), findsOneWidget);
+  });
+
+  testWidgets('Add Lesson dialog does not dismiss on an outside tap', (
+    tester,
+  ) async {
+    final firestore = FakeFirebaseFirestore();
+    await _pumpLessonsScreen(tester, firestore: firestore);
+
+    await tester.tap(find.text('Add Lesson'));
+    await tester.pumpAndSettle();
+    expect(find.text('Add lesson'), findsOneWidget);
+
+    // Tap far outside the dialog card, on the barrier itself.
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+
+    // An accidental outside click must not lose an in-progress edit.
+    expect(find.text('Add lesson'), findsOneWidget);
   });
 
   testWidgets('AR model index shows a preview placeholder in tests', (tester) async {

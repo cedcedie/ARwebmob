@@ -208,6 +208,24 @@ void main() {
     expect(questions.first['options'], ['Alpha', 'Beta', 'Gamma', 'Delta']);
     expect(questions.first['correctIndex'], 2);
     expect(questions.first['hint'], 'First letter');
+    // Success feedback after a successful create (Fix 4).
+    expect(find.text('Quiz created'), findsOneWidget);
+  });
+
+  testWidgets('Add Quiz dialog does not dismiss on an outside tap', (
+    tester,
+  ) async {
+    final firestore = FakeFirebaseFirestore();
+    await _pumpQuizzesScreen(tester, firestore: firestore);
+
+    await tester.tap(find.text('Add Quiz'));
+    await tester.pumpAndSettle();
+    expect(find.text('Add quiz'), findsOneWidget);
+
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add quiz'), findsOneWidget);
   });
 
   testWidgets('editing a teacher quiz calls updateQuiz', (tester) async {

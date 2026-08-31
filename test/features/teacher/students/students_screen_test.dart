@@ -192,6 +192,28 @@ void main() {
     final doc = await firestore.collection('students').doc('123456').get();
     expect(doc.exists, true);
     expect(formatStudentIdForDisplay('123456'), '12-3456');
+    // Success feedback after a successful create (Fix 4).
+    expect(find.text('Student saved'), findsOneWidget);
+  });
+
+  testWidgets('Add Student dialog does not dismiss on an outside tap', (
+    tester,
+  ) async {
+    await _pumpStudentsScreen(
+      tester,
+      viewModel: _viewModel(students: const []),
+    );
+
+    await tester.tap(find.text('Add Student'));
+    await tester.pumpAndSettle();
+    expect(find.text('Add Student'), findsWidgets);
+    expect(find.byKey(const Key('student_name')), findsOneWidget);
+
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+
+    // An accidental outside click must not lose an in-progress roster entry.
+    expect(find.byKey(const Key('student_name')), findsOneWidget);
   });
 
   testWidgets('archiving a row removes it from the default view', (

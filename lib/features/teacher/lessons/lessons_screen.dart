@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/models/teacher_lesson.dart';
+import '../widgets/error_state.dart';
 import '../widgets/subject_accent_cell.dart';
 import 'lesson_form.dart';
 import 'lessons_providers.dart';
@@ -17,7 +18,10 @@ class LessonsScreen extends ConsumerWidget {
 
     return asyncVm.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(child: Text('Error loading lessons: $error')),
+      error: (error, _) => ErrorState(
+        message: humanizeLoadError(error, subjectLabel: 'lessons'),
+        onRetry: () => ref.invalidate(lessonsViewModelProvider),
+      ),
       data: (vm) => _LessonsBody(viewModel: vm),
     );
   }
@@ -29,11 +33,16 @@ class _LessonsBody extends StatelessWidget {
   final LessonsViewModel viewModel;
 
   Future<void> _openForm(BuildContext context, {TeacherLesson? initial}) async {
+    final isCreate = initial == null;
     await showShadDialog<void>(
       context: context,
+      // An in-progress multi-field lesson edit is expensive to lose to an
+      // accidental outside click — require the explicit Cancel action (or
+      // a successful submit) to close instead.
+      barrierDismissible: false,
       builder: (dialogContext) {
         return ShadDialog(
-          title: Text(initial == null ? 'Add lesson' : 'Edit lesson'),
+          title: Text(isCreate ? 'Add lesson' : 'Edit lesson'),
           child: SizedBox(
             width: 640,
             // `LessonForm` uses Material `FormBuilderTextField`s, which need
@@ -45,15 +54,24 @@ class _LessonsBody extends StatelessWidget {
               child: LessonForm(
                 initial: initial,
                 quizOptions: viewModel.quizOptions,
-                submitLabel: initial == null ? 'Create' : 'Save',
+                submitLabel: isCreate ? 'Create' : 'Save',
                 refetchLesson: viewModel.fetchLessonById,
                 onSubmit: (lesson) async {
-                  if (initial == null) {
+                  if (isCreate) {
                     await viewModel.onCreateLesson(lesson);
                   } else {
                     await viewModel.onUpdateLesson(lesson);
                   }
                   if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                  if (context.mounted) {
+                    ShadToaster.of(context).show(
+                      ShadToast(
+                        description: Text(
+                          isCreate ? 'Lesson created' : 'Lesson saved',
+                        ),
+                      ),
+                    );
+                  }
                 },
               ),
             ),

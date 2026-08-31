@@ -21,7 +21,11 @@ class StudentFormSheet extends StatelessWidget {
   }) {
     return showShadDialog<void>(
       context: context,
-      builder: (context) => StudentFormSheet(onSubmit: onSubmit),
+      // Require the explicit Cancel action (or a successful submit) to
+      // close — an accidental outside click shouldn't silently discard an
+      // in-progress roster entry.
+      barrierDismissible: false,
+      builder: (dialogContext) => StudentFormSheet(onSubmit: onSubmit),
     );
   }
 
@@ -50,7 +54,14 @@ class StudentFormSheet extends StatelessWidget {
               section: values['section'] as String,
             );
             await onSubmit(student);
-            if (context.mounted) Navigator.of(context).pop();
+            if (!context.mounted) return;
+            // Capture the toaster before popping — `context` is this
+            // dialog's own build context, which unmounts the instant
+            // Navigator.pop() runs, so `ShadToaster.of(context)` called
+            // after the pop would hit a dead context.
+            final toaster = ShadToaster.of(context);
+            Navigator.of(context).pop();
+            toaster.show(const ShadToast(description: Text('Student saved')));
           },
           child: const Text('Create'),
         ),
