@@ -2,6 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Side-nav desktop shell for the Teacher Web target (Part 2.2).
+///
+/// Item 8 (a Round 5 critique flag, made explicit rather than built out):
+/// this shell — and every teacher screen nested under it — is intentionally
+/// desktop-only. The `NavigationRail` below is a fixed-width side nav with
+/// no responsive/adaptive breakpoint, no drawer fallback, and no narrow-
+/// viewport layout for the `DataTable2`-based list screens it hosts. That's
+/// a deliberate scope decision, not an oversight: Teacher Web is a
+/// classroom-management tool teachers use from a laptop/desktop browser,
+/// mirroring `teacher_login_screen.dart`'s existing "Desktop-friendly
+/// teacher sign-in gate" comment. Real responsive/breakpoint support was
+/// assessed and explicitly deferred as disproportionate scope for this
+/// round — see `docs/superpowers/NICE_TO_HAVES.md`.
 class TeacherShell extends StatelessWidget {
   const TeacherShell({
     super.key,

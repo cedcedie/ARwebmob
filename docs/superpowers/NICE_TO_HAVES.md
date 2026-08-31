@@ -33,6 +33,19 @@ history to backfill here.)*
   worth a find-and-replace across the repo for "ΓÇö" → "—" if anyone's
   doing a general cleanup pass; not worth a dedicated task on its own.
 
+- **Teacher Web is desktop-only by design; no responsive breakpoints.**
+  Flagged in Round 5's UI/UX overhaul critique (item 8) as something that
+  could otherwise read as an oversight. `TeacherShell`'s fixed-width
+  `NavigationRail` and the `DataTable2`-based list screens it hosts have no
+  adaptive/responsive layout for narrow viewports — intentional, since this
+  surface targets a teacher on a laptop/desktop browser, matching
+  `teacher_login_screen.dart`'s existing "Desktop-friendly teacher sign-in
+  gate" comment. Now documented explicitly via a code comment on
+  `TeacherShell`. Status: open by design — real responsive/breakpoint
+  support was assessed and explicitly deferred as disproportionate scope
+  for Round 5; revisit only if a real requirement for tablet/narrow-viewport
+  teacher access emerges.
+
 ## Phase 3 — AR Lab / Unity embed
 
 - **`markerImage` path scheme mismatch (dead fallback path).**
