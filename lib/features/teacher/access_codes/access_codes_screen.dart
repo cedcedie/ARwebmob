@@ -7,6 +7,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/models/subject_key.dart';
 import '../../../core/theme/app_theme.dart';
+import '../widgets/error_state.dart';
 import '../widgets/subject_accent_cell.dart';
 import 'access_codes_providers.dart';
 
@@ -20,8 +21,10 @@ class AccessCodesScreen extends HookConsumerWidget {
     return Scaffold(
       body: asyncVm.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) =>
-            Center(child: Text('Error loading access codes: $error')),
+        error: (error, _) => ErrorState(
+          message: humanizeLoadError(error, subjectLabel: 'access codes'),
+          onRetry: () => ref.invalidate(accessCodesViewModelProvider),
+        ),
         data: (vm) => _AccessCodesBody(viewModel: vm),
       ),
     );

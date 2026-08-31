@@ -7,6 +7,7 @@ import '../../../core/models/built_in_question.dart';
 import '../../../core/models/question_type.dart';
 import '../../../core/services/item_analysis_calculator.dart';
 import '../../../core/theme/app_theme.dart';
+import '../widgets/error_state.dart';
 import 'item_analysis_providers.dart';
 
 class ItemAnalysisScreen extends ConsumerWidget {
@@ -56,8 +57,15 @@ class ItemAnalysisScreen extends ConsumerWidget {
             Expanded(
               child: asyncViewModel.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) =>
-                    Center(child: Text('Could not load item analysis: $error')),
+                error: (error, stack) => ErrorState(
+                  message: humanizeLoadError(
+                    error,
+                    subjectLabel: 'item analysis',
+                  ),
+                  onRetry: () => ref.invalidate(
+                    itemAnalysisViewModelProvider(quizId),
+                  ),
+                ),
                 data: (vm) {
                   if (vm.attemptCount == 0) {
                     return const Center(

@@ -96,7 +96,10 @@ String _authErrorMessage(Object error) {
   if (error is FirebaseAuthException) {
     return error.message ?? 'Sign-in failed. Please check your email and password.';
   }
-  return error.toString();
+  // Other raw-error-display sweep (item 2): never surface a raw
+  // exception's toString() to a teacher — fall back to a generic,
+  // plain-English sentence instead.
+  return 'Sign-in failed. Check your connection and try again.';
 }
 
 final teacherAuthViewModelProvider =

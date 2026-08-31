@@ -57,6 +57,36 @@ Future<void> _tapIssueButton(WidgetTester tester, String label) async {
 }
 
 void main() {
+  testWidgets(
+    'shows a humanized message (not the raw error) and retries on tap',
+    (tester) async {
+      var attempt = 0;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            accessCodesViewModelProvider.overrideWith((ref) {
+              attempt++;
+              return Stream.error(Exception('boom'));
+            }),
+          ],
+          child: const ShadApp(home: AccessCodesScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Exception'), findsNothing);
+      expect(find.textContaining("Couldn't load access codes"), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+      expect(attempt, 1);
+
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
+      expect(attempt, 2);
+    },
+  );
+
   testWidgets('subject form issues a code and displays it prominently', (
     tester,
   ) async {

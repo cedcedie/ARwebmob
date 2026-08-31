@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:ar_science_explorer/core/models/built_in_question.dart';
 import 'package:ar_science_explorer/core/models/question_type.dart';
 import 'package:ar_science_explorer/core/models/subject_key.dart';
@@ -41,4 +42,36 @@ void main() {
     expect(find.textContaining('What is H2O?'), findsOneWidget);
     expect(find.textContaining('75%'), findsWidgets); // difficulty index rendered as a percent
   });
+
+  testWidgets(
+    'shows a humanized message (not the raw error) and retries on tap',
+    (tester) async {
+      var attempt = 0;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            itemAnalysisViewModelProvider('quiz-1').overrideWith((ref) {
+              attempt++;
+              return Stream.error(Exception('boom'));
+            }),
+          ],
+          child: const ShadApp(
+            home: ItemAnalysisScreen(quizId: 'quiz-1', quizTitle: 'Q1W1 Post-Test'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Exception'), findsNothing);
+      expect(find.textContaining("Couldn't load item analysis"), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+      expect(attempt, 1);
+
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
+      expect(attempt, 2);
+    },
+  );
 }
