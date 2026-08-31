@@ -1,21 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view_gallery.dart';
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 /// Renders a teacher-authored lesson's uploaded content: nothing when no
 /// content has been uploaded, a processing message while the server-side
-/// PPTX-to-slide-image conversion (Task 8) is still running, and a
-/// swipeable slide gallery once slide images are ready — or immediately
-/// for the legacy case of a single already-viewable image URL that never
-/// needed conversion (`status == null`).
+/// PPTX-to-slide-image conversion (Task 8) is still running, an "open
+/// externally" affordance for a raw PDF upload (which sets `contentStatus:
+/// 'ready'` immediately with a single non-image URL — it never goes
+/// through slide conversion, so it can't be decoded as an image), and a
+/// swipeable slide gallery once PPTX-converted slide images are ready — or
+/// immediately for the legacy case of a single already-viewable image URL
+/// that never needed conversion (`status == null`).
 class ContentViewer extends StatefulWidget {
-  const ContentViewer({super.key, required this.imageUrls, required this.status});
+  const ContentViewer({
+    super.key,
+    required this.imageUrls,
+    required this.status,
+    this.launchUrl,
+  });
 
   final List<String>? imageUrls;
   final String? status;
 
+  /// Test-only injection point for opening a PDF externally, so widget
+  /// tests can assert a launch was attempted without a real
+  /// `url_launcher` platform channel handler. Defaults to
+  /// `url_launcher`'s real `launchUrl`.
+  final Future<bool> Function(Uri uri)? launchUrl;
+
   @override
   State<ContentViewer> createState() => _ContentViewerState();
 }
+
+bool _isPdfUrl(String url) => url.toLowerCase().split('?').first.endsWith('.pdf');
 
 class _ContentViewerState extends State<ContentViewer> {
   final _controller = PageController();
@@ -41,6 +58,21 @@ class _ContentViewerState extends State<ContentViewer> {
             SizedBox(width: 12),
             Expanded(child: Text("Processing your teacher's uploaded content...")),
           ],
+        ),
+      );
+    }
+
+    // A raw PDF upload never goes through slide-image conversion, so its
+    // single URL isn't image-decodable — feeding it into NetworkImage
+    // below would render a broken-image icon instead of viewable content.
+    if (urls.length == 1 && _isPdfUrl(urls.first)) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: OutlinedButton.icon(
+          key: const Key('content-viewer-open-pdf'),
+          onPressed: () => (widget.launchUrl ?? _defaultLaunchUrl)(Uri.parse(urls.first)),
+          icon: const Icon(Icons.picture_as_pdf_outlined),
+          label: const Text('View lesson content (PDF)'),
         ),
       );
     }
@@ -73,3 +105,6 @@ class _ContentViewerState extends State<ContentViewer> {
     );
   }
 }
+
+Future<bool> _defaultLaunchUrl(Uri uri) =>
+    url_launcher.launchUrl(uri, mode: url_launcher.LaunchMode.externalApplication);
