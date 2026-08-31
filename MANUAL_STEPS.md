@@ -233,7 +233,44 @@ flutter run -d chrome
 
 ---
 
-## 6. Release / production (not needed for dev yet)
+## 6. Cloud Function — PPTX slide-image pipeline (Phase 5 Task 8)
+
+The code for this is written and committed (`functions/package.json`,
+`functions/src/index.js`, `functions/Dockerfile`, `functions/.gcloudignore`).
+It has **not** been deployed — deployment is a real billing/account action
+that only you can approve and run. `npm install` and `node --check
+src/index.js` both pass locally from `functions/`; that's as far as
+automated verification goes for this task.
+
+- [ ] **6.1 Confirm/upgrade the Firebase project to the Blaze (pay-as-you-go)
+      plan.** Cloud Run-based functions (required here for a custom container
+      with LibreOffice + poppler-utils) are not available on the free "Spark"
+      plan. Firebase Console → Project Settings → Usage and billing → confirm
+      the project is on Blaze (or upgrade it there).
+- [ ] **6.2 Deploy the function.** Once Blaze is confirmed, from the **repo
+      root** (not `functions/`) run:
+      ```powershell
+      firebase deploy --only functions
+      ```
+      Expected: the function deploys successfully and the Firebase CLI
+      reports the Cloud Run service URL/trigger is live
+      (`convertLessonPptx`, region `us-central1`).
+- [ ] **6.3 Manual end-to-end verification.** Open the teacher lesson form,
+      upload a real `.pptx` for a test lesson, wait roughly 30-60 seconds,
+      then check that lesson's Firestore doc (`/lessons/{id}`) shows
+      `contentStatus: 'ready'` and `contentImageUrls` populated with real
+      slide image URLs. Then open that same lesson on the student side and
+      confirm the slide gallery (Task 7) actually renders the real slides,
+      not a placeholder.
+- [ ] **6.4 Re-deploy after future edits.** Any time
+      `functions/src/index.js` (or the Dockerfile) changes, you must manually
+      re-run `firebase deploy --only functions` from the repo root — this
+      does **not** happen automatically as part of any other workflow in
+      this repo.
+
+---
+
+## 7. Release / production (not needed for dev yet)
 
 - [ ] **Release signing keystore** for Play Store / production APK (debug signing
       is wired for now).
@@ -244,7 +281,7 @@ flutter run -d chrome
 
 ---
 
-## 7. Known gaps (not manual steps — awareness for testing)
+## 8. Known gaps (not manual steps — awareness for testing)
 
 These affect how "complete" the app feels; no action required unless you want
 them fixed in a future phase:
@@ -252,14 +289,14 @@ them fixed in a future phase:
 | Gap | Impact |
 |---|---|
 | **No student login screen** on Android | `main.dart` shows placeholder `Text('Sign in')` — `AuthService.signInStudent` exists but no UI wires it. Blocks real device testing until built or dev-signed-in another way. |
-| **Phase 5 not started** | Item analysis, PPT/PDF upload pipeline, `fl_chart`, Firebase Storage — out of scope until Q1/Q2 confirmed. |
+| **Cloud Function not deployed** | `functions/` (PPTX → slide-image conversion, Task 8) is code-complete and committed but **not deployed** — needs Blaze-plan confirmation + `firebase deploy --only functions` (see §6). Until deployed, uploading a `.pptx` will leave the lesson stuck at `contentStatus: 'processing'` forever. |
 | **UI polish pass** | Spec calls for `/impeccable` design pass; screens are functional, not final visual polish. |
 | **BUILD.md** | Unity re-export doc referenced in spec not written yet; steps are in this file §3 instead. |
 | **Unity local patches** | ARM64-only checker + proguard line — reapply after Unity package reinstall or re-export (see `NICE_TO_HAVES.md`). |
 
 ---
 
-## 8. Not needed from you
+## 9. Not needed from you
 
 - Dart/Flutter business logic, repositories, quiz rules, access-code validation,
   curriculum data port, Unity C# bridge edits (once pointed at the right scripts),
@@ -277,4 +314,4 @@ them fixed in a future phase:
 | **2** Student core | Done | Student login UI gap blocks easy device login |
 | **3** AR Lab | Build OK | Device AR scan test (§4) |
 | **4** Teacher Web | Done | Chrome smoke + Firestore rules + cross-redeem (§5) |
-| **5** Analytics/PPT | Not started | Confirm Q1/Q2 first |
+| **5** Analytics/PPT | Cloud Function code done, not deployed | Blaze plan + `firebase deploy` + verification (§6) |
