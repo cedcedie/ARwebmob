@@ -1,0 +1,8 @@
+{
+  "name": "arwebmob-scripts",
+  "private": true,
+  "description": "One-off admin scripts (account creation, etc.) -- not part of the app itself, not deployed anywhere.",
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  }
+}

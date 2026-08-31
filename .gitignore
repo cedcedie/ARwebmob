@@ -25,3 +25,9 @@ android/unityLibrary/
 # runs its own flutterfire configure rather than sharing these in git
 android/app/google-services.json
 firebase.json
+
+# Service account keys (real credentials -- never commit these, see
+# scripts/create-test-accounts.js's header for where they should live)
+*serviceAccount*.json
+*service-account*.json
+scripts/node_modules/
