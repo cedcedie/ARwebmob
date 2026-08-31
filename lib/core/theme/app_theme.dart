@@ -32,6 +32,14 @@ abstract final class AppColors {
   static const destructive = Color(0xFFD6452F);
   static const destructiveForeground = Color(0xFFFFFFFF);
 
+  /// Positive-affect confirmation color (e.g. "code issued", "saved").
+  /// A teal-leaning green, deliberately shifted away from [biology]'s
+  /// leaf-green hue (~152°) toward teal (~174°) so the two never read as
+  /// the same color — one is a subject accent, the other is a status
+  /// signal, and they must never be mistaken for each other.
+  static const success = Color(0xFF0D8A72);
+  static const successForeground = Color(0xFFFFFFFF);
+
   // Named subject-accent colors — chosen to be distinguishable and
   // intentional rather than default Material blue/green/red.
   /// Chemistry — amber/flame-toned (bunsen-burner warmth).

@@ -6,6 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/models/subject_key.dart';
+import '../../../core/theme/app_theme.dart';
 import '../widgets/subject_accent_cell.dart';
 import 'access_codes_providers.dart';
 
@@ -167,20 +168,33 @@ class _IssuedCodeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Genuine success-confirmation moment — the one point in this screen a
+    // teacher most needs unambiguous positive affect — so it uses the
+    // dedicated `AppColors.success` role rather than a neutral container
+    // color, with a check icon reinforcing the "this worked" read.
     return Card(
-      color: Theme.of(context).colorScheme.primaryContainer,
+      color: AppColors.success.withValues(alpha: 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: const BorderRadius.all(Radius.circular(8)),
+        side: BorderSide(color: AppColors.success.withValues(alpha: 0.4)),
+      ),
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
+            const Icon(LucideIcons.circleCheck, color: AppColors.success),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Code issued — give this to your student',
-                    style: Theme.of(context).textTheme.titleSmall,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   SelectableText(
@@ -188,6 +202,7 @@ class _IssuedCodeBanner extends StatelessWidget {
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 4,
+                      color: AppColors.ink,
                     ),
                   ),
                 ],
