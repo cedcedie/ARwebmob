@@ -21,6 +21,19 @@ class LessonRepository {
         );
   }
 
+  /// One-shot fetch of a single teacher-authored lesson doc by id, or
+  /// `null` if no such doc exists — used by `LessonForm` to check whether
+  /// a server-side PPTX conversion has already completed (`contentStatus:
+  /// 'ready'` with real slide URLs) before the form's own submit would
+  /// otherwise overwrite it with stale local `'processing'` state (final
+  /// whole-branch review Fix 5).
+  Future<TeacherLesson?> fetchLessonById(String lessonId) async {
+    final doc = await _firestore.collection('lessons').doc(lessonId).get();
+    final data = doc.data();
+    if (data == null) return null;
+    return TeacherLesson.fromJson(data);
+  }
+
   /// One-shot fetch of teacher-authored lessons, for callers that already
   /// have their own live-update trigger (e.g. `watchStudent`) and just need
   /// the current teacher-lesson snapshot to merge in — avoids opening (and

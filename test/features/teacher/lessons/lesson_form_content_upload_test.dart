@@ -27,7 +27,7 @@ void main() {
             // the real upload call is abstracted behind a function the
             // widget accepts, so this test can simulate "a file was picked
             // and uploaded" without touching real file-picker/Storage APIs.
-            uploadContentOverride: (fileName, bytes) async => (
+            uploadContentOverride: (lessonId, fileName, bytes) async => (
               url: 'https://fake-storage.example/slides.pptx',
               isConversionNeeded: true,
             ),
@@ -45,5 +45,104 @@ void main() {
     expect(submitted, isNotNull);
     expect(submitted!.contentStatus, 'processing');
     expect(submitted!.contentImageUrls, ['https://fake-storage.example/slides.pptx']);
+  });
+
+  testWidgets('uses the SAME lesson id for the Storage upload and the submitted new lesson',
+      (tester) async {
+    // Regression test for the final whole-branch review's Fix 1: for a
+    // brand-new lesson (widget.initial == null), _pickAndUploadContent and
+    // _handleSubmit used to independently derive
+    // `'teacher-${DateTime.now().millisecondsSinceEpoch}'` at different
+    // wall-clock moments, so the uploaded file landed under one lesson id
+    // in Storage while the Firestore doc was created under a different
+    // one — the Cloud Function's later Firestore update then targeted a
+    // document that didn't exist. The lesson id must now be derived once
+    // and reused for both.
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    TeacherLesson? submitted;
+    String? uploadedForLessonId;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LessonForm(
+            quizOptions: const [],
+            onSubmit: (lesson) async => submitted = lesson,
+            uploadContentOverride: (lessonId, fileName, bytes) async {
+              uploadedForLessonId = lessonId;
+              return (
+                url: 'https://fake-storage.example/slides.pptx',
+                isConversionNeeded: true,
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byKey(const Key('lesson-title')), 'Volcanoes');
+    await tester.tap(find.byKey(const Key('lesson-upload-content')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('lesson-submit')));
+    await tester.pumpAndSettle();
+
+    expect(uploadedForLessonId, isNotNull);
+    expect(submitted, isNotNull);
+    expect(submitted!.id, uploadedForLessonId);
+  });
+
+  testWidgets(
+      'submits the server-converted result instead of stale local "processing" state '
+      'when the Cloud Function finishes converting before Save is clicked', (tester) async {
+    // Regression test for the final whole-branch review's Fix 5: the
+    // Cloud Function can flip a lesson doc's contentStatus to 'ready' with
+    // real slide URLs in the time between upload and Save being clicked.
+    // Since LessonRepository.updateLesson does a full `.set()` overwrite,
+    // submitting the form's stale local 'processing' snapshot would
+    // permanently clobber that real result. The form must re-fetch the
+    // current doc via `refetchLesson` right before submit and prefer it.
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    TeacherLesson? submitted;
+    final existing = TeacherLesson(
+      id: 'teacher-123',
+      title: 'Volcanoes',
+      subject: SubjectKey.chemistry,
+      createdAt: '2026-08-01T00:00:00.000Z',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LessonForm(
+            initial: existing,
+            quizOptions: const [],
+            onSubmit: (lesson) async => submitted = lesson,
+            uploadContentOverride: (lessonId, fileName, bytes) async => (
+              url: 'https://fake-storage.example/raw.pptx',
+              isConversionNeeded: true,
+            ),
+            refetchLesson: (lessonId) async => existing.copyWith(
+              contentStatus: 'ready',
+              contentImageUrls: const ['https://fake-storage.example/slide-1.png'],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('lesson-upload-content')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('lesson-submit')));
+    await tester.pumpAndSettle();
+
+    expect(submitted, isNotNull);
+    expect(submitted!.contentStatus, 'ready');
+    expect(submitted!.contentImageUrls, ['https://fake-storage.example/slide-1.png']);
   });
 }

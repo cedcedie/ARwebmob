@@ -28,6 +28,7 @@ class LessonsViewModel {
     required this.onCreateLesson,
     required this.onUpdateLesson,
     required this.onArchiveLesson,
+    required this.fetchLessonById,
   });
 
   final List<DisplayLesson> rows;
@@ -35,6 +36,12 @@ class LessonsViewModel {
   final Future<void> Function(TeacherLesson lesson) onCreateLesson;
   final Future<void> Function(TeacherLesson lesson) onUpdateLesson;
   final Future<void> Function(String lessonId) onArchiveLesson;
+
+  /// Re-fetches a single lesson doc's current Firestore state — passed to
+  /// `LessonForm` so it can check for an already-completed server-side
+  /// content conversion right before submit, instead of blindly
+  /// overwriting it with stale local upload state (Fix 5).
+  final Future<TeacherLesson?> Function(String lessonId) fetchLessonById;
 }
 
 final lessonsViewModelProvider = StreamProvider.autoDispose<LessonsViewModel>((ref) {
@@ -71,6 +78,7 @@ Stream<LessonsViewModel> buildLessonsViewModel({
       onCreateLesson: lessonRepository.createLesson,
       onUpdateLesson: lessonRepository.updateLesson,
       onArchiveLesson: lessonRepository.archiveLesson,
+      fetchLessonById: lessonRepository.fetchLessonById,
     );
   });
 }

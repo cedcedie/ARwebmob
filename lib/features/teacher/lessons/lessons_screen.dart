@@ -43,6 +43,7 @@ class _LessonsBody extends StatelessWidget {
               initial: initial,
               quizOptions: viewModel.quizOptions,
               submitLabel: initial == null ? 'Create' : 'Save',
+              refetchLesson: viewModel.fetchLessonById,
               onSubmit: (lesson) async {
                 if (initial == null) {
                   await viewModel.onCreateLesson(lesson);
