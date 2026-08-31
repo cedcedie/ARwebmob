@@ -244,4 +244,49 @@ final ThemeData appMaterialTheme = ThemeData(
     ),
     unselectedLabelTextStyle: TextStyle(color: AppColors.inkMuted),
   ),
+  // `SegmentedButton` (access_codes_screen.dart's subject/lesson/retake tab
+  // switcher) has no direct shadcn_ui equivalent, same situation as
+  // `Chip`/`FilterChip` above — left untouched it renders in stock
+  // Material-3 pill/stadium chrome, which reads as a visually distinct
+  // "third" button idiom next to `ShadButton`'s rounded-rect brand shape.
+  // Themed to match: `_kBrandRadius` rounded corners (not a stadium) so it
+  // reads as the same button family as `ShadButton`/`inputDecorationTheme`,
+  // `AppColors.border` outline like every other bordered surface in this
+  // theme, and the same physics-accent selected state `navigationRailTheme`
+  // above uses for "this is the current selection" (this screen's tabs are
+  // the same kind of selection signal as the nav rail's active destination,
+  // not a subject-scoped choice).
+  segmentedButtonTheme: SegmentedButtonThemeData(
+    style: ButtonStyle(
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: _kBrandRadius),
+      ),
+      side: const WidgetStatePropertyAll(BorderSide(color: AppColors.border)),
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return AppColors.physics.withValues(alpha: 0.16);
+        }
+        return AppColors.surface;
+      }),
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return AppColors.physics;
+        }
+        return AppColors.inkMuted;
+      }),
+      iconColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return AppColors.physics;
+        }
+        return AppColors.inkMuted;
+      }),
+      textStyle: WidgetStateProperty.resolveWith((states) {
+        return TextStyle(
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w600
+              : FontWeight.w400,
+        );
+      }),
+    ),
+  ),
 );
