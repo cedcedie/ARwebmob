@@ -248,7 +248,7 @@ class _SubjectCodeForm extends HookWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DropdownButtonFormField<SubjectKey>(
-          value: subject.value,
+          initialValue: subject.value,
           decoration: const InputDecoration(labelText: 'Subject'),
           items: SubjectKey.values
               .map(
@@ -348,7 +348,7 @@ class _LessonCodeForm extends HookWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DropdownButtonFormField<String>(
-          value: studentId.value,
+          initialValue: studentId.value,
           decoration: const InputDecoration(labelText: 'Student'),
           items: viewModel.students
               .where((s) => !s.isArchived)
@@ -363,7 +363,7 @@ class _LessonCodeForm extends HookWidget {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: lessonId.value,
+          initialValue: lessonId.value,
           decoration: const InputDecoration(labelText: 'Lesson'),
           items: viewModel.lessons
               .map(
@@ -466,7 +466,7 @@ class _RetakeCodeForm extends HookWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DropdownButtonFormField<String>(
-          value: studentId.value,
+          initialValue: studentId.value,
           decoration: const InputDecoration(labelText: 'Student'),
           items: viewModel.students
               .where((s) => !s.isArchived)
@@ -481,7 +481,7 @@ class _RetakeCodeForm extends HookWidget {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: lessonId.value,
+          initialValue: lessonId.value,
           decoration: const InputDecoration(labelText: 'Lesson'),
           items: viewModel.lessons
               .map(

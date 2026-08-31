@@ -370,7 +370,7 @@ class _QuestionEditorState extends State<_QuestionEditor> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<QuestionType>(
-          value: draft.type,
+          initialValue: draft.type,
           decoration: const InputDecoration(labelText: 'Type'),
           items: const [
             DropdownMenuItem(
