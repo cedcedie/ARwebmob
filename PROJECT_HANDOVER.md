@@ -342,10 +342,14 @@ Async, no meeting needed.
    - The Drive link to `app-debug.apk`, with a one-line install note:
      "download, open the file on your Android phone, allow install from
      this source when prompted."
-   - The Teacher Web URL from 3.4, if you deployed it, plus the teacher
-     login you created in 1.5.
+   - **The Teacher Web URL from 3.4** — this is how they actually use
+     Teacher Web day to day: **just a link, opened in any browser, nothing
+     to install.** Once it's deployed it's a real website like any other;
+     Flutter/Git/terminal never enter the picture for normal use. Send
+     this plus the teacher login you created in 1.5.
    - Confirmation their GitHub access is set up, if you did step 1.
-3. **Optional — running Teacher Web locally, not required for the handoff.**
+3. **Optional, separate thing — running the raw source code themselves,
+   not required for the handoff, and not how they'd normally use the app.**
    The deployed Hosting URL (3.4) is the actual deliverable and needs
    nothing installed to use — it's just a website. This step is only for
    if they (or their own dev, later) want to run the code directly instead.
