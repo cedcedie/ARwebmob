@@ -1,20 +1,23 @@
 # Project Handover — Your Execution Plan
 
-This is **your** plan, not the client's — you're the one running every
-command and clicking through every Firebase screen (on your own machine
-solo, and later on the client's machine via AnyDesk). The client only ever
-receives two things at the end: the APK, and access to the GitHub repo.
-Nothing here assumes the client installs or runs anything themselves.
+This is **your** plan, not the client's. The client's actual part is down
+to 3 quick clicks (Phase 1, ~5 min) — short enough they may be able to
+follow a written note themselves; AnyDesk is only there as a fallback if
+they'd rather you drive it live. Everything else — every command, every
+Firebase step, the rules, the accounts, the build, the deploy — is you
+(or me, running it directly in your terminal, once you tell me their part
+is done). The client only ever receives two things at the end: the APK,
+and access to the GitHub repo. Nothing here assumes the client installs
+or runs anything themselves, aside from that optional 5-minute part.
 
 Testing isn't covered here — the client tests the app themselves once
 they have it. The AR/mobile side is already verified working from your
 last Unity export, so that's not re-explained either; this is just: get a
 correctly-configured build into their hands.
 
-Organized as a timeline in four phases, so you know exactly what to do
-before the meeting, during the meeting, after the meeting, and at final
-handoff — with rough time budgets and copy-pasteable commands for
-everything.
+Organized as a timeline: solo prep → the client's short part → solo
+follow-up (most of the real work) → final handoff — with rough time
+budgets and copy-pasteable commands for everything.
 
 ---
 
@@ -113,132 +116,60 @@ error to tell you.
 - The client's Gmail/Google account they'll use for Firebase (ask them to
   have it ready and logged in, or be ready to log in during the call).
 - Know your own Google account email (the one you'll ask them to grant
-  access to — see Phase 1.4).
+  access to — see Phase 1.2).
 
 ---
 
-## PHASE 1 — Live session via AnyDesk, on the client's computer
+## PHASE 1 — The client's part (short — 3 clicks, ~5 minutes total)
 
-This is the only part that needs the client present. Budget: ~20-25 min.
-Everything here is clicking in a browser (Firebase Console) — no terminal,
-no installs on their machine.
+This is genuinely everything the client ever has to do themselves. It's
+short enough now that they may be able to follow a written note on their
+own — AnyDesk is only needed if they'd rather you drive it live. Either
+way, once these 3 things are done, everything else in this whole document
+happens solo, by you (or by me, directly, once you tell me it's done —
+see the note at the end of Phase 1.3).
 
-### 1.1 Client logs into Firebase Console
+### 1.1 Create the project
 
-In their browser (already logged into their own Google account, or have
-them log in): go to <https://console.firebase.google.com>.
-
-### 1.2 Create the project
-
-1. Click **Add project**.
+In their browser, logged into their own Google account:
+1. Go to <https://console.firebase.google.com> → click **Add project**.
 2. Name it (e.g. `ar-science-explorer-<schoolname>`) → Continue.
 3. Google Analytics prompt → toggle off (not used by this app) → Create
    project. Takes ~30 seconds to provision.
 4. Stay on the free **Spark** plan for now — nothing needed yet requires
-   billing (that only matters if PPTX support gets chosen in 1.3 below).
+   billing (only matters if PPTX support gets chosen — see Phase 2.5).
 
-### 1.3 Decide: PDF-only, or PPTX support too?
-
-The teacher lesson-upload screen offers both PDF and PPTX as file choices.
-PDF works today, for free, no extra setup. PPTX needs a Cloud Function
-that requires the paid Blaze plan to deploy — realistically **$0 real
-cost** at this scale (free tier comfortably covers a handful of students),
-but a billing card has to be attached regardless of usage.
-
-- **Recommended: PDF-only for now.** Tell the client to have teachers
-  upload lesson content as PDF, not PPTX, until this is revisited. Nothing
-  further to do here.
-- **If they want PPTX now**: confirms they're okay attaching a card, then
-  do Phase 2.5 (below, optional) at some point after this meeting — no
-  need to hold up the rest of the meeting for it.
-
-### 1.4 Grant yourself access — the step that lets you finish everything else solo
+### 1.2 Grant your email Editor access — the step that unlocks everything else
 
 Project Settings (gear icon, top left) → **Users and permissions** → **Add
 member** → enter **your own** Google account email → role **Editor** (or
 Owner if they're comfortable) → **Add member**.
 
-This is the important one — once you have this, you can do every remaining
-technical step from your own machine later, without needing AnyDesk again.
+This is the important one — once this is done, your own Firebase CLI login
+gains permission on their project automatically, and every remaining
+technical step (rules, accounts, config, build, deploy) can be run
+directly, solo, without ever needing to be on their computer again.
 
-### 1.5 Create accounts (Authentication tab)
+### 1.3 Enable Email/Password sign-in
 
-Authentication (left sidebar) → **Get started** (first time) → Sign-in
-method tab → enable **Email/Password** if not already on → Users tab →
-**Add user** for each:
+Left sidebar → **Authentication** → **Get started** (first time) →
+**Sign-in method** tab → click **Email/Password** → toggle **Enable** →
+**Save**.
 
-- **One teacher account** — any real email that does **not** match the
-  student pattern below, e.g. `teacher@theirschool.edu` + a password you
-  both note down.
-- **A few student test accounts** — emails matching exactly
-  `123456@arscience.school` (6 digits + `@arscience.school`) — the app
-  reads the digits before `@` as the student's ID. Create 2-3 for testing.
+This has to happen before any accounts can exist — it can't be done via
+script/CLI, console-only, one-time.
 
-### 1.6 Set Firestore rules
-
-Firestore Database (left sidebar) → if not created yet, **Create
-database** → production mode → pick a region close to them → Enable. Then
-**Rules** tab → replace the default contents with this (copy-paste the
-whole block):
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    function isSignedIn() {
-      return request.auth != null;
-    }
-    function isStudent() {
-      return isSignedIn() &&
-        request.auth.token.email.matches('^[0-9]+@arscience[.]school$');
-    }
-    function isTeacher() {
-      return isSignedIn() && !isStudent();
-    }
-
-    match /students/{studentId} {
-      allow read, write: if isTeacher() ||
-        (isStudent() &&
-         request.auth.token.email == studentId + '@arscience.school');
-    }
-    match /lessons/{lessonId} {
-      allow read: if isSignedIn();
-      allow create, update: if isTeacher();
-    }
-    match /quizzes/{quizId} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isTeacher();
-    }
-    match /unlockCodes/{code} {
-      allow read: if isSignedIn();
-      allow create: if isTeacher();
-    }
-    match /quizUnlockCodes/{docId} {
-      allow read: if isSignedIn();
-      allow create: if isTeacher();
-    }
-    match /quizAttempts/{attemptId} {
-      allow read: if isSignedIn();
-      allow create: if isStudent();
-    }
-  }
-}
-```
-
-Click **Publish**. This is a fresh ruleset, not battle-tested against every
-edge case the way the app's own Dart code is — after Phase 3's APK is
-installed, if anything shows `permission-denied` in a browser console or
-fails silently, this is the first place to check, and it's safe to loosen
-a specific `match` block if something legitimate is being blocked.
-
-**That's the whole meeting — nothing else needs the client present.**
+**That's it — the client's part is done.** Once 1.1-1.3 are confirmed,
+tell me (or just proceed yourself using Phase 3 below) — I can run
+everything from here directly, since I'm already working in your
+authenticated terminal session.
 
 ---
 
 ## PHASE 2.5 — Optional, only if PPTX support was chosen in 1.3
 
 Skip this whole section if you're going PDF-only. Do this solo, from your
-own machine, once you have Editor access (Phase 1.4) — no AnyDesk needed.
+own machine, once you have Editor access (Phase 1.2) — no AnyDesk needed.
 
 1. **Attach billing.** Firebase Console (client's project) → Project
    Settings → Usage and billing → upgrade to **Blaze**.
@@ -281,7 +212,7 @@ running in the background.
 cd C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob
 dart pub global run flutterfire_cli:flutterfire configure
 ```
-Pick the client's project (you have access from Phase 1.4) → select
+Pick the client's project (you have access from Phase 1.2) → select
 platforms **Web** and **Android**. This regenerates
 `lib/firebase_options.dart` and `android/app/google-services.json`.
 
@@ -293,7 +224,54 @@ git commit -m "chore: point Firebase config at client project"
 git push
 ```
 
-### 3.3 Build the APK
+### 3.3 Create the Firestore database, then deploy the rules
+
+The Firestore database itself doesn't exist yet on a brand-new project —
+this creates it, then pushes the tracked `firestore.rules` file (already
+in the repo, verified against the app's real 6 collections):
+
+```powershell
+firebase firestore:databases:create "(default)" --location=nam5 --project=<client-project-id>
+firebase deploy --only firestore:rules --project=<client-project-id>
+```
+`nam5` is a US multi-region — swap for a region closer to the client if
+you know they're outside the US (run `firebase firestore:locations` to
+see the full list). `<client-project-id>` is the project ID from Phase
+1.1 (shown on the Firebase Console overview page — usually matches the
+name you typed, sometimes with random characters appended if that exact
+name was taken).
+
+**If the create command errors** (rare, but possible if this CLI version's
+syntax has shifted since verified): fall back to the console instead —
+Firestore Database (left sidebar) → **Create database** → production mode
+→ pick a region → Enable. Then re-run just the `deploy --only
+firestore:rules` line above.
+
+This is a fresh ruleset, not battle-tested against every edge case the way
+the app's own Dart code is — after 3.5's APK is installed, if anything
+shows `permission-denied` in a browser console or fails silently, this is
+the first place to check; safe to loosen a specific `match` block in
+`firestore.rules` and redeploy if something legitimate gets blocked.
+
+### 3.4 Create the teacher + student test accounts
+
+```powershell
+cd scripts
+npm install
+node create-test-accounts.js "<path-to-service-account-key.json>"
+```
+Needs one more one-time download first: Firebase Console (client's
+project) → Project Settings → **Service accounts** tab → **Generate new
+private key** → saves a `.json` file. Put it somewhere outside the repo
+(e.g. `C:\Users\cedri\service-account-key.json`) — it's a real credential,
+never commit it (already gitignored as a safety net regardless).
+
+Edit the `ACCOUNTS` list at the top of `scripts/create-test-accounts.js`
+first if you want different emails/passwords than the placeholder
+defaults — student emails must match exactly `<6 digits>@arscience.school`.
+The script is safe to re-run; it skips any account that already exists.
+
+### 3.5 Build the APK
 
 ```powershell
 flutter build apk --debug
@@ -301,11 +279,16 @@ flutter build apk --debug
 Expect the full ~24-minute IL2CPP compile (fresh build environment, no
 cache). Output: `build/app/outputs/flutter-apk/app-debug.apk` (~806 MB).
 
-### 3.4 (Optional) Deploy Teacher Web — full step-by-step
+### 3.6 (Optional) Deploy Teacher Web — full step-by-step
 
 This makes Teacher Web a real, permanent, internet-reachable website (see
 the explanation above this Phase for why that's different from
 `flutter run -d chrome`). Do this after 3.1/3.2, from the repo root.
+
+**No "enable" step needed first** — unlike Authentication (1.3) and
+Firestore (3.3), Hosting doesn't need turning on in the console ahead of
+time; the first `firebase deploy --only hosting` provisions it
+automatically.
 
 1. **Find (or create) `firebase.json`.** It should already exist at the
    repo root (`C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob\firebase.json`)
@@ -348,16 +331,16 @@ the explanation above this Phase for why that's different from
    **That `Hosting URL` line is the real, live link** — copy it exactly.
 5. **Verify it actually works before handing it off** — paste that URL
    into a browser yourself right now. You should see the Teacher Web
-   login screen. Sign in with the teacher account you created in 1.5 to
+   login screen. Sign in with the teacher account you created in 3.4 to
    confirm it fully loads and connects to the client's Firestore, not
    just that the page renders.
 6. **Re-run steps 3-4** any time you want a future code change to go
    live — nothing auto-deploys on a git push, this is always a manual
    two-command step.
 
-### 3.5 Checkpoint — upload the APK to Drive
+### 3.7 Checkpoint — upload the APK to Drive
 
-Once 3.3 finishes, upload `app-debug.apk` to Google Drive and grab a
+Once 3.5 finishes, upload `app-debug.apk` to Google Drive and grab a
 shareable link — that's what goes to the client in Phase 4. (If you're
 picking this back up in a later session with me, this is the natural point
 to report back: "APK built, here's the Drive link" — I can't build or
@@ -383,7 +366,7 @@ Async, no meeting needed.
      Teacher Web day to day: **just a link, opened in any browser, nothing
      to install.** Once it's deployed it's a real website like any other;
      Flutter/Git/terminal never enter the picture for normal use. Send
-     this plus the teacher login you created in 1.5.
+     this plus the teacher login you created in 3.4.
    - Confirmation their GitHub access is set up, if you did step 1.
 3. **Optional, separate thing — running the raw source code themselves,
    not required for the handoff, and not how they'd normally use the app.**
