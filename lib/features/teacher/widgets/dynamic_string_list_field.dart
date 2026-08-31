@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 /// Shared add/remove string-row editor used by lesson steps and quiz options.
 class DynamicStringListField extends StatefulWidget {
@@ -92,15 +92,17 @@ class _DynamicStringListFieldState extends State<DynamicStringListField> {
                   onChanged: (_) => _notifyChanged(),
                 ),
               ),
-              IconButton(
-                tooltip: 'Remove',
-                onPressed: _controllers.length <= widget.minItems
-                    ? null
-                    : () {
-                        final next = [...widget.values]..removeAt(i);
-                        widget.onChanged(next.isEmpty && widget.minItems == 0 ? [''] : next);
-                      },
-                icon: const Icon(LucideIcons.trash2),
+              Tooltip(
+                message: 'Remove',
+                child: ShadIconButton.ghost(
+                  onPressed: _controllers.length <= widget.minItems
+                      ? null
+                      : () {
+                          final next = [...widget.values]..removeAt(i);
+                          widget.onChanged(next.isEmpty && widget.minItems == 0 ? [''] : next);
+                        },
+                  icon: const Icon(LucideIcons.trash2),
+                ),
               ),
             ],
           ),
@@ -108,10 +110,10 @@ class _DynamicStringListFieldState extends State<DynamicStringListField> {
         ],
         Align(
           alignment: Alignment.centerLeft,
-          child: TextButton.icon(
+          child: ShadButton.ghost(
             onPressed: () => widget.onChanged([...widget.values, '']),
-            icon: const Icon(LucideIcons.plus),
-            label: Text(widget.addLabel),
+            leading: const Icon(LucideIcons.plus, size: 16),
+            child: Text(widget.addLabel),
           ),
         ),
       ],
