@@ -1,14 +1,17 @@
 # Project Handover — AR Science Explorer
 
-This is the step-by-step walkthrough for handing this project from **you
-(the developer, `cedcedie`)** to **the client**. Follow it in order — each
-step says who does it and gives the exact terminal commands where there are
-any, so anyone comfortable with a terminal can run their own steps without
-needing you in the room.
+This is the **complete, standalone handover document** — written assuming
+the client (or their own technical person) is on a brand-new machine with
+nothing installed, and shouldn't need anything else to get this project
+running end to end. Everything they need — installs, commands, rules
+tables, decisions — is inlined directly in this file. Follow it in order;
+each step says who does it.
 
-For the flat checkbox reference of every manual item (Firebase config, Unity
-export, known gaps), see `MANUAL_STEPS.md`. This document is the narrative
-sequence that ties those together specifically for the handover moment.
+`MANUAL_STEPS.md` at the repo root also exists, but it's the developer's
+own internal working notes/status checklist — not something the client
+needs to read. Some content is intentionally duplicated between the two
+for that reason (this doc stays usable on its own even if `MANUAL_STEPS.md`
+is out of date or ignored).
 
 ---
 
@@ -29,7 +32,7 @@ sequence that ties those together specifically for the handover moment.
   (design + correctness reviewed independently each round), final combined
   score 33/40 — solidly in the "Good" band. Every P0/P1 finding across all
   7 rounds was closed; remaining open items are disclosed, minor polish.
-- **Known, disclosed limitations** (not oversights — see §5 below):
+- **Known, disclosed limitations** (not oversights — see §10 below):
   physical AR marker-scanning can't be automated in this dev environment
   (no device available), and the PPTX-upload Cloud Function is written but
   intentionally undeployed pending a client decision.
@@ -190,11 +193,35 @@ dart pub global run flutterfire_cli:flutterfire configure
 
 ## 5. [DEV or CLIENT] Firestore rules and auth accounts
 
-Follow `MANUAL_STEPS.md` §2.2 and §2.3 exactly — create at least one teacher
-account and a few student test accounts in the client's new project's
-Firebase Authentication, and set the Firestore security rules from the table
-there. This has to happen on the **client's** project specifically (rules
-and auth users don't carry over from your dev project).
+This has to happen on the **client's** project specifically — rules and
+auth users don't carry over from the dev's own project.
+
+### 5.1 Auth accounts (Firebase Console → Authentication → Add user)
+
+- **At least one teacher account** — any email that is **not** the student
+  pattern below (e.g. `teacher@yourschool.edu` + a password). Used to sign
+  in to Teacher Web.
+- **Student test accounts** — emails matching `123456@arscience.school`
+  (exactly 6 digits + `@arscience.school`) — the app derives the student's
+  ID from the digits before `@`.
+
+### 5.2 Firestore security rules
+
+There's no `firestore.rules` file in git — it's set directly in the
+console (Firestore Database → Rules). Students need read/write on their
+own record; teachers (any signed-in non-student email) need write on the
+content collections:
+
+| Collection | Teacher needs |
+|---|---|
+| `/lessons/{lessonId}` | create, update |
+| `/quizzes/{quizId}` | create, update, delete |
+| `/students/{studentId}` | create, update (archive) |
+| `/unlockCodes/{code}` | create (doc id = code string) |
+| `/quizUnlockCodes/{docId}` | create |
+
+If Teacher Web shows `permission-denied` in the browser console after
+signing in, this table is the first thing to check.
 
 ---
 
@@ -213,12 +240,58 @@ attaching a billing card to the Firebase project.
   Teachers should be told/trained to upload lesson content as PDF, not
   PPTX, until/unless B is chosen later. No cost, no setup.
 - **B. Deploy PPTX support** — client confirms they're okay attaching a
-  billing card (expecting $0 real cost at this scale), then the developer
-  follows `MANUAL_STEPS.md` §6 in full, including the one flagged
-  architecture risk that needs verifying with a real test upload before
-  trusting the pipeline.
+  billing card (expecting $0 real cost at this scale), then follow §6.1
+  below.
 
 Whichever is chosen, note it here for the record: ______________________
+
+### 6.1 [DEV] If B was chosen — deploying the Cloud Function
+
+**⚠️ Unverified architecture risk — read this first.** The function's
+`Dockerfile` installs LibreOffice + poppler-utils, but a plain
+`firebase deploy --only functions` builds Gen2 functions via Google Cloud
+Buildpacks, which — as far as could be determined without an actual
+deploy — ignores any `Dockerfile` in the function's source. If that holds,
+the deployed function will lack `soffice`/`pdftoppm` and every conversion
+will fail with `ENOENT`, even though the deploy itself reports success.
+**Do step 4 below (a real test upload) before trusting this pipeline.** If
+it fails with that error, the fix is restructuring `functions/` as a plain
+Cloud Run service (`gcloud run deploy --source functions/`, which *does*
+respect a Dockerfile) instead — a real architecture change, not a config
+tweak; treat that as a new task if it comes up.
+
+1. **Upgrade to Blaze.** Firebase Console (client's project) → Project
+   Settings → Usage and billing → confirm/upgrade to the Blaze
+   (pay-as-you-go) plan. Required because this function needs a custom
+   container build — not available on the free Spark plan.
+2. **Grant the Cloud Run service account signing permission.** The
+   function calls `getSignedUrl()` on each uploaded slide image, which
+   fails under Gen2's default credentials unless granted explicitly: IAM &
+   Admin → find `PROJECT_NUMBER-compute@developer.gserviceaccount.com` →
+   Edit → add role **Service Account Token Creator**.
+3. **Wire `functions/` into the Firebase CLI config and deploy.**
+   `firebase.json` needs a `"functions"` section — add:
+   ```json
+   "functions": [{ "source": "functions", "codebase": "default" }]
+   ```
+   then, from the repo root:
+   ```powershell
+   firebase deploy --only functions
+   ```
+   Expect success output naming the `convertLessonPptx` Cloud Run
+   service/trigger, region `us-central1`.
+4. **Real test upload — do not skip.** Open the teacher lesson form,
+   upload a real `.pptx` for a test lesson, wait ~30-60 seconds, then
+   check that lesson's Firestore doc (`/lessons/{id}`) for
+   `contentStatus: 'ready'` and real `contentImageUrls`. Open the same
+   lesson on the student side and confirm real slides render, not a
+   placeholder. If it's stuck at `'processing'` or the Cloud Functions
+   logs show an `ENOENT` on `soffice`/`pdftoppm`, that's the Buildpacks
+   risk above — the pipeline needs the Cloud Run restructure before it's
+   trustworthy.
+5. **Re-deploy after any future edit** to `functions/src/index.js` or its
+   `Dockerfile` — `firebase deploy --only functions` again; nothing
+   auto-deploys.
 
 ---
 
@@ -228,8 +301,19 @@ Free, no billing card, independent of the PPTX decision above. From the
 repo root, once `flutterfire configure` (§4) has run against the client's
 project:
 
-1. Add a `"hosting"` block to the local `firebase.json` — see
-   `MANUAL_STEPS.md` §7.5 for the exact JSON.
+1. `firebase.json` is gitignored (machine-local, generated by
+   `flutterfire configure`) — add a `"hosting"` block to it by hand,
+   alongside whatever `flutterfire configure` already wrote there:
+   ```json
+   "hosting": {
+     "public": "build/web",
+     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+     "rewrites": [{ "source": "**", "destination": "/index.html" }]
+   }
+   ```
+   The `rewrites` entry matters — it sends every route back through
+   `index.html` so the app's client-side routing works on a hard refresh
+   or direct link instead of 404ing.
 2. Build and deploy:
    ```powershell
    flutter build web --release
@@ -243,6 +327,12 @@ project:
 ---
 
 ## 8. [DEV] Android app to the client
+
+**⚠️ Do this after §4, not before.** The APK bakes in whatever Firebase
+project `google-services.json` currently points at. Building it before §4
+(`flutterfire configure` against the client's project) has run will
+silently ship an app wired to the **dev's own** Firebase project instead
+of the client's — no error, just wrong data. Confirm §4 is done first.
 
 There's no Play Store release signing set up yet (not required for a
 capstone demo). Two ways to get the app onto a device:
@@ -262,8 +352,31 @@ capstone demo). Two ways to get the app onto a device:
   installs from this source).
 - **Play Store internal testing track** — only worth setting up if the
   client wants a more polished install flow (auto-updates, no "unknown
-  sources" prompt); requires a release signing keystore (`MANUAL_STEPS.md`
-  §7.2), which isn't done yet — flag to the client if this is wanted.
+  sources" prompt); requires a release signing keystore
+  (dev's own reference has the detail), which isn't done yet — flag to the
+  client if this is wanted.
+
+### 8.1 [DEV or CLIENT, whoever has a physical phone] AR on-device test
+
+This is the one step in this entire handover that genuinely **cannot be
+automated** — no device/emulator was available in the environment this was
+built in, so it has never been run for real. Once the APK (above) is
+installed on a physical Android phone and a student test account exists
+(§5.1):
+
+1. Sign in with a student test account.
+2. Navigate to a lesson with AR content (e.g. the first Chemistry lesson).
+3. Open the **Scan** tab — a live Unity camera view should appear.
+4. Point the camera at a printed AR marker — a Flutter overlay
+   (title/description) should appear and update; voice narration should
+   play for the first few lessons.
+5. Complete the **Read** → **Review** flow, and run the pre/post-test quiz
+   if the lesson has one.
+
+If this doesn't work, everything *around* it (marker-to-model data,
+narration lifecycle, quiz linking) is covered by automated tests and is
+very unlikely to be the cause — the actual camera+Vuforia detection loop on
+real hardware is the untested part.
 
 ---
 
@@ -290,11 +403,11 @@ Being upfront about what this handover does **not** include, and why:
 
 1. **Physical AR marker-scanning on a real device was never automated.**
    This dev environment has no Android device or emulator available, so
-   the Scan → camera → marker-detection → Flutter overlay flow
-   (`MANUAL_STEPS.md` §4) has to be walked through by hand, once, by
-   whoever has a physical phone. Everything else about the AR flow (data
-   wiring, marker-to-model mapping, the Read/Review phases, voice
-   narration lifecycle) is covered by automated tests; only the actual
+   the Scan → camera → marker-detection → Flutter overlay flow (§8.1
+   above) has to be walked through by hand, once, by whoever has a
+   physical phone. Everything else about the AR flow (data wiring,
+   marker-to-model mapping, the Read/Review phases, voice narration
+   lifecycle) is covered by automated tests; only the actual
    camera+Vuforia detection loop on real hardware isn't.
 2. **PPTX upload is undeployed by decision, not oversight** — see §6 above.
 3. **No responsive/adaptive layout on Teacher Web** — it's a deliberate
@@ -309,9 +422,13 @@ Being upfront about what this handover does **not** include, and why:
 
 ## 11. Where to go for more detail
 
-- `MANUAL_STEPS.md` — the flat, checkbox reference for every manual item
-  (Unity export steps, Firestore rules table, full Cloud Function
-  deployment sequence).
+Everything essential to complete a handover is already inlined above —
+these are optional, deeper references, mostly relevant to the developer
+rather than the client:
+
+- `MANUAL_STEPS.md` — the developer's own internal working checklist/status
+  tracker (Unity export detail, environment verification history). Not
+  required reading for the client.
 - `docs/superpowers/NICE_TO_HAVES.md` — minor, deferred findings logged
   across all phases (mostly resolved; a few intentionally left for a future
   general-cleanup pass).
