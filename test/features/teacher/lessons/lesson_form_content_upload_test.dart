@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ar_science_explorer/core/models/teacher_lesson.dart';
 import 'package:ar_science_explorer/core/models/subject_key.dart';
@@ -18,7 +19,7 @@ void main() {
     TeacherLesson? submitted;
 
     await tester.pumpWidget(
-      MaterialApp(
+      ShadApp(
         home: Scaffold(
           body: LessonForm(
             quizOptions: const [],
@@ -66,7 +67,7 @@ void main() {
     String? uploadedForLessonId;
 
     await tester.pumpWidget(
-      MaterialApp(
+      ShadApp(
         home: Scaffold(
           body: LessonForm(
             quizOptions: const [],
@@ -117,7 +118,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
+      ShadApp(
         home: Scaffold(
           body: LessonForm(
             initial: existing,

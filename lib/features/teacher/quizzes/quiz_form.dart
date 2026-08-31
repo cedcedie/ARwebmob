@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/models/question_type.dart';
 import '../../../core/models/quiz_phase.dart';
@@ -197,24 +198,24 @@ class QuizFormState extends State<QuizForm> {
             ],
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton.icon(
+              child: ShadButton.ghost(
                 key: const Key('quiz-add-question'),
                 onPressed: () => setState(() => _questions.add(QuizQuestionDraft())),
-                icon: const Icon(Icons.add),
-                label: const Text('Add question'),
+                leading: const Icon(LucideIcons.plus, size: 16),
+                child: const Text('Add question'),
               ),
             ),
             if (_validationMessage != null) ...[
               const SizedBox(height: 8),
               Text(
                 _validationMessage!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: TextStyle(color: ShadTheme.of(context).colorScheme.destructive),
               ),
             ],
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerRight,
-              child: FilledButton(
+              child: ShadButton(
                 key: const Key('quiz-submit'),
                 onPressed: _handleSubmit,
                 child: Text(widget.submitLabel),
@@ -294,11 +295,13 @@ class _QuestionEditorState extends State<_QuestionEditor> {
             Text('Question ${index + 1}', style: Theme.of(context).textTheme.titleSmall),
             const Spacer(),
             if (widget.canRemove)
-              IconButton(
-                key: Key('quiz-q$index-remove'),
-                tooltip: 'Remove question',
-                onPressed: widget.onRemove,
-                icon: const Icon(Icons.delete_outline),
+              Tooltip(
+                message: 'Remove question',
+                child: ShadIconButton.ghost(
+                  key: Key('quiz-q$index-remove'),
+                  onPressed: widget.onRemove,
+                  icon: const Icon(LucideIcons.trash2),
+                ),
               ),
           ],
         ),

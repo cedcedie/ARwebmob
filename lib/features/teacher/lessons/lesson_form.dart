@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/ar/model_assets.dart';
 import '../../../core/models/ar_payload.dart';
@@ -290,11 +291,11 @@ class LessonFormState extends State<LessonForm> {
               onChanged: (value) => setState(() => _modelIndex = int.tryParse(value ?? '')),
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
+            ShadButton.outline(
               key: const Key('lesson-upload-content'),
               onPressed: _pickAndUploadContent,
-              icon: const Icon(Icons.upload_file),
-              label: Text(_uploadedContentUrl == null ? 'Upload PPTX or PDF' : 'Content uploaded'),
+              leading: const Icon(LucideIcons.upload, size: 16),
+              child: Text(_uploadedContentUrl == null ? 'Upload PPTX or PDF' : 'Content uploaded'),
             ),
             if (_previewPath != null) ...[
               const SizedBox(height: 12),
@@ -308,7 +309,7 @@ class LessonFormState extends State<LessonForm> {
             const SizedBox(height: 20),
             Align(
               alignment: Alignment.centerRight,
-              child: FilledButton(
+              child: ShadButton(
                 key: const Key('lesson-submit'),
                 onPressed: _handleSubmit,
                 child: Text(widget.submitLabel),

@@ -1,10 +1,10 @@
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/models/teacher_lesson.dart';
+import '../widgets/subject_accent_cell.dart';
 import 'lesson_form.dart';
 import 'lessons_providers.dart';
 
@@ -32,26 +32,33 @@ class _LessonsBody extends StatelessWidget {
     BuildContext context, {
     TeacherLesson? initial,
   }) async {
-    await showDialog<void>(
+    await showShadDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
+        return ShadDialog(
           title: Text(initial == null ? 'Add lesson' : 'Edit lesson'),
-          content: SizedBox(
+          child: SizedBox(
             width: 640,
-            child: LessonForm(
-              initial: initial,
-              quizOptions: viewModel.quizOptions,
-              submitLabel: initial == null ? 'Create' : 'Save',
-              refetchLesson: viewModel.fetchLessonById,
-              onSubmit: (lesson) async {
-                if (initial == null) {
-                  await viewModel.onCreateLesson(lesson);
-                } else {
-                  await viewModel.onUpdateLesson(lesson);
-                }
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
+            // `LessonForm` uses Material `FormBuilderTextField`s, which need
+            // a `Material` ancestor — `ShadDialog` doesn't provide one (it's
+            // built entirely from shadcn primitives), so supply a
+            // transparent one here rather than changing every field.
+            child: Material(
+              type: MaterialType.transparency,
+              child: LessonForm(
+                initial: initial,
+                quizOptions: viewModel.quizOptions,
+                submitLabel: initial == null ? 'Create' : 'Save',
+                refetchLesson: viewModel.fetchLessonById,
+                onSubmit: (lesson) async {
+                  if (initial == null) {
+                    await viewModel.onCreateLesson(lesson);
+                  } else {
+                    await viewModel.onUpdateLesson(lesson);
+                  }
+                  if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                },
+              ),
             ),
           ),
         );
@@ -60,16 +67,22 @@ class _LessonsBody extends StatelessWidget {
   }
 
   Future<void> _confirmArchive(BuildContext context, String lessonId) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showShadDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ShadDialog.alert(
         title: const Text('Archive lesson?'),
-        content: const Text(
+        description: const Text(
           'Archived lessons disappear from this list but remain referenced elsewhere.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Archive')),
+          ShadButton.outline(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ShadButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Archive'),
+          ),
         ],
       ),
     );
@@ -127,7 +140,12 @@ class _LessonsBody extends StatelessWidget {
 
                   return DataRow(
                     cells: [
-                      DataCell(Text(lesson.title, overflow: TextOverflow.ellipsis)),
+                      DataCell(
+                        SubjectAccentCell(
+                          subject: lesson.subject,
+                          child: Text(lesson.title, overflow: TextOverflow.ellipsis),
+                        ),
+                      ),
                       DataCell(Text(subjectKeyLabel(lesson.subject))),
                       DataCell(Text(quarterWeek)),
                       DataCell(Text(hasAr ? 'Yes' : 'No')),
@@ -142,18 +160,22 @@ class _LessonsBody extends StatelessWidget {
                             : Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  IconButton(
-                                    tooltip: 'Edit',
-                                    icon: const Icon(LucideIcons.pencil),
-                                    onPressed: () => _openForm(
-                                      context,
-                                      initial: row.teacherLesson,
+                                  Tooltip(
+                                    message: 'Edit',
+                                    child: ShadIconButton.ghost(
+                                      icon: const Icon(LucideIcons.pencil),
+                                      onPressed: () => _openForm(
+                                        context,
+                                        initial: row.teacherLesson,
+                                      ),
                                     ),
                                   ),
-                                  IconButton(
-                                    tooltip: 'Archive',
-                                    icon: const Icon(LucideIcons.archive),
-                                    onPressed: () => _confirmArchive(context, lesson.id),
+                                  Tooltip(
+                                    message: 'Archive',
+                                    child: ShadIconButton.ghost(
+                                      icon: const Icon(LucideIcons.archive),
+                                      onPressed: () => _confirmArchive(context, lesson.id),
+                                    ),
                                   ),
                                 ],
                               ),

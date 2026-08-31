@@ -2,12 +2,12 @@ import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/models/quiz_phase.dart';
 import '../../../core/models/teacher_quiz.dart';
 import '../lessons/lessons_providers.dart' show subjectKeyLabel;
+import '../widgets/subject_accent_cell.dart';
 import 'quiz_form.dart';
 import 'quizzes_providers.dart';
 
@@ -35,24 +35,29 @@ class _QuizzesBody extends StatelessWidget {
     BuildContext context, {
     TeacherQuiz? initial,
   }) async {
-    await showDialog<void>(
+    await showShadDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
+        return ShadDialog(
           title: Text(initial == null ? 'Add quiz' : 'Edit quiz'),
-          content: SizedBox(
+          child: SizedBox(
             width: 720,
-            child: QuizForm(
-              initial: initial,
-              submitLabel: initial == null ? 'Create' : 'Save',
-              onSubmit: (quiz) async {
-                if (initial == null) {
-                  await viewModel.onCreateQuiz(quiz);
-                } else {
-                  await viewModel.onUpdateQuiz(quiz);
-                }
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
+            // See lessons_screen.dart's `_openForm` for why the transparent
+            // Material ancestor is needed here.
+            child: Material(
+              type: MaterialType.transparency,
+              child: QuizForm(
+                initial: initial,
+                submitLabel: initial == null ? 'Create' : 'Save',
+                onSubmit: (quiz) async {
+                  if (initial == null) {
+                    await viewModel.onCreateQuiz(quiz);
+                  } else {
+                    await viewModel.onUpdateQuiz(quiz);
+                  }
+                  if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                },
+              ),
             ),
           ),
         );
@@ -61,14 +66,20 @@ class _QuizzesBody extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, String quizId) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showShadDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ShadDialog.alert(
         title: const Text('Delete quiz?'),
-        content: const Text('This permanently removes the teacher-authored quiz.'),
+        description: const Text('This permanently removes the teacher-authored quiz.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          ShadButton.outline(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ShadButton.destructive(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -123,7 +134,12 @@ class _QuizzesBody extends StatelessWidget {
 
                   return DataRow(
                     cells: [
-                      DataCell(Text(quiz.title, overflow: TextOverflow.ellipsis)),
+                      DataCell(
+                        SubjectAccentCell(
+                          subject: quiz.subject,
+                          child: Text(quiz.title, overflow: TextOverflow.ellipsis),
+                        ),
+                      ),
                       DataCell(Text(subjectKeyLabel(quiz.subject))),
                       DataCell(Text(phaseLabel)),
                       DataCell(Text('${quiz.questions.length}')),
@@ -136,24 +152,30 @@ class _QuizzesBody extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton(
-                              tooltip: 'Item analysis',
-                              icon: const Icon(LucideIcons.barChart),
-                              onPressed: () => context.push(
-                                '/teacher/quizzes/${quiz.id}/item-analysis',
-                                extra: quiz.title,
+                            Tooltip(
+                              message: 'Item analysis',
+                              child: ShadIconButton.ghost(
+                                icon: const Icon(LucideIcons.barChart),
+                                onPressed: () => context.push(
+                                  '/teacher/quizzes/${quiz.id}/item-analysis',
+                                  extra: quiz.title,
+                                ),
                               ),
                             ),
                             if (!row.isBuiltIn) ...[
-                              IconButton(
-                                tooltip: 'Edit',
-                                icon: const Icon(LucideIcons.pencil),
-                                onPressed: () => _openForm(context, initial: quiz),
+                              Tooltip(
+                                message: 'Edit',
+                                child: ShadIconButton.ghost(
+                                  icon: const Icon(LucideIcons.pencil),
+                                  onPressed: () => _openForm(context, initial: quiz),
+                                ),
                               ),
-                              IconButton(
-                                tooltip: 'Delete',
-                                icon: const Icon(LucideIcons.trash2),
-                                onPressed: () => _confirmDelete(context, quiz.id),
+                              Tooltip(
+                                message: 'Delete',
+                                child: ShadIconButton.ghost(
+                                  icon: const Icon(LucideIcons.trash2),
+                                  onPressed: () => _confirmDelete(context, quiz.id),
+                                ),
                               ),
                             ],
                           ],
