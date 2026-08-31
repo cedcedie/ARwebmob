@@ -359,61 +359,64 @@ class _QuestionEditorState extends State<_QuestionEditor> {
         const SizedBox(height: 8),
         Text('Correct option', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 4),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(4, (optionIndex) {
-              final isSelected = draft.correctIndex == optionIndex;
-              return InkWell(
-                onTap: () => _syncDraft(() => draft.correctIndex = optionIndex),
-                borderRadius: optionIndex == 0
-                    ? const BorderRadius.vertical(top: Radius.circular(8))
-                    : optionIndex == 3
-                    ? const BorderRadius.vertical(bottom: Radius.circular(8))
-                    : BorderRadius.zero,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppColors.muted : null,
-                    border: optionIndex == 0
-                        ? null
-                        : const Border(
-                            top: BorderSide(color: AppColors.border),
-                          ),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  child: Row(
-                    children: [
-                      Radio<int>(
-                        key: Key('quiz-q$index-correct-$optionIndex'),
-                        value: optionIndex,
-                        groupValue: draft.correctIndex,
-                        activeColor: AppColors.ink,
-                        onChanged: (value) {
-                          if (value == null) return;
-                          _syncDraft(() => draft.correctIndex = value);
-                        },
-                      ),
-                      Text(
-                        'Option ${optionIndex + 1}',
-                        style: TextStyle(
-                          color: AppColors.ink,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.normal,
+        RadioGroup<int>(
+          groupValue: draft.correctIndex,
+          onChanged: (value) {
+            if (value == null) return;
+            _syncDraft(() => draft.correctIndex = value);
+          },
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(4, (optionIndex) {
+                final isSelected = draft.correctIndex == optionIndex;
+                return InkWell(
+                  onTap: () =>
+                      _syncDraft(() => draft.correctIndex = optionIndex),
+                  borderRadius: optionIndex == 0
+                      ? const BorderRadius.vertical(top: Radius.circular(8))
+                      : optionIndex == 3
+                      ? const BorderRadius.vertical(bottom: Radius.circular(8))
+                      : BorderRadius.zero,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.muted : null,
+                      border: optionIndex == 0
+                          ? null
+                          : const Border(
+                              top: BorderSide(color: AppColors.border),
+                            ),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      children: [
+                        Radio<int>(
+                          key: Key('quiz-q$index-correct-$optionIndex'),
+                          value: optionIndex,
+                          activeColor: AppColors.ink,
                         ),
-                      ),
-                    ],
+                        Text(
+                          'Option ${optionIndex + 1}',
+                          style: TextStyle(
+                            color: AppColors.ink,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }),
+                );
+              }),
+            ),
           ),
         ),
         const SizedBox(height: 8),
