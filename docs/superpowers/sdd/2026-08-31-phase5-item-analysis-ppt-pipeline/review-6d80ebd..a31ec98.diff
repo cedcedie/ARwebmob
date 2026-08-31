@@ -1,0 +1,649 @@
+# Review package: 6d80ebd..a31ec98
+
+## Commits
+a31ec98 feat: item analysis screen - fl_chart rendering, teacher-quiz support (Part 7.5)
+
+## Files changed
+ lib/features/teacher/app/router.dart               |  15 +++
+ lib/features/teacher/app/teacher_providers.dart    |  20 ++++
+ .../teacher/quizzes/item_analysis_providers.dart   |  23 +++--
+ .../teacher/quizzes/item_analysis_screen.dart      | 101 +++++++++++++++++++++
+ lib/features/teacher/quizzes/quizzes_screen.dart   |  45 +++++----
+ pubspec.lock                                       |   8 ++
+ pubspec.yaml                                       |   1 +
+ .../quizzes/item_analysis_providers_test.dart      |  67 ++++++++++++++
+ .../teacher/quizzes/item_analysis_screen_test.dart |  44 +++++++++
+ 9 files changed, 299 insertions(+), 25 deletions(-)
+
+## Diff
+diff --git a/lib/features/teacher/app/router.dart b/lib/features/teacher/app/router.dart
+index f41ce97..9ee0335 100644
+--- a/lib/features/teacher/app/router.dart
++++ b/lib/features/teacher/app/router.dart
+@@ -1,14 +1,16 @@
+ import 'package:go_router/go_router.dart';
++import 'package:hooks_riverpod/hooks_riverpod.dart';
+ 
+ import '../access_codes/access_codes_screen.dart';
+ import '../lessons/lessons_screen.dart';
++import '../quizzes/item_analysis_screen.dart';
+ import '../quizzes/quizzes_screen.dart';
+ import '../students/students_screen.dart';
+ import 'teacher_providers.dart';
+ import 'teacher_shell.dart';
+ 
+ const _routes = [
+   '/teacher/lessons',
+   '/teacher/quizzes',
+   '/teacher/students',
+   '/teacher/access-codes',
+@@ -33,13 +35,26 @@ GoRouter buildTeacherRouter({required TeacherServices services}) {
+         routes: [
+           GoRoute(path: '/teacher/lessons', builder: (context, state) => const LessonsScreen()),
+           GoRoute(path: '/teacher/quizzes', builder: (context, state) => const QuizzesScreen()),
+           GoRoute(path: '/teacher/students', builder: (context, state) => const StudentsScreen()),
+           GoRoute(
+             path: '/teacher/access-codes',
+             builder: (context, state) => const AccessCodesScreen(),
+           ),
+         ],
+       ),
++      GoRoute(
++        path: '/teacher/quizzes/:quizId/item-analysis',
++        builder: (context, state) {
++          final quizId = state.pathParameters['quizId']!;
++          final quizTitle = (state.extra as String?) ?? quizId;
++          return ProviderScope(
++            overrides: [
++              itemAnalysisOverrideFor(quizId, quizTitle: quizTitle, services: services),
++            ],
++            child: ItemAnalysisScreen(quizId: quizId, quizTitle: quizTitle),
++          );
++        },
++      ),
+     ],
+   );
+ }
+diff --git a/lib/features/teacher/app/teacher_providers.dart b/lib/features/teacher/app/teacher_providers.dart
+index 506e118..e188275 100644
+--- a/lib/features/teacher/app/teacher_providers.dart
++++ b/lib/features/teacher/app/teacher_providers.dart
+@@ -1,20 +1,21 @@
+ import 'package:cloud_firestore/cloud_firestore.dart';
+ import 'package:hooks_riverpod/hooks_riverpod.dart';
+ 
+ import '../../../core/services/access_code_issuance_service.dart';
+ import '../../../core/services/lesson_repository.dart';
+ import '../../../core/services/quiz_attempt_service.dart';
+ import '../../../core/services/quiz_repository.dart';
+ import '../../../core/services/student_repository.dart';
+ import '../access_codes/access_codes_providers.dart';
+ import '../lessons/lessons_providers.dart';
++import '../quizzes/item_analysis_providers.dart';
+ import '../quizzes/quizzes_providers.dart';
+ import '../students/students_providers.dart';
+ 
+ /// Bundles every core/ service a teacher screen needs.
+ class TeacherServices {
+   const TeacherServices({
+     required this.lessonRepository,
+     required this.quizRepository,
+     required this.studentRepository,
+     required this.accessCodeIssuanceService,
+@@ -56,20 +57,39 @@ List<Override> teacherProviderOverridesFor({required TeacherServices services})
+     accessCodesViewModelProvider.overrideWith(
+       (ref) => buildAccessCodesViewModel(
+         issuanceService: services.accessCodeIssuanceService,
+         studentRepository: services.studentRepository,
+         quizAttemptService: services.quizAttemptService,
+       ),
+     ),
+   ];
+ }
+ 
++/// Per-quiz override for `itemAnalysisViewModelProvider` — a `.family`
++/// provider, so it's overridden per quizId at the call site (the route
++/// builder in router.dart), not bundled into the list above. Mirrors the
++/// student side's `arLabOverrideFor` (student_providers.dart).
++Override itemAnalysisOverrideFor(
++  String quizId, {
++  required String quizTitle,
++  required TeacherServices services,
++}) {
++  return itemAnalysisViewModelProvider(quizId).overrideWith(
++    (ref) => buildItemAnalysisViewModel(
++      quizId: quizId,
++      quizTitle: quizTitle,
++      studentRepository: services.studentRepository,
++      quizRepository: services.quizRepository,
++    ),
++  );
++}
++
+ /// Convenience factory for tests and app startup.
+ TeacherServices teacherServicesFromFirestore(FirebaseFirestore firestore) {
+   final quizAttemptService = QuizAttemptService(firestore: firestore);
+   return TeacherServices(
+     lessonRepository: LessonRepository(firestore: firestore),
+     quizRepository: QuizRepository(firestore: firestore),
+     studentRepository: StudentRepository(firestore: firestore),
+     quizAttemptService: quizAttemptService,
+     accessCodeIssuanceService: AccessCodeIssuanceService(
+       firestore: firestore,
+diff --git a/lib/features/teacher/quizzes/item_analysis_providers.dart b/lib/features/teacher/quizzes/item_analysis_providers.dart
+index 24fbfaf..e67a458 100644
+--- a/lib/features/teacher/quizzes/item_analysis_providers.dart
++++ b/lib/features/teacher/quizzes/item_analysis_providers.dart
+@@ -1,16 +1,18 @@
+ import 'package:hooks_riverpod/hooks_riverpod.dart';
+ 
+ import '../../../core/data/curriculum_data.dart';
+ import '../../../core/models/built_in_question.dart';
++import '../../../core/models/quiz_phase.dart';
+ import '../../../core/quiz_id.dart';
+ import '../../../core/services/item_analysis_calculator.dart';
++import '../../../core/services/quiz_repository.dart';
+ import '../../../core/services/student_repository.dart';
+ 
+ class ItemAnalysisViewModel {
+   const ItemAnalysisViewModel({
+     required this.quizTitle,
+     required this.questions,
+     required this.results,
+     required this.attemptCount,
+   });
+ 
+@@ -25,29 +27,36 @@ final itemAnalysisViewModelProvider =
+   throw UnimplementedError(
+     'itemAnalysisViewModelProvider must be overridden at app startup with a '
+     'real stream for the given quizId.',
+   );
+ });
+ 
+ Stream<ItemAnalysisViewModel> buildItemAnalysisViewModel({
+   required String quizId,
+   required String quizTitle,
+   required StudentRepository studentRepository,
+-}) {
++  required QuizRepository quizRepository,
++}) async* {
+   final parsed = parseBuiltinId(quizId);
+-  final questions = parsed.isBuiltin && parsed.lessonId != null
+-      ? (parsed.phase.name == 'pre'
+-          ? kPreTestQuestionsByLesson[parsed.lessonId!] ?? const <BuiltInQuestion>[]
+-          : kPostTestQuestionsByLesson[parsed.lessonId!] ?? const <BuiltInQuestion>[])
+-      : const <BuiltInQuestion>[]; // teacher-linked quiz question resolution — see Task 2 note below
++  List<BuiltInQuestion> questions;
++  if (parsed.isBuiltin && parsed.lessonId != null) {
++    questions = parsed.phase == QuizPhase.pre
++        ? kPreTestQuestionsByLesson[parsed.lessonId!] ?? const <BuiltInQuestion>[]
++        : kPostTestQuestionsByLesson[parsed.lessonId!] ?? const <BuiltInQuestion>[];
++  } else {
++    final teacherQuiz = await quizRepository.fetchQuizById(quizId);
++    questions = teacherQuiz == null
++        ? const <BuiltInQuestion>[]
++        : quizRepository.questionsFromTeacherQuiz(teacherQuiz, lessonId: quizId);
++  }
+ 
+-  return studentRepository.watchAllStudents(includeArchived: true).map((students) {
++  yield* studentRepository.watchAllStudents(includeArchived: true).map((students) {
+     final attempts = [
+       for (final student in students)
+         for (final attempt in student.quizAttempts)
+           if (attempt.quizId == quizId) attempt,
+     ];
+ 
+     return ItemAnalysisViewModel(
+       quizTitle: quizTitle,
+       questions: questions,
+       results: computeItemAnalysis(questions: questions, attempts: attempts),
+diff --git a/lib/features/teacher/quizzes/item_analysis_screen.dart b/lib/features/teacher/quizzes/item_analysis_screen.dart
+new file mode 100644
+index 0000000..61d0f35
+--- /dev/null
++++ b/lib/features/teacher/quizzes/item_analysis_screen.dart
+@@ -0,0 +1,101 @@
++import 'package:fl_chart/fl_chart.dart';
++import 'package:flutter/material.dart';
++import 'package:hooks_riverpod/hooks_riverpod.dart';
++
++import '../../../core/models/built_in_question.dart';
++import '../../../core/models/question_type.dart';
++import '../../../core/services/item_analysis_calculator.dart';
++import 'item_analysis_providers.dart';
++
++class ItemAnalysisScreen extends ConsumerWidget {
++  const ItemAnalysisScreen({super.key, required this.quizId, required this.quizTitle});
++
++  final String quizId;
++  final String quizTitle;
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    final asyncViewModel = ref.watch(itemAnalysisViewModelProvider(quizId));
++
++    return Scaffold(
++      appBar: AppBar(title: Text('Item Analysis — $quizTitle')),
++      body: asyncViewModel.when(
++        loading: () => const Center(child: CircularProgressIndicator()),
++        error: (error, stack) => Center(child: Text('Could not load item analysis: $error')),
++        data: (vm) {
++          if (vm.attemptCount == 0) {
++            return const Center(child: Text('No attempts yet on this quiz.'));
++          }
++          return ListView(
++            padding: const EdgeInsets.all(16),
++            children: [
++              Text('${vm.attemptCount} attempts analyzed'),
++              const SizedBox(height: 16),
++              for (var i = 0; i < vm.questions.length; i++)
++                _QuestionAnalysisCard(question: vm.questions[i], result: vm.results[i]),
++            ],
++          );
++        },
++      ),
++    );
++  }
++}
++
++class _QuestionAnalysisCard extends StatelessWidget {
++  const _QuestionAnalysisCard({required this.question, required this.result});
++
++  final BuiltInQuestion question;
++  final QuestionItemAnalysis result;
++
++  @override
++  Widget build(BuildContext context) {
++    final difficultyPct = (result.difficultyIndex * 100).round();
++    final discriminationLabel = result.discriminationIndex >= 0
++        ? '+${(result.discriminationIndex * 100).round()}%'
++        : '${(result.discriminationIndex * 100).round()}%';
++
++    return Card(
++      margin: const EdgeInsets.only(bottom: 12),
++      child: Padding(
++        padding: const EdgeInsets.all(16),
++        child: Column(
++          crossAxisAlignment: CrossAxisAlignment.start,
++          children: [
++            Text('Q${result.questionIndex + 1}: ${question.question}',
++                style: Theme.of(context).textTheme.titleMedium),
++            const SizedBox(height: 8),
++            Text('Difficulty: $difficultyPct% correct'),
++            Text('Discrimination: $discriminationLabel'),
++            SizedBox(
++              height: 80,
++              child: BarChart(
++                BarChartData(
++                  barGroups: [
++                    BarChartGroupData(x: 0, barRods: [
++                      BarChartRodData(toY: result.difficultyIndex * 100, color: Colors.blue),
++                    ]),
++                    BarChartGroupData(x: 1, barRods: [
++                      BarChartRodData(
++                        toY: (result.discriminationIndex.clamp(-1.0, 1.0) * 100).abs(),
++                        color: result.discriminationIndex >= 0 ? Colors.green : Colors.red,
++                      ),
++                    ]),
++                  ],
++                  titlesData: const FlTitlesData(show: false),
++                  borderData: FlBorderData(show: false),
++                  gridData: const FlGridData(show: false),
++                ),
++              ),
++            ),
++            if (question.type == QuestionType.mc && result.distractorRates.isNotEmpty) ...[
++              const SizedBox(height: 8),
++              Text('Distractors:', style: Theme.of(context).textTheme.labelMedium),
++              for (final entry in result.distractorRates.entries)
++                Text('  ${question.options[entry.key]}: ${(entry.value * 100).round()}%'),
++            ],
++          ],
++        ),
++      ),
++    );
++  }
++}
+diff --git a/lib/features/teacher/quizzes/quizzes_screen.dart b/lib/features/teacher/quizzes/quizzes_screen.dart
+index 757e39d..5510c21 100644
+--- a/lib/features/teacher/quizzes/quizzes_screen.dart
++++ b/lib/features/teacher/quizzes/quizzes_screen.dart
+@@ -1,12 +1,13 @@
+ import 'package:data_table_2/data_table_2.dart';
+ import 'package:flutter/material.dart';
++import 'package:go_router/go_router.dart';
+ import 'package:hooks_riverpod/hooks_riverpod.dart';
+ import 'package:lucide_icons_flutter/lucide_icons.dart';
+ import 'package:shadcn_ui/shadcn_ui.dart';
+ 
+ import '../../../core/models/quiz_phase.dart';
+ import '../../../core/models/teacher_quiz.dart';
+ import '../lessons/lessons_providers.dart' show subjectKeyLabel;
+ import 'quiz_form.dart';
+ import 'quizzes_providers.dart';
+ 
+@@ -100,62 +101,70 @@ class _QuizzesBody extends StatelessWidget {
+               ),
+             ],
+           ),
+           const SizedBox(height: 16),
+           Expanded(
+             child: Card(
+               clipBehavior: Clip.antiAlias,
+               child: DataTable2(
+                 columnSpacing: 12,
+                 horizontalMargin: 16,
+-                minWidth: 900,
++                minWidth: 960,
+                 columns: const [
+                   DataColumn2(label: Text('Title'), size: ColumnSize.L),
+                   DataColumn2(label: Text('Subject'), size: ColumnSize.S),
+                   DataColumn2(label: Text('Phase'), size: ColumnSize.S),
+                   DataColumn2(label: Text('Questions'), size: ColumnSize.S),
+                   DataColumn2(label: Text('Built-in?'), size: ColumnSize.S),
+-                  DataColumn2(label: Text('Actions'), size: ColumnSize.S),
++                  DataColumn2(label: Text('Actions'), size: ColumnSize.M),
+                 ],
+                 rows: viewModel.rows.map((row) {
+                   final quiz = row.quiz;
+                   final phaseLabel = quiz.phase == QuizPhase.pre ? 'Pre-Test' : 'Post-Test';
+ 
+                   return DataRow(
+                     cells: [
+                       DataCell(Text(quiz.title, overflow: TextOverflow.ellipsis)),
+                       DataCell(Text(subjectKeyLabel(quiz.subject))),
+                       DataCell(Text(phaseLabel)),
+                       DataCell(Text('${quiz.questions.length}')),
+                       DataCell(
+                         row.isBuiltIn
+                             ? const ShadBadge(child: Text('Built-in'))
+                             : const Text('—'),
+                       ),
+                       DataCell(
+-                        row.isBuiltIn
+-                            ? const SizedBox.shrink()
+-                            : Row(
+-                                mainAxisSize: MainAxisSize.min,
+-                                children: [
+-                                  IconButton(
+-                                    tooltip: 'Edit',
+-                                    icon: const Icon(LucideIcons.pencil),
+-                                    onPressed: () => _openForm(context, initial: quiz),
+-                                  ),
+-                                  IconButton(
+-                                    tooltip: 'Delete',
+-                                    icon: const Icon(LucideIcons.trash2),
+-                                    onPressed: () => _confirmDelete(context, quiz.id),
+-                                  ),
+-                                ],
++                        Row(
++                          mainAxisSize: MainAxisSize.min,
++                          children: [
++                            IconButton(
++                              tooltip: 'Item analysis',
++                              icon: const Icon(LucideIcons.barChart),
++                              onPressed: () => context.push(
++                                '/teacher/quizzes/${quiz.id}/item-analysis',
++                                extra: quiz.title,
++                              ),
++                            ),
++                            if (!row.isBuiltIn) ...[
++                              IconButton(
++                                tooltip: 'Edit',
++                                icon: const Icon(LucideIcons.pencil),
++                                onPressed: () => _openForm(context, initial: quiz),
++                              ),
++                              IconButton(
++                                tooltip: 'Delete',
++                                icon: const Icon(LucideIcons.trash2),
++                                onPressed: () => _confirmDelete(context, quiz.id),
+                               ),
++                            ],
++                          ],
++                        ),
+                       ),
+                     ],
+                   );
+                 }).toList(),
+               ),
+             ),
+           ),
+         ],
+       ),
+     );
+diff --git a/pubspec.lock b/pubspec.lock
+index 41f26e0..24df0e5 100644
+--- a/pubspec.lock
++++ b/pubspec.lock
+@@ -394,20 +394,28 @@ packages:
+     source: hosted
+     version: "2.24.1"
+   fixnum:
+     dependency: transitive
+     description:
+       name: fixnum
+       sha256: b6dc7065e46c974bc7c5f143080a6764ec7a4be6da1285ececdc37be96de53be
+       url: "https://pub.dev"
+     source: hosted
+     version: "1.1.1"
++  fl_chart:
++    dependency: "direct main"
++    description:
++      name: fl_chart
++      sha256: "74959b99b92b9eebeed1a4049426fd67c4abc3c5a0f4d12e2877097d6a11ae08"
++      url: "https://pub.dev"
++    source: hosted
++    version: "0.69.2"
+   flutter:
+     dependency: "direct main"
+     description: flutter
+     source: sdk
+     version: "0.0.0"
+   flutter_animate:
+     dependency: "direct main"
+     description:
+       name: flutter_animate
+       sha256: "7befe2d3252728afb77aecaaea1dec88a89d35b9b1d2eea6d04479e8af9117b5"
+diff --git a/pubspec.yaml b/pubspec.yaml
+index 157a966..3e3979d 100644
+--- a/pubspec.yaml
++++ b/pubspec.yaml
+@@ -53,20 +53,21 @@ dependencies:
+   flutter_embed_unity_6000_0_android: ^2.0.0
+   flutter_tts: ^4.2.0
+ 
+   # Phase 4 (Teacher Web) UI packages
+   shadcn_ui: ^0.56.2
+   data_table_2: ^2.7.2
+   lucide_icons_flutter: ^3.1.17
+   flutter_form_builder: ^10.3.0
+   form_builder_validators: ^11.3.0
+   model_viewer_plus: ^1.10.0
++  fl_chart: ^0.69.0
+ 
+ dev_dependencies:
+   flutter_test:
+     sdk: flutter
+ 
+   # The "flutter_lints" package below contains a set of recommended lints to
+   # encourage good coding practices. The lint set provided by the package is
+   # activated in the `analysis_options.yaml` file located at the root of your
+   # package. See that file for information about deactivating specific lint
+   # rules and activating additional ones.
+diff --git a/test/features/teacher/quizzes/item_analysis_providers_test.dart b/test/features/teacher/quizzes/item_analysis_providers_test.dart
+index 0b05e4e..5826693 100644
+--- a/test/features/teacher/quizzes/item_analysis_providers_test.dart
++++ b/test/features/teacher/quizzes/item_analysis_providers_test.dart
+@@ -1,17 +1,22 @@
+ // test/features/teacher/quizzes/item_analysis_providers_test.dart
+ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+ import 'package:flutter_test/flutter_test.dart';
+ import 'package:ar_science_explorer/core/models/student_record.dart';
+ import 'package:ar_science_explorer/core/models/quiz_attempt.dart';
++import 'package:ar_science_explorer/core/models/subject_key.dart';
++import 'package:ar_science_explorer/core/models/teacher_quiz.dart';
++import 'package:ar_science_explorer/core/models/teacher_quiz_question.dart';
++import 'package:ar_science_explorer/core/models/question_type.dart';
+ import 'package:ar_science_explorer/core/quiz_id.dart';
+ import 'package:ar_science_explorer/core/models/quiz_phase.dart';
++import 'package:ar_science_explorer/core/services/quiz_repository.dart';
+ import 'package:ar_science_explorer/core/services/student_repository.dart';
+ import 'package:ar_science_explorer/features/teacher/quizzes/item_analysis_providers.dart';
+ 
+ StudentRecord _studentWith(String id, QuizAttempt attempt) => StudentRecord(
+       id: id, name: 'Student $id', studentId: id, grade: '7', section: 'A',
+       scores: const {'chemistry': null, 'biology': null, 'physics': null},
+       completedLessonIds: const [], completedLabExperimentIds: const [],
+       completedQuizIds: const [], unlockedLessonIds: const [], unlockedQuizIds: const [],
+       quizAttempts: [attempt],
+     );
+@@ -32,20 +37,21 @@ void main() {
+       id: 'a2', quizId: quizId, studentId: '222222', attemptNumber: 1,
+       score: 0, totalQuestions: 8, correctAnswers: 0,
+       answers: const [1, 1, 1, 1, 1, 1, 1, 1],
+       timestamp: DateTime(2026, 8, 20).toIso8601String(), locked: true,
+     )));
+ 
+     final stream = buildItemAnalysisViewModel(
+       quizId: quizId,
+       quizTitle: 'Q1W1 Post-Test',
+       studentRepository: studentRepo,
++      quizRepository: QuizRepository(firestore: firestore),
+     );
+     final vm = await stream.first;
+ 
+     expect(vm.attemptCount, 2);
+     expect(vm.questions, hasLength(8));
+     expect(vm.results, hasLength(8));
+     expect(vm.results[0].difficultyIndex, closeTo(0.5, 0.0001));
+   });
+ 
+   test('ignores attempts on other quizzes', () async {
+@@ -58,16 +64,77 @@ void main() {
+       id: 'a1', quizId: preId, studentId: '111111', attemptNumber: 1,
+       score: 100, totalQuestions: 8, correctAnswers: 8,
+       answers: const [0, 0, 0, 0, 0, 0, 0, 0],
+       timestamp: DateTime(2026, 8, 20).toIso8601String(), locked: false,
+     )));
+ 
+     final stream = buildItemAnalysisViewModel(
+       quizId: postId,
+       quizTitle: 'Q1W1 Post-Test',
+       studentRepository: studentRepo,
++      quizRepository: QuizRepository(firestore: firestore),
+     );
+     final vm = await stream.first;
+ 
+     expect(vm.attemptCount, 0);
+   });
++
++  test('resolves a teacher-authored quiz\'s real questions via QuizRepository', () async {
++    final firestore = FakeFirebaseFirestore();
++    final studentRepo = StudentRepository(firestore: firestore);
++    final quizRepo = QuizRepository(firestore: firestore);
++    const quizId = 'teacher-quiz-1';
++
++    await quizRepo.createQuiz(TeacherQuiz(
++      id: quizId,
++      title: 'Custom Chemistry Quiz',
++      subject: SubjectKey.chemistry,
++      questions: [
++        TeacherQuizQuestion(
++          question: 'What is H2O?',
++          options: const ['Water', 'Oxygen', 'Hydrogen', 'Salt'],
++          correctIndex: 0,
++          hint: 'hint',
++          type: QuestionType.mc,
++        ),
++      ],
++      createdAt: DateTime(2026, 8, 20).toIso8601String(),
++    ));
++
++    await studentRepo.saveStudent(_studentWith('333333', QuizAttempt(
++      id: 'a3', quizId: quizId, studentId: '333333', attemptNumber: 1,
++      score: 100, totalQuestions: 1, correctAnswers: 1,
++      answers: const [0],
++      timestamp: DateTime(2026, 8, 20).toIso8601String(), locked: true,
++    )));
++
++    final stream = buildItemAnalysisViewModel(
++      quizId: quizId,
++      quizTitle: 'Custom Chemistry Quiz',
++      studentRepository: studentRepo,
++      quizRepository: quizRepo,
++    );
++    final vm = await stream.first;
++
++    expect(vm.attemptCount, 1);
++    expect(vm.questions, hasLength(1));
++    expect(vm.questions.first.question, 'What is H2O?');
++    expect(vm.results, hasLength(1));
++  });
++
++  test('degrades to an empty question list for a dangling teacher quiz id', () async {
++    final firestore = FakeFirebaseFirestore();
++    final studentRepo = StudentRepository(firestore: firestore);
++    final quizRepo = QuizRepository(firestore: firestore);
++
++    final stream = buildItemAnalysisViewModel(
++      quizId: 'missing-quiz',
++      quizTitle: 'Missing Quiz',
++      studentRepository: studentRepo,
++      quizRepository: quizRepo,
++    );
++    final vm = await stream.first;
++
++    expect(vm.questions, isEmpty);
++    expect(vm.attemptCount, 0);
++  });
+ }
+diff --git a/test/features/teacher/quizzes/item_analysis_screen_test.dart b/test/features/teacher/quizzes/item_analysis_screen_test.dart
+new file mode 100644
+index 0000000..e05c600
+--- /dev/null
++++ b/test/features/teacher/quizzes/item_analysis_screen_test.dart
+@@ -0,0 +1,44 @@
++// test/features/teacher/quizzes/item_analysis_screen_test.dart
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:hooks_riverpod/hooks_riverpod.dart';
++import 'package:ar_science_explorer/core/models/built_in_question.dart';
++import 'package:ar_science_explorer/core/models/question_type.dart';
++import 'package:ar_science_explorer/core/models/subject_key.dart';
++import 'package:ar_science_explorer/core/services/item_analysis_calculator.dart';
++import 'package:ar_science_explorer/features/teacher/quizzes/item_analysis_providers.dart';
++import 'package:ar_science_explorer/features/teacher/quizzes/item_analysis_screen.dart';
++
++void main() {
++  testWidgets('shows attempt count and a row per question', (tester) async {
++    final vm = ItemAnalysisViewModel(
++      quizTitle: 'Q1W1 Post-Test',
++      questions: [
++        BuiltInQuestion(
++          id: 'q0', subject: SubjectKey.chemistry, lessonId: 'q1w1',
++          question: 'What is H2O?', options: const ['Water', 'Oxygen', 'Hydrogen', 'Salt'],
++          correctIndex: 0, hint: 'hint', type: QuestionType.mc,
++        ),
++      ],
++      results: const [
++        QuestionItemAnalysis(
++          questionIndex: 0, difficultyIndex: 0.75, discriminationIndex: 0.3,
++          distractorRates: {1: 0.15, 2: 0.1},
++        ),
++      ],
++      attemptCount: 20,
++    );
++
++    await tester.pumpWidget(
++      ProviderScope(
++        overrides: [itemAnalysisViewModelProvider('quiz-1').overrideWith((ref) => Stream.value(vm))],
++        child: const MaterialApp(home: ItemAnalysisScreen(quizId: 'quiz-1', quizTitle: 'Q1W1 Post-Test')),
++      ),
++    );
++    await tester.pumpAndSettle();
++
++    expect(find.textContaining('20'), findsWidgets); // attempt count shown somewhere
++    expect(find.textContaining('What is H2O?'), findsOneWidget);
++    expect(find.textContaining('75%'), findsWidgets); // difficulty index rendered as a percent
++  });
++}

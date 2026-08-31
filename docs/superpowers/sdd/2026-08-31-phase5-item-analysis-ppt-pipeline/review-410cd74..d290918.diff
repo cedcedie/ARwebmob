@@ -1,0 +1,233 @@
+# Review package: 410cd74..d290918
+
+## Commits
+d290918 feat: teacher lesson form — PPTX/PDF upload UI
+
+## Files changed
+ lib/features/teacher/lessons/lesson_form.dart      | 53 ++++++++++++++++++++++
+ .../lessons/lesson_form_content_upload_test.dart   | 49 ++++++++++++++++++++
+ 2 files changed, 102 insertions(+)
+
+## Diff
+diff --git a/lib/features/teacher/lessons/lesson_form.dart b/lib/features/teacher/lessons/lesson_form.dart
+index 83decdd..220e07d 100644
+--- a/lib/features/teacher/lessons/lesson_form.dart
++++ b/lib/features/teacher/lessons/lesson_form.dart
+@@ -1,67 +1,107 @@
+ import 'dart:io' show Platform;
++import 'dart:typed_data';
+ 
++import 'package:file_picker/file_picker.dart';
+ import 'package:flutter/material.dart';
+ import 'package:flutter_form_builder/flutter_form_builder.dart';
+ import 'package:form_builder_validators/form_builder_validators.dart';
+ import 'package:model_viewer_plus/model_viewer_plus.dart';
+ 
+ import '../../../core/ar/model_assets.dart';
+ import '../../../core/models/ar_payload.dart';
+ import '../../../core/models/subject_key.dart';
+ import '../../../core/models/teacher_lesson.dart';
+ import '../../../core/models/teacher_quiz.dart';
++import '../../../core/services/lesson_content_upload_service.dart';
+ import '../widgets/dynamic_string_list_field.dart';
+ import 'lessons_providers.dart';
+ 
+ class LessonForm extends StatefulWidget {
+   const LessonForm({
+     super.key,
+     this.initial,
+     required this.quizOptions,
+     required this.onSubmit,
+     this.submitLabel = 'Save',
++    this.uploadContentOverride, // test-only injection point
+   });
+ 
+   final TeacherLesson? initial;
+   final List<TeacherQuiz> quizOptions;
+   final Future<void> Function(TeacherLesson lesson) onSubmit;
+   final String submitLabel;
++  final Future<({String url, bool isConversionNeeded})> Function(String fileName, Uint8List bytes)?
++      uploadContentOverride;
+ 
+   @override
+   State<LessonForm> createState() => LessonFormState();
+ }
+ 
+ class LessonFormState extends State<LessonForm> {
+   final _formKey = GlobalKey<FormBuilderState>();
+   late List<String> _steps;
+   int? _modelIndex;
+   int? _quarter;
+   int? _week;
++  String? _uploadedContentUrl;
++  bool _uploadedContentNeedsConversion = false;
+ 
+   @override
+   void initState() {
+     super.initState();
+     final initial = widget.initial;
+     _steps = [...?initial?.steps];
+     if (_steps.isEmpty) _steps = [''];
+     _modelIndex = initial?.arPayload?.modelIndex ?? initial?.arModelIndex;
+     _quarter = initial?.quarter;
+     _week = initial?.week;
+   }
+ 
+   String? get _previewPath => resolveGlbPreviewPath(
+         quarter: _quarter,
+         week: _week,
+         modelIndex: _modelIndex,
+       );
+ 
++  Future<void> _pickAndUploadContent() async {
++    final ({String url, bool isConversionNeeded}) uploadResult;
++
++    // Test-only injection point: when provided, skip the real
++    // file_picker/Storage round trip entirely so widget tests can simulate
++    // "a file was picked and uploaded" without a platform channel handler.
++    if (widget.uploadContentOverride != null) {
++      uploadResult = await widget.uploadContentOverride!('content', Uint8List(0));
++    } else {
++      final result = await FilePicker.platform.pickFiles(
++        type: FileType.custom,
++        allowedExtensions: ['pptx', 'pdf'],
++        withData: true,
++      );
++      final file = result?.files.single;
++      if (file?.bytes == null) return;
++
++      final isConversionNeeded = file!.extension?.toLowerCase() == 'pptx';
++      final lessonId = widget.initial?.id ?? 'teacher-${DateTime.now().millisecondsSinceEpoch}';
++      final service = LessonContentUploadService(uploader: FirebaseStorageUploader());
++      final url = await service.uploadLessonContent(
++        lessonId: lessonId, fileName: file.name, bytes: file.bytes!,
++      );
++      uploadResult = (url: url, isConversionNeeded: isConversionNeeded);
++    }
++
++    setState(() {
++      _uploadedContentUrl = uploadResult.url;
++      _uploadedContentNeedsConversion = uploadResult.isConversionNeeded;
++    });
++  }
++
+   Future<void> _handleSubmit() async {
+     final formState = _formKey.currentState;
+     if (formState == null) return;
+     if (!formState.saveAndValidate()) return;
+ 
+     final values = formState.value;
+     final subject = values['subject'] as SubjectKey;
+     final title = (values['title'] as String).trim();
+     final summary = (values['summary'] as String?)?.trim();
+     final content = (values['content'] as String?)?.trim();
+@@ -86,20 +126,26 @@ class LessonFormState extends State<LessonForm> {
+       arPayload: modelIndexRaw == null
+           ? widget.initial?.arPayload
+           : ARPayload(
+               modelIndex: modelIndexRaw,
+               detectionMode: widget.initial?.arPayload?.detectionMode ?? 'marker',
+               anchorHint: widget.initial?.arPayload?.anchorHint ?? 'Scan the lesson marker.',
+               lessonSteps: steps.isEmpty ? const ['View the 3D model'] : steps,
+             ),
+       hasAR: modelIndexRaw != null || widget.initial?.hasAR == true,
+       isArchived: widget.initial?.isArchived ?? false,
++      contentImageUrls: _uploadedContentUrl != null
++          ? [_uploadedContentUrl!]
++          : widget.initial?.contentImageUrls,
++      contentStatus: _uploadedContentUrl == null
++          ? widget.initial?.contentStatus
++          : (_uploadedContentNeedsConversion ? 'processing' : 'ready'),
+     );
+ 
+     await widget.onSubmit(lesson);
+   }
+ 
+   @override
+   Widget build(BuildContext context) {
+     final initial = widget.initial;
+ 
+     return FormBuilder(
+@@ -196,20 +242,27 @@ class LessonFormState extends State<LessonForm> {
+             FormBuilderTextField(
+               name: 'modelIndex',
+               initialValue: _modelIndex?.toString(),
+               decoration: const InputDecoration(
+                 labelText: 'AR model index (optional)',
+                 helperText: 'Read-only preview — does not change the Unity mapping.',
+               ),
+               keyboardType: TextInputType.number,
+               onChanged: (value) => setState(() => _modelIndex = int.tryParse(value ?? '')),
+             ),
++            const SizedBox(height: 12),
++            OutlinedButton.icon(
++              key: const Key('lesson-upload-content'),
++              onPressed: _pickAndUploadContent,
++              icon: const Icon(Icons.upload_file),
++              label: Text(_uploadedContentUrl == null ? 'Upload PPTX or PDF' : 'Content uploaded'),
++            ),
+             if (_previewPath != null) ...[
+               const SizedBox(height: 12),
+               Text('3D model preview', style: Theme.of(context).textTheme.titleSmall),
+               const SizedBox(height: 8),
+               SizedBox(
+                 height: 240,
+                 child: _LessonModelPreview(assetPath: _previewPath!),
+               ),
+             ],
+             const SizedBox(height: 20),
+diff --git a/test/features/teacher/lessons/lesson_form_content_upload_test.dart b/test/features/teacher/lessons/lesson_form_content_upload_test.dart
+new file mode 100644
+index 0000000..4b52909
+--- /dev/null
++++ b/test/features/teacher/lessons/lesson_form_content_upload_test.dart
+@@ -0,0 +1,49 @@
++import 'dart:typed_data';
++
++import 'package:flutter/material.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:ar_science_explorer/core/models/teacher_lesson.dart';
++import 'package:ar_science_explorer/core/models/subject_key.dart';
++import 'package:ar_science_explorer/features/teacher/lessons/lesson_form.dart';
++
++void main() {
++  testWidgets('uploading a .pptx sets contentStatus to processing on submit', (tester) async {
++    // The form's content exceeds the default 800x600 test surface; enlarge
++    // it so every field (including the new upload button) is reachable by
++    // tap() without needing scrollUntilVisible for each interaction.
++    tester.view.physicalSize = const Size(800, 1600);
++    tester.view.devicePixelRatio = 1.0;
++    addTearDown(tester.view.reset);
++
++    TeacherLesson? submitted;
++
++    await tester.pumpWidget(
++      MaterialApp(
++        home: Scaffold(
++          body: LessonForm(
++            quizOptions: const [],
++            onSubmit: (lesson) async => submitted = lesson,
++            // Test-only injection point — see Step 3's implementation note:
++            // the real upload call is abstracted behind a function the
++            // widget accepts, so this test can simulate "a file was picked
++            // and uploaded" without touching real file-picker/Storage APIs.
++            uploadContentOverride: (fileName, bytes) async => (
++              url: 'https://fake-storage.example/slides.pptx',
++              isConversionNeeded: true,
++            ),
++          ),
++        ),
++      ),
++    );
++
++    await tester.enterText(find.byKey(const Key('lesson-title')), 'Volcanoes');
++    await tester.tap(find.byKey(const Key('lesson-upload-content')));
++    await tester.pumpAndSettle();
++    await tester.tap(find.byKey(const Key('lesson-submit')));
++    await tester.pumpAndSettle();
++
++    expect(submitted, isNotNull);
++    expect(submitted!.contentStatus, 'processing');
++    expect(submitted!.contentImageUrls, ['https://fake-storage.example/slides.pptx']);
++  });
++}
