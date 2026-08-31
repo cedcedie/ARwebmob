@@ -213,9 +213,20 @@ class _LessonsBody extends HookWidget {
               // this quiz." pattern.
               child: displayRows.isEmpty
                   ? const Center(
-                      child: Text(
-                        'No lessons yet — add your first lesson to get started.',
-                        style: TextStyle(color: AppColors.inkMuted),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            LucideIcons.bookOpen,
+                            size: 32,
+                            color: AppColors.inkMuted,
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'No lessons yet — add your first lesson to get started.',
+                            style: TextStyle(color: AppColors.inkMuted),
+                          ),
+                        ],
                       ),
                     )
                   : DataTable2(

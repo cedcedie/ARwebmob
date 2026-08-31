@@ -187,9 +187,20 @@ class _AccessCodesBody extends HookWidget {
               // previously saw a bare header row with no explanation.
               child: viewModel.issuedCodes.isEmpty
                   ? const Center(
-                      child: Text(
-                        'No access codes issued yet — issue one above to get started.',
-                        style: TextStyle(color: AppColors.inkMuted),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            LucideIcons.keyRound,
+                            size: 32,
+                            color: AppColors.inkMuted,
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'No access codes issued yet — issue one above to get started.',
+                            style: TextStyle(color: AppColors.inkMuted),
+                          ),
+                        ],
                       ),
                     )
                   : DataTable2(

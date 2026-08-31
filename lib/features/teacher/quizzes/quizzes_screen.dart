@@ -156,9 +156,20 @@ class _QuizzesBody extends StatelessWidget {
               // rows previously meant a bare header row with no explanation.
               child: viewModel.rows.isEmpty
                   ? const Center(
-                      child: Text(
-                        'No quizzes yet — add your first quiz to get started.',
-                        style: TextStyle(color: AppColors.inkMuted),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            LucideIcons.listChecks,
+                            size: 32,
+                            color: AppColors.inkMuted,
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'No quizzes yet — add your first quiz to get started.',
+                            style: TextStyle(color: AppColors.inkMuted),
+                          ),
+                        ],
                       ),
                     )
                   : DataTable2(

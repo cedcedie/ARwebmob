@@ -254,9 +254,20 @@ class _StudentsBody extends HookWidget {
               // (e.g. every student archived and "Show archived" is off).
               child: displayStudents.isEmpty
                   ? const Center(
-                      child: Text(
-                        'No students yet — add your first student to get started.',
-                        style: TextStyle(color: AppColors.inkMuted),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            LucideIcons.users,
+                            size: 32,
+                            color: AppColors.inkMuted,
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'No students yet — add your first student to get started.',
+                            style: TextStyle(color: AppColors.inkMuted),
+                          ),
+                        ],
                       ),
                     )
                   : DataTable2(
