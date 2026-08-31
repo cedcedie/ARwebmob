@@ -225,9 +225,27 @@ Scripts touched in Phase 3 (in the Unity project, not this Flutter repo):
 
 ## 4. [DEV or CLIENT, whoever has the device] Android build & on-device test
 
-- [x] **`flutter build apk --debug`** succeeded once (IL2CPP ~24 min first time;
-      ~2 min on cache hit). APK:
-      `build/app/outputs/flutter-apk/app-debug.apk` (~806 MB debug/unstripped).
+- [ ] **⚠️ Re-run the Unity export first.** `flutter build apk --debug`
+      succeeded once, but that was inside the now-deleted
+      `phase1-scaffold-core-auth` worktree — both `build/` **and**
+      `android/unityLibrary` are gitignored, and neither survived the merge
+      to `main` (confirmed: `android/unityLibrary` doesn't exist on `main`
+      at all right now). Before a debug APK can be built again:
+      1. Open the Unity project (`C:\Users\cedri\VuforiaAR`) in Unity Editor.
+      2. `Flutter Embed → Export project to Flutter app` → target
+         `C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob\android\unityLibrary`
+         (§3.3 above).
+      3. Reapply the post-export fixes if they resurface (§3.4 — proguard
+         line, ARM64-only patch).
+      4. Then run:
+         ```powershell
+         cd C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob
+         flutter build apk --debug
+         ```
+         Expect the full ~24-minute IL2CPP compile again (fresh build
+         environment, not a cache hit). Output lands at
+         `build/app/outputs/flutter-apk/app-debug.apk` (~806 MB
+         debug/unstripped).
 - [ ] **Install on a physical device** — `flutter install` or adb:
       `adb install build/app/outputs/flutter-apk/app-debug.apk`
 - [ ] **Sign in as a student** — real login screen exists

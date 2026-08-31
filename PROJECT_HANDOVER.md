@@ -168,13 +168,19 @@ project:
 There's no Play Store release signing set up yet (not required for a
 capstone demo). Two ways to get the app onto a device:
 
-- **Sideload the debug APK** — build it once
-  (`flutter build apk --debug` from the repo root — first build is slow,
-  ~24 minutes, due to Unity's IL2CPP compile; cached rebuilds are ~2
-  minutes), then hand over `build/app/outputs/flutter-apk/app-debug.apk`
-  for the client to install directly (`adb install <path>`, or copy the
-  file to the phone and open it — Android will prompt to allow installs
-  from this source).
+- **Sideload the debug APK** — **not currently built**: the Unity export
+  (`android/unityLibrary`) and the prior APK build both only ever existed
+  in the now-deleted development worktree, and neither is git-tracked
+  (both gitignored), so neither survived the merge to `main`. Before an
+  APK exists again, re-run the Unity export from Unity Editor
+  (`MANUAL_STEPS.md` §3.3 — a GUI action, not automatable) targeting
+  `android/unityLibrary` at the repo root, then
+  `flutter build apk --debug` from the repo root (full ~24-minute IL2CPP
+  compile, since this is a fresh build environment). Output lands at
+  `build/app/outputs/flutter-apk/app-debug.apk` (~806 MB, debug/unstripped) —
+  hand that file to the client to install directly (`adb install <path>`,
+  or copy it to the phone and open it — Android will prompt to allow
+  installs from this source).
 - **Play Store internal testing track** — only worth setting up if the
   client wants a more polished install flow (auto-updates, no "unknown
   sources" prompt); requires a release signing keystore (`MANUAL_STEPS.md`
