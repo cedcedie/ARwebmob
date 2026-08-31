@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Side-nav desktop shell for the Teacher Web target (Part 2.2).
 class TeacherShell extends StatelessWidget {
@@ -24,37 +25,34 @@ class TeacherShell extends StatelessWidget {
             selectedIndex: selectedIndex,
             onDestinationSelected: onDestinationSelected,
             labelType: NavigationRailLabelType.all,
-            destinations: [
-              const NavigationRailDestination(
-                icon: Icon(Icons.menu_book_outlined),
-                selectedIcon: Icon(Icons.menu_book),
+            // The rail's sections (Lessons/Quizzes/Students/Access
+            // Codes/Item Analysis) aren't subject-scoped, so the active-item
+            // indicator uses a single accent (physics blue, doubling as the
+            // app's general "current selection" signal) rather than a
+            // per-subject color — see appMaterialTheme.navigationRailTheme.
+            destinations: const [
+              NavigationRailDestination(
+                icon: Icon(LucideIcons.bookOpen),
                 label: Text('Lessons'),
               ),
-              const NavigationRailDestination(
-                icon: Icon(Icons.quiz_outlined),
-                selectedIcon: Icon(Icons.quiz),
+              NavigationRailDestination(
+                icon: Icon(LucideIcons.clipboardList),
                 label: Text('Quizzes'),
               ),
-              const NavigationRailDestination(
-                icon: Icon(Icons.people_outline),
-                selectedIcon: Icon(Icons.people),
+              NavigationRailDestination(
+                icon: Icon(LucideIcons.users),
                 label: Text('Students'),
               ),
-              const NavigationRailDestination(
-                icon: Icon(Icons.vpn_key_outlined),
-                selectedIcon: Icon(Icons.vpn_key),
+              NavigationRailDestination(
+                icon: Icon(LucideIcons.keyRound),
                 label: Text('Access Codes'),
               ),
               NavigationRailDestination(
                 icon: Tooltip(
                   message: 'Coming in Phase 5',
-                  child: Icon(Icons.analytics_outlined, color: Theme.of(context).disabledColor),
+                  child: Icon(LucideIcons.chartColumn),
                 ),
-                selectedIcon: Tooltip(
-                  message: 'Coming in Phase 5',
-                  child: Icon(Icons.analytics, color: Theme.of(context).disabledColor),
-                ),
-                label: Text('Item Analysis', style: TextStyle(color: Theme.of(context).disabledColor)),
+                label: Text('Item Analysis'),
                 disabled: true,
               ),
             ],

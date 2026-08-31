@@ -49,28 +49,33 @@ class AccessCodesViewModel {
     required List<String> subjects,
     List<String>? lessonIds,
     String? customCode,
-  }) onIssueSubjectCode;
+  })
+  onIssueSubjectCode;
   final Future<String> Function({
     required String lessonId,
     required String studentId,
     String? customCode,
-  }) onIssueLessonCode;
+  })
+  onIssueLessonCode;
   final Future<String> Function({
     required String lessonId,
     required String studentId,
-  }) onIssueQuizRetakeCode;
+  })
+  onIssueQuizRetakeCode;
   final Future<bool> Function({
     required String studentId,
     required String lessonId,
-  }) checkRetakeEligible;
+  })
+  checkRetakeEligible;
 }
 
-final accessCodesViewModelProvider = StreamProvider.autoDispose<AccessCodesViewModel>((ref) {
-  throw UnimplementedError(
-    'accessCodesViewModelProvider must be overridden at app startup — see '
-    'teacherProviderOverridesFor.',
-  );
-});
+final accessCodesViewModelProvider =
+    StreamProvider.autoDispose<AccessCodesViewModel>((ref) {
+      throw UnimplementedError(
+        'accessCodesViewModelProvider must be overridden at app startup — see '
+        'teacherProviderOverridesFor.',
+      );
+    });
 
 Stream<AccessCodesViewModel> buildAccessCodesViewModel({
   required AccessCodeIssuanceService issuanceService,
@@ -93,40 +98,30 @@ Stream<AccessCodesViewModel> buildAccessCodesViewModel({
         students: students,
         lessons: resolvedLessons,
         issuedCodes: issuedCodes,
-        onIssueSubjectCode: ({
-          required subjects,
-          lessonIds,
-          customCode,
-        }) =>
+        onIssueSubjectCode: ({required subjects, lessonIds, customCode}) =>
             issuanceService.issueSubjectCode(
               subjects: subjects,
               lessonIds: lessonIds,
               customCode: customCode,
             ),
-        onIssueLessonCode: ({
-          required lessonId,
-          required studentId,
-          customCode,
-        }) =>
-            issuanceService.issueLessonCode(
-              lessonId: lessonId,
-              studentId: studentId,
-              customCode: customCode,
-            ),
-        onIssueQuizRetakeCode: ({
-          required lessonId,
-          required studentId,
-        }) =>
+        onIssueLessonCode:
+            ({required lessonId, required studentId, customCode}) =>
+                issuanceService.issueLessonCode(
+                  lessonId: lessonId,
+                  studentId: studentId,
+                  customCode: customCode,
+                ),
+        onIssueQuizRetakeCode: ({required lessonId, required studentId}) =>
             issuanceService.issueQuizRetakeCode(
               lessonId: lessonId,
               studentId: studentId,
             ),
-        checkRetakeEligible: ({
-          required studentId,
-          required lessonId,
-        }) async {
+        checkRetakeEligible: ({required studentId, required lessonId}) async {
           final quizId = builtinQuizId(lessonId, QuizPhase.post);
-          final eligibility = await quizAttemptService.checkEligibility(studentId, quizId);
+          final eligibility = await quizAttemptService.checkEligibility(
+            studentId,
+            quizId,
+          );
           return eligibility.attemptCount >= 1;
         },
       );
@@ -136,13 +131,16 @@ Stream<AccessCodesViewModel> buildAccessCodesViewModel({
 
 IssuedCodeRow _rowFromUnlockCode(Map<String, dynamic> doc) {
   final typeRaw = doc['type'] as String? ?? 'subject';
-  final type = typeRaw == 'lesson' ? IssuedCodeType.lesson : IssuedCodeType.subject;
+  final type = typeRaw == 'lesson'
+      ? IssuedCodeType.lesson
+      : IssuedCodeType.subject;
   final isUsed = doc['isUsed'] as bool? ?? false;
   final isArchived = doc['isArchived'] as bool? ?? false;
   final target = type == IssuedCodeType.lesson
       ? (doc['targetStudentId'] as String? ?? '—')
       : 'any';
-  final issuedAt = doc['createdAt'] as String? ?? doc['generatedAt'] as String? ?? '—';
+  final issuedAt =
+      doc['createdAt'] as String? ?? doc['generatedAt'] as String? ?? '—';
 
   return IssuedCodeRow(
     code: doc['id'] as String? ?? '—',

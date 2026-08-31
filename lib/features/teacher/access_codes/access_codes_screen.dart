@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/models/subject_key.dart';
 import 'access_codes_providers.dart';
@@ -18,7 +18,8 @@ class AccessCodesScreen extends HookConsumerWidget {
     return Scaffold(
       body: asyncVm.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('Error loading access codes: $error')),
+        error: (error, _) =>
+            Center(child: Text('Error loading access codes: $error')),
         data: (vm) => _AccessCodesBody(viewModel: vm),
       ),
     );
@@ -52,7 +53,10 @@ class _AccessCodesBody extends HookWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Access Codes', style: Theme.of(context).textTheme.headlineSmall),
+          Text(
+            'Access Codes',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
           const SizedBox(height: 16),
           SegmentedButton<int>(
             segments: const [
@@ -67,7 +71,8 @@ class _AccessCodesBody extends HookWidget {
             },
           ),
           const SizedBox(height: 16),
-          if (issuedCode.value != null) _IssuedCodeBanner(code: issuedCode.value!),
+          if (issuedCode.value != null)
+            _IssuedCodeBanner(code: issuedCode.value!),
           if (errorMessage.value != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -90,17 +95,17 @@ class _AccessCodesBody extends HookWidget {
                   padding: const EdgeInsets.all(16),
                   child: switch (tabIndex.value) {
                     0 => _SubjectCodeForm(
-                        viewModel: viewModel,
-                        onIssue: (issue) => handleIssue(issue),
-                      ),
+                      viewModel: viewModel,
+                      onIssue: (issue) => handleIssue(issue),
+                    ),
                     1 => _LessonCodeForm(
-                        viewModel: viewModel,
-                        onIssue: (issue) => handleIssue(issue),
-                      ),
+                      viewModel: viewModel,
+                      onIssue: (issue) => handleIssue(issue),
+                    ),
                     _ => _RetakeCodeForm(
-                        viewModel: viewModel,
-                        onIssue: (issue) => handleIssue(issue),
-                      ),
+                      viewModel: viewModel,
+                      onIssue: (issue) => handleIssue(issue),
+                    ),
                   },
                 ),
               ),
@@ -169,22 +174,24 @@ class _IssuedCodeBanner extends StatelessWidget {
                   SelectableText(
                     code,
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 4,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 4,
+                    ),
                   ),
                 ],
               ),
             ),
-            IconButton(
-              tooltip: 'Copy code',
-              icon: const Icon(LucideIcons.copy),
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: code));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Code copied to clipboard')),
-                );
-              },
+            Tooltip(
+              message: 'Copy code',
+              child: ShadIconButton.ghost(
+                icon: const Icon(LucideIcons.copy),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: code));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Code copied to clipboard')),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -194,10 +201,7 @@ class _IssuedCodeBanner extends StatelessWidget {
 }
 
 class _SubjectCodeForm extends HookWidget {
-  const _SubjectCodeForm({
-    required this.viewModel,
-    required this.onIssue,
-  });
+  const _SubjectCodeForm({required this.viewModel, required this.onIssue});
 
   final AccessCodesViewModel viewModel;
   final Future<void> Function(Future<String> Function() issue) onIssue;
@@ -221,10 +225,8 @@ class _SubjectCodeForm extends HookWidget {
           decoration: const InputDecoration(labelText: 'Subject'),
           items: SubjectKey.values
               .map(
-                (s) => DropdownMenuItem(
-                  value: s,
-                  child: Text(subjectKeyLabel(s)),
-                ),
+                (s) =>
+                    DropdownMenuItem(value: s, child: Text(subjectKeyLabel(s))),
               )
               .toList(),
           onChanged: (value) {
@@ -234,7 +236,10 @@ class _SubjectCodeForm extends HookWidget {
           },
         ),
         const SizedBox(height: 12),
-        Text('Optional lesson scope (empty = whole subject)', style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          'Optional lesson scope (empty = whole subject)',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -267,7 +272,7 @@ class _SubjectCodeForm extends HookWidget {
         const SizedBox(height: 16),
         Align(
           alignment: Alignment.centerRight,
-          child: FilledButton(
+          child: ShadButton(
             onPressed: isSubmitting.value
                 ? null
                 : () async {
@@ -278,7 +283,9 @@ class _SubjectCodeForm extends HookWidget {
                         lessonIds: selectedLessonIds.value.isEmpty
                             ? null
                             : selectedLessonIds.value.toList(),
-                        customCode: customCode.value.trim().isEmpty ? null : customCode.value.trim(),
+                        customCode: customCode.value.trim().isEmpty
+                            ? null
+                            : customCode.value.trim(),
                       ),
                     );
                     isSubmitting.value = false;
@@ -298,10 +305,7 @@ class _SubjectCodeForm extends HookWidget {
 }
 
 class _LessonCodeForm extends HookWidget {
-  const _LessonCodeForm({
-    required this.viewModel,
-    required this.onIssue,
-  });
+  const _LessonCodeForm({required this.viewModel, required this.onIssue});
 
   final AccessCodesViewModel viewModel;
   final Future<void> Function(Future<String> Function() issue) onIssue;
@@ -355,8 +359,11 @@ class _LessonCodeForm extends HookWidget {
         const SizedBox(height: 16),
         Align(
           alignment: Alignment.centerRight,
-          child: FilledButton(
-            onPressed: isSubmitting.value || studentId.value == null || lessonId.value == null
+          child: ShadButton(
+            onPressed:
+                isSubmitting.value ||
+                    studentId.value == null ||
+                    lessonId.value == null
                 ? null
                 : () async {
                     isSubmitting.value = true;
@@ -364,7 +371,9 @@ class _LessonCodeForm extends HookWidget {
                       () => viewModel.onIssueLessonCode(
                         lessonId: lessonId.value!,
                         studentId: studentId.value!,
-                        customCode: customCode.value.trim().isEmpty ? null : customCode.value.trim(),
+                        customCode: customCode.value.trim().isEmpty
+                            ? null
+                            : customCode.value.trim(),
                       ),
                     );
                     isSubmitting.value = false;
@@ -384,10 +393,7 @@ class _LessonCodeForm extends HookWidget {
 }
 
 class _RetakeCodeForm extends HookWidget {
-  const _RetakeCodeForm({
-    required this.viewModel,
-    required this.onIssue,
-  });
+  const _RetakeCodeForm({required this.viewModel, required this.onIssue});
 
   final AccessCodesViewModel viewModel;
   final Future<void> Function(Future<String> Function() issue) onIssue;
@@ -409,9 +415,9 @@ class _RetakeCodeForm extends HookWidget {
       }
       isChecking.value = true;
       var cancelled = false;
-      viewModel
-          .checkRetakeEligible(studentId: sid, lessonId: lid)
-          .then((eligible) {
+      viewModel.checkRetakeEligible(studentId: sid, lessonId: lid).then((
+        eligible,
+      ) {
         if (!cancelled) {
           isEligible.value = eligible;
           isChecking.value = false;
@@ -422,7 +428,8 @@ class _RetakeCodeForm extends HookWidget {
       };
     }, [studentId.value, lessonId.value]);
 
-    final canSubmit = studentId.value != null &&
+    final canSubmit =
+        studentId.value != null &&
         lessonId.value != null &&
         isEligible.value == true &&
         !isSubmitting.value &&
@@ -473,7 +480,7 @@ class _RetakeCodeForm extends HookWidget {
         const SizedBox(height: 16),
         Align(
           alignment: Alignment.centerRight,
-          child: FilledButton(
+          child: ShadButton(
             onPressed: canSubmit
                 ? () async {
                     isSubmitting.value = true;
