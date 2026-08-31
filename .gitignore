@@ -30,4 +30,5 @@ firebase.json
 # scripts/create-test-accounts.js's header for where they should live)
 *serviceAccount*.json
 *service-account*.json
+*firebase-adminsdk*.json
 scripts/node_modules/

@@ -219,10 +219,14 @@ platforms **Web** and **Android**. This regenerates
 ### 3.2 Commit and push that change
 
 ```powershell
-git add lib/firebase_options.dart android/app/google-services.json
+git add lib/firebase_options.dart
 git commit -m "chore: point Firebase config at client project"
 git push
 ```
+Only `firebase_options.dart` — `google-services.json` is gitignored on
+purpose (repo convention: every clone runs its own `flutterfire
+configure`), stays local-only, and still gets picked up correctly by
+`flutter build apk` without needing to be tracked.
 
 ### 3.3 Create the Firestore database, then deploy the rules
 
