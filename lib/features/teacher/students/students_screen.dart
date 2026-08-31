@@ -119,7 +119,7 @@ class _StudentsBody extends StatelessWidget {
                                 child: Text(
                                   'Archived',
                                   style: TextStyle(
-                                    color: Colors.grey,
+                                    color: AppColors.inkMuted,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -177,6 +177,11 @@ void _showProgressDetails(BuildContext context, StudentRecord student) {
 /// Compact roster-cell summary of a student's actual activity — lesson
 /// completion count and quiz-attempt count — surfaced alongside `scores` so
 /// a teacher isn't limited to the latest post-test score per subject.
+///
+/// Static, non-interactive labels — `ShadBadge`, the app's one treatment for
+/// a tag/label (matching the "Built-in" badge on the lessons/quizzes
+/// tables), not a `Chip` (that stays reserved for the "Show archived"
+/// toggle, the only genuinely interactive chip on this surface).
 class _ProgressSummary extends StatelessWidget {
   const _ProgressSummary({required this.student});
 
@@ -188,21 +193,11 @@ class _ProgressSummary extends StatelessWidget {
       spacing: 4,
       runSpacing: 4,
       children: [
-        Chip(
-          label: Text(
-            'Lessons: ${student.completedLessonIds.length}',
-            style: const TextStyle(fontSize: 11),
-          ),
-          visualDensity: VisualDensity.compact,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ShadBadge.secondary(
+          child: Text('Lessons: ${student.completedLessonIds.length}'),
         ),
-        Chip(
-          label: Text(
-            'Quizzes taken: ${student.quizAttempts.length}',
-            style: const TextStyle(fontSize: 11),
-          ),
-          visualDensity: VisualDensity.compact,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ShadBadge.secondary(
+          child: Text('Quizzes taken: ${student.quizAttempts.length}'),
         ),
       ],
     );
@@ -295,15 +290,20 @@ class _ScoreChips extends StatelessWidget {
     );
   }
 
+  // Static per-subject score label — a `ShadBadge.outline`, the app's one
+  // treatment for a tag, rather than a second hand-rolled chip style;
+  // still colored by subject via `subjectColor()`, just through the shared
+  // badge widget instead of a bespoke alpha-blended `Chip`.
   Widget _subjectChip(String label, num? score, SubjectKey subject) {
     final text = score != null ? '$label ${score.round()}' : '$label —';
     final accent = subjectColor(subject);
-    return Chip(
-      label: Text(text, style: TextStyle(fontSize: 11, color: accent)),
-      side: BorderSide(color: accent.withValues(alpha: 0.4)),
+    return ShadBadge.outline(
       backgroundColor: accent.withValues(alpha: 0.10),
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      foregroundColor: accent,
+      shape: StadiumBorder(
+        side: BorderSide(color: accent.withValues(alpha: 0.4)),
+      ),
+      child: Text(text),
     );
   }
 }
