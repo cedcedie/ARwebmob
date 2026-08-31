@@ -100,8 +100,26 @@ class _QuizzesBody extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed == true) {
+    if (confirmed != true) return;
+
+    // Item 3: same gap as lessons_screen.dart's archive (item 2) — no
+    // try/catch and no success toast, on a permanent destructive delete
+    // this time, so a failed delete silently did nothing.
+    try {
       await viewModel.onDeleteQuiz(quizId);
+      if (!context.mounted) return;
+      ShadToaster.of(context).show(
+        const ShadToast(description: Text('Quiz deleted')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ShadToaster.of(context).show(
+        ShadToast.destructive(
+          description: Text(
+            humanizeSubmitError(error, actionLabel: 'delete this quiz'),
+          ),
+        ),
+      );
     }
   }
 

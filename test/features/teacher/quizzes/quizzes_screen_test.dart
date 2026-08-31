@@ -11,6 +11,7 @@ import 'package:ar_science_explorer/core/models/teacher_quiz.dart';
 import 'package:ar_science_explorer/core/models/teacher_quiz_question.dart';
 import 'package:ar_science_explorer/core/services/quiz_repository.dart';
 import 'package:ar_science_explorer/features/teacher/app/teacher_providers.dart';
+import 'package:ar_science_explorer/features/teacher/quizzes/quizzes_providers.dart';
 import 'package:ar_science_explorer/features/teacher/quizzes/quizzes_screen.dart';
 
 TeacherQuiz _sampleQuiz({
@@ -254,4 +255,66 @@ void main() {
     expect(doc.data()!['title'], 'Renamed Quiz');
     expect(find.text('Renamed Quiz'), findsOneWidget);
   });
+
+  testWidgets('deleting a teacher quiz removes it and shows success feedback (item 3)', (
+    tester,
+  ) async {
+    final firestore = FakeFirebaseFirestore();
+    final repo = QuizRepository(firestore: firestore);
+    await repo.createQuiz(_sampleQuiz());
+
+    await _pumpQuizzesScreen(tester, firestore: firestore);
+    expect(find.text('Custom Quiz'), findsOneWidget);
+
+    await _scrollTo(tester, find.byTooltip('Delete'));
+    await tester.tap(find.byTooltip('Delete'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Custom Quiz'), findsNothing);
+    final doc = await firestore.collection('quizzes').doc('quiz-custom-1').get();
+    expect(doc.exists, false);
+    expect(find.text('Quiz deleted'), findsOneWidget);
+  });
+
+  testWidgets(
+    'a throwing onDeleteQuiz shows an error toast instead of silently '
+    'doing nothing (item 3)',
+    (tester) async {
+      final quiz = _sampleQuiz();
+      final viewModel = QuizzesViewModel(
+        rows: [DisplayQuiz(quiz: quiz, isBuiltIn: false)],
+        onCreateQuiz: (_) async {},
+        onUpdateQuiz: (_) async {},
+        onDeleteQuiz: (_) async {
+          throw Exception('boom');
+        },
+      );
+
+      await tester.binding.setSurfaceSize(const Size(1280, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            quizzesViewModelProvider.overrideWith(
+              (ref) => Stream.value(viewModel),
+            ),
+          ],
+          child: ShadApp(home: Scaffold(body: const QuizzesScreen())),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _scrollTo(tester, find.byTooltip('Delete'));
+      await tester.tap(find.byTooltip('Delete'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Custom Quiz'), findsOneWidget);
+      expect(find.textContaining('Exception'), findsNothing);
+      expect(find.textContaining("Couldn't delete this quiz"), findsOneWidget);
+    },
+  );
 }
