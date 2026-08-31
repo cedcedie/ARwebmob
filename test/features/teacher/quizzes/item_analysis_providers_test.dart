@@ -9,6 +9,8 @@ import 'package:ar_science_explorer/core/models/teacher_quiz_question.dart';
 import 'package:ar_science_explorer/core/models/question_type.dart';
 import 'package:ar_science_explorer/core/quiz_id.dart';
 import 'package:ar_science_explorer/core/models/quiz_phase.dart';
+import 'package:ar_science_explorer/core/models/teacher_lesson.dart';
+import 'package:ar_science_explorer/core/services/lesson_repository.dart';
 import 'package:ar_science_explorer/core/services/quiz_repository.dart';
 import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/features/teacher/quizzes/item_analysis_providers.dart';
@@ -45,6 +47,7 @@ void main() {
       quizTitle: 'Q1W1 Post-Test',
       studentRepository: studentRepo,
       quizRepository: QuizRepository(firestore: firestore),
+      lessonRepository: LessonRepository(firestore: firestore),
     );
     final vm = await stream.first;
 
@@ -72,6 +75,7 @@ void main() {
       quizTitle: 'Q1W1 Post-Test',
       studentRepository: studentRepo,
       quizRepository: QuizRepository(firestore: firestore),
+      lessonRepository: LessonRepository(firestore: firestore),
     );
     final vm = await stream.first;
 
@@ -112,6 +116,7 @@ void main() {
       quizTitle: 'Custom Chemistry Quiz',
       studentRepository: studentRepo,
       quizRepository: quizRepo,
+      lessonRepository: LessonRepository(firestore: firestore),
     );
     final vm = await stream.first;
 
@@ -131,10 +136,76 @@ void main() {
       quizTitle: 'Missing Quiz',
       studentRepository: studentRepo,
       quizRepository: quizRepo,
+      lessonRepository: LessonRepository(firestore: firestore),
     );
     final vm = await stream.first;
 
     expect(vm.questions, isEmpty);
     expect(vm.attemptCount, 0);
+  });
+
+  test(
+      'finds attempts recorded via the real student flow for a teacher-linked quiz '
+      '(regression: attempts recorded under the builtin lesson+phase id must still '
+      'be found when item analysis is opened from the authored quiz\'s own row)',
+      () async {
+    final firestore = FakeFirebaseFirestore();
+    final studentRepo = StudentRepository(firestore: firestore);
+    final lessonRepo = LessonRepository(firestore: firestore);
+    final quizRepo = QuizRepository(firestore: firestore);
+    const quizId = 'teacher-quiz-linked';
+    const lessonId = 'teacher-lesson-1';
+
+    await quizRepo.createQuiz(TeacherQuiz(
+      id: quizId,
+      title: 'Linked Post-Test',
+      subject: SubjectKey.chemistry,
+      questions: [
+        TeacherQuizQuestion(
+          question: 'What is H2O?',
+          options: const ['Water', 'Oxygen', 'Hydrogen', 'Salt'],
+          correctIndex: 0,
+          hint: 'hint',
+          type: QuestionType.mc,
+        ),
+      ],
+      createdAt: DateTime(2026, 8, 20).toIso8601String(),
+    ));
+
+    // A TeacherLesson linking its post-test to the authored quiz above —
+    // mirrors router.dart's `/quiz/:lessonId/:phase` linked-quiz branch.
+    await lessonRepo.createLesson(TeacherLesson(
+      id: lessonId,
+      title: 'Linked Lesson',
+      subject: SubjectKey.chemistry,
+      linkedQuizId: quizId,
+      createdAt: DateTime(2026, 8, 20).toIso8601String(),
+    ));
+
+    // The real student flow always records the attempt's quizId as the
+    // synthesized builtin lesson+phase id — see router.dart /
+    // quiz_session_controller.dart — never the teacher quiz's own doc id,
+    // even when the questions came from the linked teacher-authored quiz.
+    final recordedQuizId = builtinQuizId(lessonId, QuizPhase.post);
+    await studentRepo.saveStudent(_studentWith('444444', QuizAttempt(
+      id: 'a4', quizId: recordedQuizId, studentId: '444444', attemptNumber: 1,
+      score: 100, totalQuestions: 1, correctAnswers: 1,
+      answers: const [0],
+      timestamp: DateTime(2026, 8, 20).toIso8601String(), locked: true,
+    )));
+
+    // Item analysis is opened from quizzes_screen.dart's authored-quiz row,
+    // so it's keyed on the teacher quiz's own doc id, not the builtin id.
+    final stream = buildItemAnalysisViewModel(
+      quizId: quizId,
+      quizTitle: 'Linked Post-Test',
+      studentRepository: studentRepo,
+      quizRepository: quizRepo,
+      lessonRepository: lessonRepo,
+    );
+    final vm = await stream.first;
+
+    expect(vm.attemptCount, 1);
+    expect(vm.questions, hasLength(1));
   });
 }

@@ -79,6 +79,7 @@ Override itemAnalysisOverrideFor(
       quizTitle: quizTitle,
       studentRepository: services.studentRepository,
       quizRepository: services.quizRepository,
+      lessonRepository: services.lessonRepository,
     ),
   );
 }
