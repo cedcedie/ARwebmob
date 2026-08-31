@@ -23,17 +23,39 @@ from the repo root: `C:\Users\cedri\OneDrive\Documents\GitHub\ARwebmob`.
 
 ## 0. [DEV] One-time environment setup
 
-- [ ] **Flutter SDK** on PATH — run `flutter doctor` and fix anything red
-      (Android toolchain especially).
-- [ ] **Android SDK / Android Studio** — at least one SDK platform + build-tools
-      matching the Unity export (see Unity section below).
-- [ ] **Chrome** (or another browser) for Teacher Web smoke tests
-      (`flutter run -d chrome` from the repo root).
-- [ ] **Physical Android phone** (recommended over emulator for AR/Unity embed).
-- [ ] **Unity Hub + Unity 6000.4.0f1** with **Android Build Support**, **Android
-      SDK & NDK Tools**, **OpenJDK** modules installed.
-- [ ] Confirm Unity Hub's **NDK is ≥ 27.2.12479018** (Unity 6000.x Android
-      embedding requirement).
+**Verified against this machine directly** (via `flutter doctor` and a
+filesystem check, not assumed) — most of this is already done:
+
+- [x] **Flutter SDK** on PATH — confirmed working: Flutter 3.44.0, Dart
+      3.12.0. Nothing to do.
+- [ ] **Android SDK / Android Studio — one real gap.** The SDK itself
+      exists (`C:\Users\cedri\AppData\Local\Android\sdk`), but
+      `flutter doctor` flags two things still needed:
+      1. `cmdline-tools` component is missing — install via Android
+         Studio's SDK Manager (Settings → Languages & Frameworks → Android
+         SDK → SDK Tools tab → check "Android SDK Command-line Tools"), or
+         download standalone from
+         <https://developer.android.com/studio#command-line-tools-only>.
+      2. Android license status is unknown — run:
+         ```powershell
+         flutter doctor --android-licenses
+         ```
+         and accept each one.
+      Re-run `flutter doctor` after both to confirm the Android toolchain
+      turns green.
+- [x] **Chrome** — confirmed installed
+      (`C:\Program Files\Google\Chrome\Application\chrome.exe`).
+- [ ] **Physical Android phone** (recommended over emulator for AR/Unity
+      embed) — none is currently connected (`flutter doctor`'s device list
+      shows only Windows/Chrome/Edge right now); plug one in via USB with
+      USB debugging enabled when ready to test on-device (§4).
+- [x] **Unity Hub + Unity 6000.4.0f1** — confirmed installed at
+      `C:\Program Files\Unity\Hub\Editor\6000.4.0f1`, with the
+      **Android Build Support** module (`AndroidPlayer`) present, which
+      bundles its own **SDK**, **NDK**, and **OpenJDK** — nothing extra to
+      install for Unity's own Android toolchain.
+- [x] **NDK ≥ 27.2.12479018** — confirmed: Unity's bundled NDK is exactly
+      **27.2.12479018** (r27c), which meets the requirement precisely.
 
 ---
 
@@ -167,8 +189,8 @@ Unity project location: **`C:\Users\cedri\VuforiaAR`** (external to this repo).
 - [x] Embed package: **`flutter_embed_unity`** + `flutter_embed_unity_6000_0_android`
       (not `flutter_unity_widget`).
 - [x] Scene confirmed: **23 markers/models** already set up in `SampleScene.unity`.
-- [ ] Confirm **Android Build Support + NDK ≥ 27.2.12479018** in Unity Hub modules
-      (if not already verified).
+- [x] **Android Build Support + NDK ≥ 27.2.12479018** — confirmed present
+      (see §0 above; NDK is exactly 27.2.12479018, bundled with Unity).
 
 ### 3.2 Import FlutterEmbed Unity package (one-time)
 
