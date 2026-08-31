@@ -120,14 +120,39 @@ final ShadThemeData appShadTheme = ShadThemeData(
 final ThemeData appMaterialTheme = ThemeData(
   useMaterial3: true,
   scaffoldBackgroundColor: AppColors.background,
+  // Every tonal role is pinned to a curated `AppColors` value rather than
+  // left to `fromSeed`'s Material-3 tonal-palette algorithm — otherwise
+  // roles nobody explicitly overrides (primaryContainer, secondaryContainer,
+  // tertiary, errorContainer, …) quietly resolve to an auto-generated color
+  // that doesn't belong to this palette, and leak into call sites that read
+  // them (e.g. a `Card(color: colorScheme.primaryContainer)`).
   colorScheme: ColorScheme.fromSeed(
     seedColor: AppColors.ink,
     brightness: Brightness.light,
     surface: AppColors.background,
+    onSurface: AppColors.ink,
     primary: AppColors.ink,
     onPrimary: AppColors.background,
+    primaryContainer: AppColors.muted,
+    onPrimaryContainer: AppColors.ink,
+    secondary: AppColors.muted,
+    onSecondary: AppColors.ink,
+    secondaryContainer: AppColors.muted,
+    onSecondaryContainer: AppColors.ink,
+    tertiary: AppColors.physics,
+    onTertiary: AppColors.background,
+    tertiaryContainer: AppColors.physics.withValues(alpha: 0.16),
+    onTertiaryContainer: AppColors.physics,
+    // Same curated red the Shad theme calls `destructive` — a single
+    // source of truth so `ShadTheme.of(context).colorScheme.destructive`
+    // and `Theme.of(context).colorScheme.error` always render identically,
+    // regardless of which API a given widget happens to call.
     error: AppColors.destructive,
     onError: AppColors.destructiveForeground,
+    errorContainer: AppColors.destructive.withValues(alpha: 0.12),
+    onErrorContainer: AppColors.destructive,
+    outline: AppColors.border,
+    outlineVariant: AppColors.muted,
   ),
   textTheme: GoogleFonts.plusJakartaSansTextTheme().apply(
     bodyColor: AppColors.ink,
