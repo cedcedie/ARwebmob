@@ -1,5 +1,6 @@
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -31,13 +32,83 @@ class StudentsScreen extends ConsumerWidget {
   }
 }
 
-class _StudentsBody extends StatelessWidget {
+class _StudentsBody extends HookWidget {
   const _StudentsBody({required this.viewModel});
 
   final StudentsViewModel viewModel;
 
+  Future<void> _archiveSelected(
+    BuildContext context,
+    Set<String> selectedIds,
+    ValueNotifier<Set<String>> selection,
+  ) async {
+    final confirmed = await showShadDialog<bool>(
+      context: context,
+      builder: (context) => ShadDialog.alert(
+        title: Text('Archive ${selectedIds.length} student(s)?'),
+        description: const Text(
+          'Archived students disappear from the default roster but remain '
+          'referenced elsewhere.',
+        ),
+        actions: [
+          ShadButton.outline(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ShadButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Archive'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    for (final studentId in selectedIds) {
+      await viewModel.onArchiveStudent(studentId);
+    }
+    selection.value = {};
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Column sorting (heuristic 7 — acceleration for a teacher managing a
+    // roster over a semester): index 0 = Name (alphabetical), index 2 =
+    // Grade (numeric where possible).
+    final sortColumnIndex = useState<int?>(null);
+    final sortAscending = useState(true);
+    // Bulk-archive selection — keyed by studentId, cleared after an archive
+    // action or when the roster's underlying data changes shape.
+    final selection = useState<Set<String>>(const {});
+
+    final students = [...viewModel.students];
+    if (sortColumnIndex.value == 0) {
+      students.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+    } else if (sortColumnIndex.value == 2) {
+      students.sort((a, b) {
+        final gradeA = num.tryParse(a.grade);
+        final gradeB = num.tryParse(b.grade);
+        if (gradeA != null && gradeB != null) return gradeA.compareTo(gradeB);
+        return a.grade.compareTo(b.grade);
+      });
+    }
+    final displayStudents = sortAscending.value
+        ? students
+        : students.reversed.toList();
+
+    void handleSort(int columnIndex, bool ascending) {
+      sortColumnIndex.value = columnIndex;
+      sortAscending.value = ascending;
+    }
+
+    final selectableIds = displayStudents
+        .where((s) => !s.isArchived)
+        .map((s) => s.studentId)
+        .toSet();
+    final validSelection = selection.value.intersection(selectableIds);
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -50,6 +121,15 @@ class _StudentsBody extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const Spacer(),
+              if (validSelection.isNotEmpty) ...[
+                ShadButton.outline(
+                  leading: const Icon(LucideIcons.archive, size: 16),
+                  onPressed: () =>
+                      _archiveSelected(context, validSelection, selection),
+                  child: Text('Archive selected (${validSelection.length})'),
+                ),
+                const SizedBox(width: 12),
+              ],
               // `FilterChip` has no direct shadcn_ui equivalent (no
               // chip/toggle component in this package version) — themed via
               // appMaterialTheme's chipTheme to match the palette instead of
@@ -78,17 +158,50 @@ class _StudentsBody extends StatelessWidget {
                 columnSpacing: 12,
                 horizontalMargin: 16,
                 minWidth: 900,
-                columns: const [
-                  DataColumn2(label: Text('Name'), size: ColumnSize.L),
-                  DataColumn2(label: Text('Student ID'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Grade'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Section'), size: ColumnSize.S),
-                  DataColumn2(label: Text('Scores'), size: ColumnSize.M),
-                  DataColumn2(label: Text('Progress'), size: ColumnSize.M),
-                  DataColumn2(label: Text('Actions'), size: ColumnSize.M),
+                showCheckboxColumn: true,
+                sortColumnIndex: sortColumnIndex.value,
+                sortAscending: sortAscending.value,
+                onSelectAll: (selectAll) {
+                  selection.value = selectAll == true ? selectableIds : {};
+                },
+                columns: [
+                  DataColumn2(
+                    label: const Text('Name'),
+                    size: ColumnSize.L,
+                    onSort: handleSort,
+                  ),
+                  const DataColumn2(
+                    label: Text('Student ID'),
+                    size: ColumnSize.S,
+                  ),
+                  DataColumn2(
+                    label: const Text('Grade'),
+                    size: ColumnSize.S,
+                    onSort: handleSort,
+                  ),
+                  const DataColumn2(label: Text('Section'), size: ColumnSize.S),
+                  const DataColumn2(label: Text('Scores'), size: ColumnSize.M),
+                  const DataColumn2(
+                    label: Text('Progress'),
+                    size: ColumnSize.M,
+                  ),
+                  const DataColumn2(label: Text('Actions'), size: ColumnSize.M),
                 ],
-                rows: viewModel.students.map((student) {
+                rows: displayStudents.map((student) {
+                  final canSelect = !student.isArchived;
                   return DataRow(
+                    selected: selection.value.contains(student.studentId),
+                    onSelectChanged: canSelect
+                        ? (value) {
+                            final next = {...selection.value};
+                            if (value == true) {
+                              next.add(student.studentId);
+                            } else {
+                              next.remove(student.studentId);
+                            }
+                            selection.value = next;
+                          }
+                        : null,
                     cells: [
                       DataCell(Text(student.name)),
                       DataCell(

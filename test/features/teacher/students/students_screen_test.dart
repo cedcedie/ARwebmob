@@ -216,6 +216,68 @@ void main() {
     expect(find.byKey(const Key('student_name')), findsOneWidget);
   });
 
+  testWidgets('tapping the Name column header sorts rows alphabetically', (
+    tester,
+  ) async {
+    await _pumpStudentsScreen(
+      tester,
+      viewModel: _viewModel(
+        students: [
+          _sampleStudent(id: '000003', name: 'Zoe'),
+          _sampleStudent(id: '000001', name: 'Amy'),
+          _sampleStudent(id: '000002', name: 'Mona'),
+        ],
+      ),
+    );
+
+    await tester.tap(find.text('Name'));
+    await tester.pump();
+
+    final amyTop = tester.getTopLeft(find.text('Amy')).dy;
+    final monaTop = tester.getTopLeft(find.text('Mona')).dy;
+    final zoeTop = tester.getTopLeft(find.text('Zoe')).dy;
+    expect(amyTop, lessThan(monaTop));
+    expect(monaTop, lessThan(zoeTop));
+  });
+
+  testWidgets(
+    'selecting rows shows an Archive selected action that archives all '
+    'selected students at once',
+    (tester) async {
+      final archived = <String>[];
+      await _pumpStudentsScreen(
+        tester,
+        viewModel: _viewModel(
+          students: [
+            _sampleStudent(id: '000001', name: 'Alice'),
+            _sampleStudent(id: '000002', name: 'Bob'),
+          ],
+          onArchiveStudent: (id) async => archived.add(id),
+        ),
+      );
+
+      expect(find.textContaining('Archive selected'), findsNothing);
+
+      // Row checkboxes: index 0 is the header "select all" checkbox.
+      await tester.tap(find.byType(Checkbox).at(1));
+      await tester.pump();
+      await tester.tap(find.byType(Checkbox).at(2));
+      await tester.pump();
+
+      expect(find.text('Archive selected (2)'), findsOneWidget);
+
+      await tester.tap(find.text('Archive selected (2)'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Archive 2 student(s)?'), findsOneWidget);
+      await tester.tap(find.text('Archive'));
+      await tester.pumpAndSettle();
+
+      expect(archived, unorderedEquals(['000001', '000002']));
+      expect(find.textContaining('Archive selected'), findsNothing);
+    },
+  );
+
   testWidgets('archiving a row removes it from the default view', (
     tester,
   ) async {
