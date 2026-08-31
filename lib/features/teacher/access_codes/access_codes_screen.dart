@@ -6,6 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/models/subject_key.dart';
+import '../widgets/subject_accent_cell.dart';
 import 'access_codes_providers.dart';
 
 class AccessCodesScreen extends HookConsumerWidget {
@@ -131,7 +132,18 @@ class _AccessCodesBody extends HookWidget {
                 rows: viewModel.issuedCodes.map((row) {
                   return DataRow(
                     cells: [
-                      DataCell(Text(row.code)),
+                      DataCell(
+                        // Every issued code belongs to a subject/lesson (or,
+                        // for a multi-subject code, to none in particular) —
+                        // accent the row the same way lesson/quiz tables do
+                        // when a single subject is resolvable.
+                        row.subject != null
+                            ? SubjectAccentCell(
+                                subject: row.subject!,
+                                child: Text(row.code),
+                              )
+                            : Text(row.code),
+                      ),
                       DataCell(Text(issuedCodeTypeLabel(row.type))),
                       DataCell(Text(row.target)),
                       DataCell(Text(row.status)),

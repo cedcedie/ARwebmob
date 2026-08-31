@@ -22,6 +22,7 @@ class IssuedCodeRow {
     required this.target,
     required this.status,
     required this.issuedAt,
+    this.subject,
   });
 
   final String code;
@@ -29,6 +30,12 @@ class IssuedCodeRow {
   final String target;
   final String status;
   final String issuedAt;
+
+  /// The subject this code's lesson (or subject scope) belongs to, when
+  /// resolvable — drives the issued-codes table's row accent strip. `null`
+  /// for a subject code scoped to multiple subjects at once, or when the
+  /// underlying lesson/subject couldn't be resolved.
+  final SubjectKey? subject;
 }
 
 class AccessCodesViewModel {
@@ -90,8 +97,8 @@ Stream<AccessCodesViewModel> buildAccessCodesViewModel({
     studentRepository.watchAllStudents(includeArchived: true),
     (unlockCodes, retakeCodes, students) {
       final issuedCodes = [
-        ...unlockCodes.map(_rowFromUnlockCode),
-        ...retakeCodes.map(_rowFromRetakeCode),
+        ...unlockCodes.map((doc) => _rowFromUnlockCode(doc, resolvedLessons)),
+        ...retakeCodes.map((code) => _rowFromRetakeCode(code, resolvedLessons)),
       ]..sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
 
       return AccessCodesViewModel(
@@ -129,7 +136,10 @@ Stream<AccessCodesViewModel> buildAccessCodesViewModel({
   );
 }
 
-IssuedCodeRow _rowFromUnlockCode(Map<String, dynamic> doc) {
+IssuedCodeRow _rowFromUnlockCode(
+  Map<String, dynamic> doc,
+  List<Lesson> lessons,
+) {
   final typeRaw = doc['type'] as String? ?? 'subject';
   final type = typeRaw == 'lesson'
       ? IssuedCodeType.lesson
@@ -142,23 +152,57 @@ IssuedCodeRow _rowFromUnlockCode(Map<String, dynamic> doc) {
   final issuedAt =
       doc['createdAt'] as String? ?? doc['generatedAt'] as String? ?? '—';
 
+  SubjectKey? subject;
+  if (type == IssuedCodeType.lesson) {
+    final lessonId = doc['targetId'] as String?;
+    subject = _subjectForLessonId(lessonId, lessons);
+  } else {
+    final subjects = (doc['subjects'] as List<dynamic>?)
+        ?.cast<String>()
+        .toList();
+    // Only accent the row when the code is scoped to exactly one subject —
+    // a code spanning multiple subjects has no single accent to show.
+    if (subjects != null && subjects.length == 1) {
+      subject = _subjectFromFirestoreValueOrNull(subjects.first);
+    }
+  }
+
   return IssuedCodeRow(
     code: doc['id'] as String? ?? '—',
     type: type,
     target: target,
     status: isArchived ? 'archived' : (isUsed ? 'used' : 'unused'),
     issuedAt: issuedAt,
+    subject: subject,
   );
 }
 
-IssuedCodeRow _rowFromRetakeCode(QuizUnlockCode code) {
+IssuedCodeRow _rowFromRetakeCode(QuizUnlockCode code, List<Lesson> lessons) {
+  final lessonId = parseBuiltinId(code.quizId).lessonId;
   return IssuedCodeRow(
     code: code.code,
     type: IssuedCodeType.retake,
     target: code.studentId,
     status: code.isArchived ? 'archived' : (code.isUsed ? 'used' : 'unused'),
     issuedAt: code.generatedAt,
+    subject: _subjectForLessonId(lessonId, lessons),
   );
+}
+
+SubjectKey? _subjectForLessonId(String? lessonId, List<Lesson> lessons) {
+  if (lessonId == null) return null;
+  for (final lesson in lessons) {
+    if (lesson.id == lessonId) return lesson.subject;
+  }
+  return null;
+}
+
+SubjectKey? _subjectFromFirestoreValueOrNull(String value) {
+  try {
+    return SubjectKey.fromFirestore(value);
+  } on ArgumentError {
+    return null;
+  }
 }
 
 Stream<T> _combineLatest3<A, B, C, T>(
