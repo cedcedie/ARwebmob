@@ -35,10 +35,10 @@ admin.initializeApp({
 // from the digits before @. Teacher emails just need to NOT match that
 // pattern.
 const ACCOUNTS = [
-  { email: 'teacher@example-school.edu', password: 'ChangeMe123!', role: 'teacher' },
-  { email: '100001@arscience.school', password: 'ChangeMe123!', role: 'student' },
-  { email: '100002@arscience.school', password: 'ChangeMe123!', role: 'student' },
-  { email: '100003@arscience.school', password: 'ChangeMe123!', role: 'student' },
+  { email: 'teacher@example-school.edu', password: 'password', role: 'teacher' },
+  { email: '100001@arscience.school', password: 'password', role: 'student' },
+  { email: '100002@arscience.school', password: 'password', role: 'student' },
+  { email: '100003@arscience.school', password: 'password', role: 'student' },
 ];
 
 async function main() {
