@@ -13,6 +13,7 @@ import 'core/services/quiz_attempt_service.dart';
 import 'core/services/quiz_repository.dart';
 import 'core/services/student_repository.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_mode_provider.dart';
 import 'features/student/app/router.dart';
 import 'features/student/app/student_providers.dart';
 import 'features/student/auth/student_login_screen.dart';
@@ -25,7 +26,16 @@ import 'firebase_options.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const ProviderScope(child: ArScienceExplorerApp()));
+  // Read the teacher's saved light/dark preference before the first frame
+  // so the app never flashes light-then-dark on reload — see
+  // theme_mode_provider.dart.
+  final initialThemeMode = await loadPersistedThemeMode();
+  runApp(
+    ProviderScope(
+      overrides: [themeModeProvider.overrideWith((ref) => initialThemeMode)],
+      child: const ArScienceExplorerApp(),
+    ),
+  );
 }
 
 class ArScienceExplorerApp extends StatefulWidget {
@@ -91,17 +101,25 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
           final teacherEmail = ref
               .watch(currentTeacherEmailProvider)
               .valueOrNull;
+          final themeMode = ref.watch(themeModeProvider);
           if (teacherEmail == null) {
             // Single app-level themed shell: the teacher router (below)
             // isn't built until a teacher is signed in, so the sign-in gate
             // gets its own `ShadApp` instance here — but both instances
-            // share the exact same `appShadTheme`/`appMaterialTheme`, so
-            // there is one themed shell definition, not two independent
-            // ones (TeacherLoginScreen no longer builds its own).
+            // share the exact same `appShadTheme`/`appMaterialTheme` (and
+            // now the same `themeModeProvider`-driven `themeMode`/
+            // `darkTheme`), so there is one themed shell definition, not
+            // two independent ones (TeacherLoginScreen no longer builds
+            // its own).
             return ShadApp(
               title: 'AR Science Explorer — Teacher',
               theme: appShadTheme,
-              materialThemeBuilder: (context, theme) => appMaterialTheme,
+              darkTheme: appShadThemeDark,
+              themeMode: themeMode,
+              materialThemeBuilder: (context, theme) =>
+                  themeMode == ThemeMode.dark
+                  ? appMaterialThemeDark
+                  : appMaterialTheme,
               home: const TeacherLoginScreen(),
             );
           }
@@ -114,7 +132,12 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
             child: ShadApp.router(
               title: 'AR Science Explorer',
               theme: appShadTheme,
-              materialThemeBuilder: (context, theme) => appMaterialTheme,
+              darkTheme: appShadThemeDark,
+              themeMode: themeMode,
+              materialThemeBuilder: (context, theme) =>
+                  themeMode == ThemeMode.dark
+                  ? appMaterialThemeDark
+                  : appMaterialTheme,
               routerConfig: _teacherRouter!,
             ),
           );

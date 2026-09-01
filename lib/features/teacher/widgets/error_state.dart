@@ -9,8 +9,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-import '../../../core/theme/app_theme.dart';
-
 /// Maps a caught error object to a short, plain-English sentence suitable
 /// for direct display to a teacher — never a raw exception `toString()`.
 ///
@@ -114,10 +112,10 @@ class ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               LucideIcons.circleAlert,
               size: 32,
-              color: AppColors.destructive,
+              color: ShadTheme.of(context).colorScheme.destructive,
             ),
             const SizedBox(height: 12),
             Text(

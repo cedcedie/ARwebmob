@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-/// Side-nav desktop shell for the Teacher Web target (Part 2.2).
+import '../../../core/theme/theme_mode_provider.dart';
+
+/// Adaptive shell for the Teacher Web target.
 ///
-/// Item 8 (a Round 5 critique flag, made explicit rather than built out):
-/// this shell — and every teacher screen nested under it — is intentionally
-/// desktop-only. The `NavigationRail` below is a fixed-width side nav with
-/// no responsive/adaptive breakpoint, no drawer fallback, and no narrow-
-/// viewport layout for the `DataTable2`-based list screens it hosts. That's
-/// a deliberate scope decision, not an oversight: Teacher Web is a
-/// classroom-management tool teachers use from a laptop/desktop browser,
-/// mirroring `teacher_login_screen.dart`'s existing "Desktop-friendly
-/// teacher sign-in gate" comment. Real responsive/breakpoint support was
-/// assessed and explicitly deferred as disproportionate scope for this
-/// round — see `docs/superpowers/NICE_TO_HAVES.md`.
-class TeacherShell extends StatelessWidget {
+/// Three layouts, chosen by viewport width:
+/// - `>= 1000`: full-width `NavigationRail` with icon + label.
+/// - `720–999`: icon-only `NavigationRail` (labels dropped, destinations
+///   stay reachable by icon + tooltip via `Text` label acting as the
+///   rail's built-in tooltip source).
+/// - `< 720`: an `AppBar` + `Drawer` — the rail's fixed side column doesn't
+///   fit a narrow/tablet-portrait viewport, so navigation moves behind a
+///   hamburger menu, the same pattern the rest of the web reaches for at
+///   this breakpoint.
+///
+/// A light/dark toggle (see `theme_mode_provider.dart`) lives in the rail's
+/// leading slot on wide layouts and the `AppBar`'s actions on narrow ones.
+class TeacherShell extends ConsumerWidget {
   const TeacherShell({
     super.key,
     required this.child,
@@ -26,21 +30,83 @@ class TeacherShell extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
 
+  static const _labels = [
+    'Dashboard',
+    'Lessons',
+    'Quizzes',
+    'Students',
+    'Access Codes',
+  ];
+
+  static const _icons = [
+    LucideIcons.layoutDashboard,
+    LucideIcons.bookOpen,
+    LucideIcons.clipboardList,
+    LucideIcons.users,
+    LucideIcons.keyRound,
+  ];
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final width = MediaQuery.sizeOf(context).width;
+    final isCompact = width < 720;
+    final isExtended = width >= 1000;
+
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+    final themeToggle = IconButton(
+      tooltip: isDark ? 'Switch to light mode' : 'Switch to dark mode',
+      icon: Icon(isDark ? LucideIcons.sun : LucideIcons.moon),
+      onPressed: () => toggleThemeMode(ref),
+    );
+
+    final destinations = [
+      for (var i = 0; i < _labels.length; i++)
+        NavigationRailDestination(
+          icon: Icon(_icons[i]),
+          label: Text(_labels[i]),
+        ),
+    ];
+
+    final clampedIndex = selectedIndex.clamp(0, _labels.length - 1);
+
+    if (isCompact) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(_labels[clampedIndex]),
+          actions: [themeToggle, const SizedBox(width: 8)],
+        ),
+        drawer: Drawer(
+          child: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                for (var i = 0; i < _labels.length; i++)
+                  ListTile(
+                    leading: Icon(_icons[i]),
+                    title: Text(_labels[i]),
+                    selected: i == clampedIndex,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      onDestinationSelected(i);
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+        body: child,
+      );
+    }
+
     return Scaffold(
       body: Row(
         children: [
           NavigationRail(
-            selectedIndex: selectedIndex,
+            selectedIndex: clampedIndex,
             onDestinationSelected: onDestinationSelected,
-            labelType: NavigationRailLabelType.all,
-            // The rail's sections (Lessons/Quizzes/Students/Access Codes)
-            // aren't subject-scoped, so the active-item indicator uses a
-            // single accent (physics blue, doubling as the app's general
-            // "current selection" signal) rather than a per-subject color —
-            // see appMaterialTheme.navigationRailTheme.
-            //
+            labelType: isExtended
+                ? NavigationRailLabelType.all
+                : NavigationRailLabelType.none,
             // Item Analysis intentionally has no rail entry of its own: it
             // is inherently quiz-scoped (there is no standalone "all item
             // analysis" list to land on), so it's reachable only via the
@@ -49,24 +115,11 @@ class TeacherShell extends StatelessWidget {
             // destination would either silently redirect elsewhere or need
             // an explanatory hint bolted onto another screen — an honest
             // "quiz-scoped only" affordance beats either.
-            destinations: const [
-              NavigationRailDestination(
-                icon: Icon(LucideIcons.bookOpen),
-                label: Text('Lessons'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(LucideIcons.clipboardList),
-                label: Text('Quizzes'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(LucideIcons.users),
-                label: Text('Students'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(LucideIcons.keyRound),
-                label: Text('Access Codes'),
-              ),
-            ],
+            leading: Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: themeToggle,
+            ),
+            destinations: destinations,
           ),
           const VerticalDivider(width: 1),
           Expanded(child: child),

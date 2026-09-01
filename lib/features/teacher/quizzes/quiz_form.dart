@@ -8,10 +8,16 @@ import '../../../core/models/quiz_phase.dart';
 import '../../../core/models/subject_key.dart';
 import '../../../core/models/teacher_quiz.dart';
 import '../../../core/models/teacher_quiz_question.dart';
-import '../../../core/theme/app_theme.dart';
 import '../lessons/lessons_providers.dart' show subjectKeyLabel;
 import '../widgets/dynamic_string_list_field.dart';
 import '../widgets/error_state.dart';
+
+/// Below this content width the two-column subject/phase row collapses to
+/// single-column — mirrors `quizzes_screen.dart`'s `_kCompactBreakpoint`,
+/// applied here to the form's own available width (it renders inside a
+/// dialog, not the full viewport, so the dialog's `SizedBox` width is what
+/// matters, not `MediaQuery`'s screen width).
+const _kFormCompactWidth = 420.0;
 
 class QuizQuestionDraft {
   QuizQuestionDraft({
@@ -165,34 +171,61 @@ class QuizFormState extends State<QuizForm> {
               validator: FormBuilderValidators.required(),
             ),
             const SizedBox(height: 12),
-            FormBuilderDropdown<SubjectKey>(
-              name: 'subject',
-              initialValue: initial?.subject ?? SubjectKey.chemistry,
-              decoration: const InputDecoration(labelText: 'Subject'),
-              items: SubjectKey.values
-                  .map(
-                    (subject) => DropdownMenuItem(
-                      value: subject,
-                      child: Text(subjectKeyLabel(subject)),
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 12),
-            FormBuilderDropdown<QuizPhase>(
-              name: 'phase',
-              initialValue: initial?.phase ?? QuizPhase.post,
-              decoration: const InputDecoration(labelText: 'Phase'),
-              items: QuizPhase.values
-                  .map(
-                    (phase) => DropdownMenuItem(
-                      value: phase,
-                      child: Text(
-                        phase == QuizPhase.pre ? 'Pre-Test' : 'Post-Test',
-                      ),
-                    ),
-                  )
-                  .toList(),
+            // Two fields side by side on a wide dialog, single column on a
+            // narrow one — a `LayoutBuilder` reading the form's own
+            // available width (not `MediaQuery`'s screen width), since this
+            // widget renders inside a dialog `SizedBox` that's already been
+            // sized down for narrow viewports by the owning screen.
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final subjectField = FormBuilderDropdown<SubjectKey>(
+                  name: 'subject',
+                  initialValue: initial?.subject ?? SubjectKey.chemistry,
+                  decoration: const InputDecoration(labelText: 'Subject'),
+                  items: SubjectKey.values
+                      .map(
+                        (subject) => DropdownMenuItem(
+                          value: subject,
+                          child: Text(subjectKeyLabel(subject)),
+                        ),
+                      )
+                      .toList(),
+                );
+                final phaseField = FormBuilderDropdown<QuizPhase>(
+                  name: 'phase',
+                  initialValue: initial?.phase ?? QuizPhase.post,
+                  decoration: const InputDecoration(labelText: 'Phase'),
+                  items: QuizPhase.values
+                      .map(
+                        (phase) => DropdownMenuItem(
+                          value: phase,
+                          child: Text(
+                            phase == QuizPhase.pre ? 'Pre-Test' : 'Post-Test',
+                          ),
+                        ),
+                      )
+                      .toList(),
+                );
+
+                if (constraints.maxWidth < _kFormCompactWidth) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      subjectField,
+                      const SizedBox(height: 12),
+                      phaseField,
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: subjectField),
+                    const SizedBox(width: 12),
+                    Expanded(child: phaseField),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 12),
             FormBuilderTextField(
@@ -203,23 +236,27 @@ class QuizFormState extends State<QuizForm> {
                 labelText: 'Topic ID (optional)',
               ),
             ),
-            const SizedBox(height: 16),
-            Text('Questions', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            const SizedBox(height: 20),
+            Text('Questions', style: ShadTheme.of(context).textTheme.h4),
+            const SizedBox(height: 10),
             for (var i = 0; i < _questions.length; i++) ...[
-              _QuestionEditor(
-                key: ValueKey('question-$i'),
-                index: i,
-                draft: _questions[i],
-                canRemove: _questions.length > 1,
-                onChanged: (draft) => setState(() => _questions[i] = draft),
-                onRemove: () => setState(() => _questions.removeAt(i)),
+              ShadCard(
+                key: ValueKey('question-card-$i'),
+                padding: const EdgeInsets.all(14),
+                child: _QuestionEditor(
+                  key: ValueKey('question-$i'),
+                  index: i,
+                  draft: _questions[i],
+                  canRemove: _questions.length > 1,
+                  onChanged: (draft) => setState(() => _questions[i] = draft),
+                  onRemove: () => setState(() => _questions.removeAt(i)),
+                ),
               ),
-              const Divider(height: 24),
+              const SizedBox(height: 12),
             ],
             Align(
               alignment: Alignment.centerLeft,
-              child: ShadButton.ghost(
+              child: ShadButton.outline(
                 key: const Key('quiz-add-question'),
                 onPressed: () =>
                     setState(() => _questions.add(QuizQuestionDraft())),
@@ -310,6 +347,7 @@ class _QuestionEditorState extends State<_QuestionEditor> {
   Widget build(BuildContext context) {
     final draft = widget.draft;
     final index = widget.index;
+    final scheme = ShadTheme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -318,7 +356,9 @@ class _QuestionEditorState extends State<_QuestionEditor> {
           children: [
             Text(
               'Question ${index + 1}',
-              style: Theme.of(context).textTheme.titleSmall,
+              style: ShadTheme.of(
+                context,
+              ).textTheme.p.copyWith(fontWeight: FontWeight.w600),
             ),
             const Spacer(),
             if (widget.canRemove)
@@ -357,7 +397,12 @@ class _QuestionEditorState extends State<_QuestionEditor> {
           }),
         ),
         const SizedBox(height: 8),
-        Text('Correct option', style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          'Correct option',
+          style: ShadTheme.of(
+            context,
+          ).textTheme.small.copyWith(color: scheme.mutedForeground),
+        ),
         const SizedBox(height: 4),
         RadioGroup<int>(
           groupValue: draft.correctIndex,
@@ -367,7 +412,7 @@ class _QuestionEditorState extends State<_QuestionEditor> {
           },
           child: DecoratedBox(
             decoration: BoxDecoration(
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: scheme.border),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -384,12 +429,10 @@ class _QuestionEditorState extends State<_QuestionEditor> {
                       : BorderRadius.zero,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.muted : null,
+                      color: isSelected ? scheme.muted : null,
                       border: optionIndex == 0
                           ? null
-                          : const Border(
-                              top: BorderSide(color: AppColors.border),
-                            ),
+                          : Border(top: BorderSide(color: scheme.border)),
                     ),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -400,12 +443,12 @@ class _QuestionEditorState extends State<_QuestionEditor> {
                         Radio<int>(
                           key: Key('quiz-q$index-correct-$optionIndex'),
                           value: optionIndex,
-                          activeColor: AppColors.ink,
+                          activeColor: scheme.foreground,
                         ),
                         Text(
                           'Option ${optionIndex + 1}',
                           style: TextStyle(
-                            color: AppColors.ink,
+                            color: scheme.foreground,
                             fontWeight: isSelected
                                 ? FontWeight.w600
                                 : FontWeight.normal,

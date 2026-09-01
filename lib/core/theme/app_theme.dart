@@ -84,6 +84,32 @@ extension SubjectKeyColor on SubjectKey {
   Color get accentColor => subjectColor(this);
 }
 
+/// Dark counterpart to [AppColors] — same cool blue-grey undertone (never
+/// warm/near-black-brown), just inverted lightness. Subject accents and the
+/// destructive/success roles are lifted a touch (higher L*) versus their
+/// light-mode values so they still clear WCAG contrast against the dark
+/// surfaces below; hues are kept identical to [AppColors] so a teacher
+/// switching themes never sees a subject's "color identity" change, only
+/// its exact shade.
+abstract final class AppColorsDark {
+  static const background = Color(0xFF0E1218);
+  static const surface = Color(0xFF161B23);
+  static const ink = Color(0xFFF2F4F8);
+  static const inkMuted = Color(0xFF9AA4B2);
+  static const border = Color(0xFF2A3140);
+  static const muted = Color(0xFF1D232E);
+
+  static const destructive = Color(0xFFE2604A);
+  static const destructiveForeground = Color(0xFF0E1218);
+
+  static const success = Color(0xFF4FB6DB);
+  static const successForeground = Color(0xFF0E1218);
+
+  static const chemistry = Color(0xFFF0913F);
+  static const biology = Color(0xFF35C784);
+  static const physics = Color(0xFF7C8CFF);
+}
+
 const _kBrandRadius = BorderRadius.all(Radius.circular(8));
 
 /// The shadcn color scheme for the Teacher Web surface — cool off-white
@@ -302,6 +328,182 @@ final ThemeData appMaterialTheme = ThemeData(
     color: AppColors.physics,
     circularTrackColor: AppColors.muted,
     linearTrackColor: AppColors.muted,
+    strokeWidth: 3,
+  ),
+);
+
+// ---------------------------------------------------------------------------
+// Dark mode
+//
+// Mirrors [appShadColorScheme]/[appShadTheme]/[appMaterialTheme] role-for-
+// role against [AppColorsDark] instead of [AppColors]. Kept as a literal
+// parallel structure (not derived programmatically) so the two themes stay
+// easy to read side by side and a future palette tweak to one role is an
+// obvious two-line diff rather than a rewrite of a generation function.
+// ---------------------------------------------------------------------------
+
+final ShadColorScheme appShadColorSchemeDark = ShadColorScheme(
+  background: AppColorsDark.background,
+  foreground: AppColorsDark.ink,
+  card: AppColorsDark.surface,
+  cardForeground: AppColorsDark.ink,
+  popover: AppColorsDark.surface,
+  popoverForeground: AppColorsDark.ink,
+  primary: AppColorsDark.ink,
+  primaryForeground: AppColorsDark.background,
+  secondary: AppColorsDark.muted,
+  secondaryForeground: AppColorsDark.ink,
+  muted: AppColorsDark.muted,
+  mutedForeground: AppColorsDark.inkMuted,
+  accent: AppColorsDark.muted,
+  accentForeground: AppColorsDark.ink,
+  destructive: AppColorsDark.destructive,
+  destructiveForeground: AppColorsDark.destructiveForeground,
+  border: AppColorsDark.border,
+  input: AppColorsDark.border,
+  ring: AppColorsDark.physics,
+  selection: AppColorsDark.physics.withValues(alpha: 0.28),
+  custom: {
+    'chemistry': AppColorsDark.chemistry,
+    'biology': AppColorsDark.biology,
+    'physics': AppColorsDark.physics,
+  },
+);
+
+final ShadThemeData appShadThemeDark = ShadThemeData(
+  brightness: Brightness.dark,
+  colorScheme: appShadColorSchemeDark,
+  textTheme: appShadTextTheme,
+  radius: _kBrandRadius,
+);
+
+final ThemeData appMaterialThemeDark = ThemeData(
+  useMaterial3: true,
+  brightness: Brightness.dark,
+  scaffoldBackgroundColor: AppColorsDark.background,
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: AppColorsDark.ink,
+    brightness: Brightness.dark,
+    surface: AppColorsDark.background,
+    onSurface: AppColorsDark.ink,
+    primary: AppColorsDark.ink,
+    onPrimary: AppColorsDark.background,
+    primaryContainer: AppColorsDark.muted,
+    onPrimaryContainer: AppColorsDark.ink,
+    secondary: AppColorsDark.muted,
+    onSecondary: AppColorsDark.ink,
+    secondaryContainer: AppColorsDark.muted,
+    onSecondaryContainer: AppColorsDark.ink,
+    tertiary: AppColorsDark.physics,
+    onTertiary: AppColorsDark.background,
+    tertiaryContainer: AppColorsDark.physics.withValues(alpha: 0.24),
+    onTertiaryContainer: AppColorsDark.physics,
+    error: AppColorsDark.destructive,
+    onError: AppColorsDark.destructiveForeground,
+    errorContainer: AppColorsDark.destructive.withValues(alpha: 0.18),
+    onErrorContainer: AppColorsDark.destructive,
+    outline: AppColorsDark.border,
+    outlineVariant: AppColorsDark.muted,
+  ),
+  textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme)
+      .apply(bodyColor: AppColorsDark.ink, displayColor: AppColorsDark.ink),
+  dividerColor: AppColorsDark.border,
+  cardTheme: const CardThemeData(
+    color: AppColorsDark.surface,
+    surfaceTintColor: Colors.transparent,
+    margin: EdgeInsets.zero,
+  ),
+  chipTheme: ChipThemeData(
+    backgroundColor: AppColorsDark.muted,
+    selectedColor: AppColorsDark.physics.withValues(alpha: 0.24),
+    disabledColor: AppColorsDark.muted,
+    labelStyle: const TextStyle(color: AppColorsDark.ink),
+    side: const BorderSide(color: AppColorsDark.border),
+    shape: const StadiumBorder(),
+  ),
+  inputDecorationTheme: InputDecorationTheme(
+    filled: true,
+    fillColor: AppColorsDark.muted,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    border: OutlineInputBorder(
+      borderRadius: _kBrandRadius,
+      borderSide: const BorderSide(color: AppColorsDark.border),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: _kBrandRadius,
+      borderSide: const BorderSide(color: AppColorsDark.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: _kBrandRadius,
+      borderSide: const BorderSide(color: AppColorsDark.physics, width: 2),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: _kBrandRadius,
+      borderSide: const BorderSide(color: AppColorsDark.destructive),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: _kBrandRadius,
+      borderSide: const BorderSide(color: AppColorsDark.destructive, width: 2),
+    ),
+    disabledBorder: OutlineInputBorder(
+      borderRadius: _kBrandRadius,
+      borderSide: const BorderSide(color: AppColorsDark.muted),
+    ),
+    labelStyle: const TextStyle(color: AppColorsDark.inkMuted),
+    floatingLabelStyle: const TextStyle(color: AppColorsDark.physics),
+    hintStyle: const TextStyle(color: AppColorsDark.inkMuted),
+    errorStyle: const TextStyle(color: AppColorsDark.destructive),
+  ),
+  navigationRailTheme: NavigationRailThemeData(
+    backgroundColor: AppColorsDark.surface,
+    indicatorColor: AppColorsDark.physics.withValues(alpha: 0.24),
+    selectedIconTheme: const IconThemeData(color: AppColorsDark.physics),
+    unselectedIconTheme: IconThemeData(color: AppColorsDark.inkMuted),
+    selectedLabelTextStyle: const TextStyle(
+      color: AppColorsDark.physics,
+      fontWeight: FontWeight.w600,
+    ),
+    unselectedLabelTextStyle: TextStyle(color: AppColorsDark.inkMuted),
+  ),
+  segmentedButtonTheme: SegmentedButtonThemeData(
+    style: ButtonStyle(
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: _kBrandRadius),
+      ),
+      side: const WidgetStatePropertyAll(
+        BorderSide(color: AppColorsDark.border),
+      ),
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return AppColorsDark.physics.withValues(alpha: 0.24);
+        }
+        return AppColorsDark.surface;
+      }),
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return AppColorsDark.physics;
+        }
+        return AppColorsDark.inkMuted;
+      }),
+      iconColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return AppColorsDark.physics;
+        }
+        return AppColorsDark.inkMuted;
+      }),
+      textStyle: WidgetStateProperty.resolveWith((states) {
+        return TextStyle(
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w600
+              : FontWeight.w400,
+        );
+      }),
+    ),
+  ),
+  progressIndicatorTheme: ProgressIndicatorThemeData(
+    color: AppColorsDark.physics,
+    circularTrackColor: AppColorsDark.muted,
+    linearTrackColor: AppColorsDark.muted,
     strokeWidth: 3,
   ),
 );

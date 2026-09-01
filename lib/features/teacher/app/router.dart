@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../access_codes/access_codes_screen.dart';
+import '../dashboard/dashboard_screen.dart';
 import '../lessons/lessons_screen.dart';
 import '../quizzes/item_analysis_screen.dart';
 import '../quizzes/quizzes_screen.dart';
@@ -10,6 +11,7 @@ import 'teacher_providers.dart';
 import 'teacher_shell.dart';
 
 const _routes = [
+  '/teacher/dashboard',
   '/teacher/lessons',
   '/teacher/quizzes',
   '/teacher/students',
@@ -18,7 +20,7 @@ const _routes = [
 
 GoRouter buildTeacherRouter({required TeacherServices services}) {
   return GoRouter(
-    initialLocation: '/teacher/lessons',
+    initialLocation: '/teacher/dashboard',
     routes: [
       ShellRoute(
         builder: (context, state, child) {
@@ -36,6 +38,10 @@ GoRouter buildTeacherRouter({required TeacherServices services}) {
           );
         },
         routes: [
+          GoRoute(
+            path: '/teacher/dashboard',
+            builder: (context, state) => const DashboardScreen(),
+          ),
           GoRoute(
             path: '/teacher/lessons',
             builder: (context, state) => const LessonsScreen(),

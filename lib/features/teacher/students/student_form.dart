@@ -34,6 +34,15 @@ class StudentFormSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final formKey = GlobalKey<FormBuilderState>();
 
+    // Below ~600px (a phone-width viewport under the shell's compact
+    // layout), a fixed 420-logical-pixel dialog can overflow off-screen —
+    // clamp to the available width minus the dialog's own outer margin
+    // instead.
+    final availableWidth = MediaQuery.sizeOf(context).width - 48;
+    final dialogWidth = availableWidth < 420
+        ? availableWidth.clamp(240.0, 420.0)
+        : 420.0;
+
     return ShadDialog(
       title: const Text('Add Student'),
       actions: [
@@ -87,7 +96,7 @@ class StudentFormSheet extends StatelessWidget {
         ),
       ],
       child: SizedBox(
-        width: 420,
+        width: dialogWidth,
         // FormBuilderTextField below is a Material widget and needs a
         // Material ancestor — ShadDialog doesn't provide one.
         child: Material(

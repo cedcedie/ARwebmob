@@ -256,6 +256,7 @@ class LessonFormState extends State<LessonForm> {
   @override
   Widget build(BuildContext context) {
     final initial = widget.initial;
+    final scheme = ShadTheme.of(context).colorScheme;
 
     return FormBuilder(
       key: _formKey,
@@ -263,6 +264,8 @@ class LessonFormState extends State<LessonForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            _SectionLabel('Basics'),
+            const SizedBox(height: 12),
             FormBuilderTextField(
               key: const Key('lesson-title'),
               name: 'title',
@@ -307,33 +310,53 @@ class LessonFormState extends State<LessonForm> {
               onChanged: (values) =>
                   setState(() => _steps = values.isEmpty ? [''] : values),
             ),
+            const SizedBox(height: 20),
+            _SectionLabel('Curriculum placement'),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: FormBuilderTextField(
-                    key: const Key('lesson-quarter'),
-                    name: 'quarter',
-                    initialValue: initial?.quarter?.toString(),
-                    decoration: const InputDecoration(labelText: 'Quarter'),
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) =>
-                        setState(() => _quarter = int.tryParse(value ?? '')),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FormBuilderTextField(
-                    key: const Key('lesson-week'),
-                    name: 'week',
-                    initialValue: initial?.week?.toString(),
-                    decoration: const InputDecoration(labelText: 'Week'),
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) =>
-                        setState(() => _week = int.tryParse(value ?? '')),
-                  ),
-                ),
-              ],
+            // Below ~600px a side-by-side Quarter/Week row squeezes both
+            // fields (plus their labels/helper text) into a width too
+            // narrow to stay legible on a phone-width dialog — stack them
+            // instead, matching the single-column layout the rest of this
+            // form already uses.
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final quarterField = FormBuilderTextField(
+                  key: const Key('lesson-quarter'),
+                  name: 'quarter',
+                  initialValue: initial?.quarter?.toString(),
+                  decoration: const InputDecoration(labelText: 'Quarter'),
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) =>
+                      setState(() => _quarter = int.tryParse(value ?? '')),
+                );
+                final weekField = FormBuilderTextField(
+                  key: const Key('lesson-week'),
+                  name: 'week',
+                  initialValue: initial?.week?.toString(),
+                  decoration: const InputDecoration(labelText: 'Week'),
+                  keyboardType: TextInputType.number,
+                  onChanged: (value) =>
+                      setState(() => _week = int.tryParse(value ?? '')),
+                );
+
+                if (constraints.maxWidth < 360) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      quarterField,
+                      const SizedBox(height: 12),
+                      weekField,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: quarterField),
+                    const SizedBox(width: 12),
+                    Expanded(child: weekField),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 12),
             FormBuilderDropdown<String?>(
@@ -355,6 +378,8 @@ class LessonFormState extends State<LessonForm> {
                 ),
               ],
             ),
+            const SizedBox(height: 20),
+            _SectionLabel('AR & content'),
             const SizedBox(height: 12),
             FormBuilderTextField(
               name: 'modelIndex',
@@ -378,7 +403,12 @@ class LessonFormState extends State<LessonForm> {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(LucideIcons.upload, size: 16),
+                  : Icon(
+                      _uploadedContentUrl == null
+                          ? LucideIcons.upload
+                          : LucideIcons.circleCheck,
+                      size: 16,
+                    ),
               child: Text(
                 _isUploadingContent
                     ? 'Uploading...'
@@ -388,18 +418,27 @@ class LessonFormState extends State<LessonForm> {
               ),
             ),
             if (_previewPath != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Text(
                 '3D model preview',
-                style: Theme.of(context).textTheme.titleSmall,
+                style: ShadTheme.of(context).textTheme.small,
               ),
               const SizedBox(height: 8),
-              SizedBox(
-                height: 240,
-                child: _LessonModelPreview(assetPath: _previewPath!),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: scheme.border),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    height: 240,
+                    child: _LessonModelPreview(assetPath: _previewPath!),
+                  ),
+                ),
               ),
             ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Align(
               alignment: Alignment.centerRight,
               child: ShadButton(
@@ -410,6 +449,29 @@ class LessonFormState extends State<LessonForm> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Small uppercase section heading separating this form's three logical
+/// groups (basics / curriculum placement / AR & content) — previously the
+/// whole form was one undifferentiated stack of a dozen fields with no
+/// visual grouping at all.
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = ShadTheme.of(context).colorScheme;
+    return Text(
+      label.toUpperCase(),
+      style: ShadTheme.of(context).textTheme.small.copyWith(
+        color: scheme.mutedForeground,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.4,
       ),
     );
   }
