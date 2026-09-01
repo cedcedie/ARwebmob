@@ -69,11 +69,37 @@ class LessonRepository {
     bool includeArchived = false,
   }) {
     final builtInIds = kBuiltInLessons.map((l) => l.id).toSet();
+
+    // A Firestore doc sharing a built-in's id is normally fully discarded
+    // (the built-in curriculum's identity -- title, subject, AR mapping --
+    // is authoritative and must never be silently overwritten). But
+    // built-ins have no way to carry teacher-uploaded PDF/PPTX content of
+    // their own, since that upload flow always writes through this same
+    // /lessons/{id} doc -- so as a narrow, deliberate exception, ONLY
+    // contentImageUrls/contentStatus get overlaid from a matching doc onto
+    // the built-in Lesson, leaving every other field exactly as the
+    // built-in curriculum defines it. See lessons_screen.dart's "Upload
+    // Content" action on built-in rows, which writes only those two
+    // fields (plus the id/title/subject required to satisfy TeacherLesson
+    // itself) for exactly this purpose.
+    final contentOverridesByLessonId = {
+      for (final tl in teacherLessons)
+        if (builtInIds.contains(tl.id)) tl.id: tl,
+    };
+    final builtIns = kBuiltInLessons.map((lesson) {
+      final override = contentOverridesByLessonId[lesson.id];
+      if (override == null) return lesson;
+      return lesson.copyWith(
+        contentImageUrls: override.contentImageUrls,
+        contentStatus: override.contentStatus,
+      );
+    });
+
     final appended = teacherLessons
         .where((tl) => !builtInIds.contains(tl.id))
         .where((tl) => includeArchived || !tl.isArchived)
         .map(_toLesson);
-    return [...kBuiltInLessons, ...appended];
+    return [...builtIns, ...appended];
   }
 
   Lesson _toLesson(TeacherLesson tl) {

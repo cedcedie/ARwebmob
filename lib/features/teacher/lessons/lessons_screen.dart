@@ -4,10 +4,12 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
+import '../../../core/models/lesson.dart';
 import '../../../core/models/subject_key.dart';
 import '../../../core/models/teacher_lesson.dart';
 import '../widgets/error_state.dart';
 import '../widgets/subject_accent_cell.dart';
+import 'builtin_lesson_content_sheet.dart';
 import 'lesson_form.dart';
 import 'lessons_providers.dart';
 
@@ -337,6 +339,12 @@ class _LessonsBody extends HookWidget {
                           onEdit: (lesson) =>
                               _openForm(context, initial: lesson),
                           onArchive: (id) => _confirmArchive(context, id),
+                          onUploadContent: (lesson) =>
+                              BuiltinLessonContentSheet.show(
+                                context,
+                                lesson: lesson,
+                                onUpload: viewModel.onCreateLesson,
+                              ),
                         )
                       : ShadCard(
                           padding: EdgeInsets.zero,
@@ -413,7 +421,22 @@ class _LessonsBody extends HookWidget {
                                     ),
                                     DataCell(
                                       row.isBuiltIn
-                                          ? const SizedBox.shrink()
+                                          ? Tooltip(
+                                              message:
+                                                  'Upload content (PDF/PPTX) — '
+                                                  'the lesson itself stays locked',
+                                              child: ShadIconButton.ghost(
+                                                icon: const Icon(
+                                                  LucideIcons.upload,
+                                                ),
+                                                onPressed: () =>
+                                                    BuiltinLessonContentSheet.show(
+                                                      context,
+                                                      lesson: lesson,
+                                                      onUpload: viewModel.onCreateLesson,
+                                                    ),
+                                              ),
+                                            )
                                           : Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
@@ -533,11 +556,13 @@ class _LessonsCardList extends StatelessWidget {
     required this.rows,
     required this.onEdit,
     required this.onArchive,
+    required this.onUploadContent,
   });
 
   final List<DisplayLesson> rows;
   final void Function(TeacherLesson? lesson) onEdit;
   final void Function(String lessonId) onArchive;
+  final void Function(Lesson lesson) onUploadContent;
 
   @override
   Widget build(BuildContext context) {
@@ -546,10 +571,16 @@ class _LessonsCardList extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final row = rows[index];
-        return _LessonCard(row: row, onEdit: onEdit, onArchive: onArchive)
-            .animate()
-            .fadeIn(duration: 220.ms, delay: (index * 20).ms)
-            .slideY(begin: 0.04, end: 0, duration: 220.ms);
+        return _LessonCard(
+          row: row,
+          onEdit: onEdit,
+          onArchive: onArchive,
+          onUploadContent: onUploadContent,
+        ).animate().fadeIn(duration: 220.ms, delay: (index * 20).ms).slideY(
+          begin: 0.04,
+          end: 0,
+          duration: 220.ms,
+        );
       },
     );
   }
@@ -560,11 +591,13 @@ class _LessonCard extends StatelessWidget {
     required this.row,
     required this.onEdit,
     required this.onArchive,
+    required this.onUploadContent,
   });
 
   final DisplayLesson row;
   final void Function(TeacherLesson? lesson) onEdit;
   final void Function(String lessonId) onArchive;
+  final void Function(Lesson lesson) onUploadContent;
 
   @override
   Widget build(BuildContext context) {
@@ -639,8 +672,18 @@ class _LessonCard extends StatelessWidget {
                               ],
                             ),
                           ),
-                        if (row.isBuiltIn)
+                        if (row.isBuiltIn) ...[
                           const ShadBadge(child: Text('Built-in')),
+                          Tooltip(
+                            message:
+                                'Upload content (PDF/PPTX) — the lesson '
+                                'itself stays locked',
+                            child: ShadIconButton.ghost(
+                              icon: const Icon(LucideIcons.upload, size: 16),
+                              onPressed: () => onUploadContent(lesson),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     if (lesson.summary.isNotEmpty) ...[
