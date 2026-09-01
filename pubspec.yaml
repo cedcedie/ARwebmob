@@ -124,3 +124,12 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Pinned down from the newer default (2.0.35) which requires compileSdk 36+,
+# incompatible with file_picker 8.3.7's own AAR (compiled against
+# compileSdk 34) -- caused a real `checkDebugAarMetadata` Gradle failure.
+# Remove this override once file_picker is upgraded past 8.x (e.g. to 12.x,
+# a real breaking-change migration not done here) or once file_picker
+# itself republishes compiled against a newer compileSdk.
+dependency_overrides:
+  flutter_plugin_android_lifecycle: 2.0.24
