@@ -16,6 +16,21 @@ service cloud.firestore {
       allow read, write: if isTeacher() ||
         (isStudent() &&
          request.auth.token.email == studentId + '@arscience.school');
+
+      // quizAttempts is a SUBCOLLECTION nested under each student doc
+      // (students/{studentId}/quizAttempts/{attemptId} -- see
+      // QuizAttemptService.recordAttempt's `_studentDoc(id).collection(
+      // 'quizAttempts')` call), NOT a top-level /quizAttempts collection.
+      // A top-level `match /quizAttempts/{attemptId}` rule (the original,
+      // wrong version of this file) matches nothing real -- Firestore
+      // treats these as entirely different paths, and the real nested
+      // path had no rule at all (defaults to deny), which silently broke
+      // every quiz-completion write for students.
+      match /quizAttempts/{attemptId} {
+        allow read, write: if isTeacher() ||
+          (isStudent() &&
+           request.auth.token.email == studentId + '@arscience.school');
+      }
     }
     match /lessons/{lessonId} {
       allow read: if isSignedIn();
@@ -32,10 +47,6 @@ service cloud.firestore {
     match /quizUnlockCodes/{docId} {
       allow read: if isSignedIn();
       allow create: if isTeacher();
-    }
-    match /quizAttempts/{attemptId} {
-      allow read: if isSignedIn();
-      allow create: if isStudent();
     }
   }
 }
