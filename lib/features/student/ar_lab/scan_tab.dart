@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_embed_unity/flutter_embed_unity.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/ar/voice_scripts_data.dart';
 import '../../../core/models/lesson.dart';
@@ -24,10 +25,26 @@ class ScanTab extends StatefulWidget {
 class _ScanTabState extends State<ScanTab> {
   String _language = 'en';
 
+  // Fixes a real first-launch bug: Unity's own native camera init used to
+  // race the OS's runtime permission dialog -- EmbedUnity was mounted
+  // unconditionally, so on a fresh install Unity would try to open the
+  // camera before the OS had actually granted CAMERA access, fail silently,
+  // and never retry within that session (only a full app restart, with the
+  // permission now already granted from a prior run, worked). Explicitly
+  // requesting the permission here and gating EmbedUnity's mount on the
+  // result means Unity never starts until Android has confirmed access.
+  PermissionStatus? _cameraPermission;
+
   @override
   void initState() {
     super.initState();
     widget.vm.addListener(_onViewModelChanged);
+    _requestCameraPermission();
+  }
+
+  Future<void> _requestCameraPermission() async {
+    final status = await Permission.camera.request();
+    if (mounted) setState(() => _cameraPermission = status);
   }
 
   @override
@@ -68,6 +85,41 @@ class _ScanTabState extends State<ScanTab> {
             "This lesson doesn't have an AR model — continue to the Read tab.",
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+      );
+    }
+
+    if (_cameraPermission == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_cameraPermission!.isGranted) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.videocam_off, size: 48),
+              const SizedBox(height: 12),
+              Text(
+                _cameraPermission!.isPermanentlyDenied
+                    ? 'Camera access is off for this app. Enable it in your phone\'s Settings to use Scan.'
+                    : 'Camera access is needed to scan AR markers.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _cameraPermission!.isPermanentlyDenied
+                    ? openAppSettings
+                    : _requestCameraPermission,
+                child: Text(
+                  _cameraPermission!.isPermanentlyDenied ? 'Open Settings' : 'Allow Camera',
+                ),
+              ),
+            ],
           ),
         ),
       );

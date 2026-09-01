@@ -51,7 +51,24 @@ class QuizPlayerScreen extends ConsumerWidget {
               RadioListTile<int>(
                 value: i,
                 groupValue: state.selectedAnswer,
-                onChanged: state.showResult ? null : (v) => controller.selectAnswer(v!),
+                // Auto-advance: selecting an option immediately submits it
+                // (shows the Correct/Incorrect feedback right away, per
+                // PROJECT_FLOW.md Part 7.3's "immediate feedback... before
+                // advancing" requirement) and, after a brief pause so the
+                // feedback is actually readable, moves on by itself — no
+                // separate "Submit"/"Next" tap needed. `nextQuestion()` is a
+                // no-op on the last question (isComplete is already set by
+                // submitAnswer's persist call, which flips this screen over
+                // to QuizResultsScreen before the delay even elapses).
+                onChanged: state.showResult
+                    ? null
+                    : (v) async {
+                        controller.selectAnswer(v!);
+                        await controller.submitAnswer();
+                        await Future.delayed(const Duration(milliseconds: 900));
+                        if (!context.mounted) return;
+                        controller.nextQuestion();
+                      },
                 title: Text(visibleOptions[i]),
               ),
             if (!state.showResult)
@@ -64,20 +81,24 @@ class QuizPlayerScreen extends ConsumerWidget {
               ),
             if (state.hintedQuestionIndices.contains(state.questionIndex) && !state.showResult)
               Text('Hint: ${question.hint}'),
+            // The only feedback signal during the brief auto-advance pause
+            // (see the RadioListTile's onChanged above) -- sized up from a
+            // plain Text so it's actually readable in the ~900ms window
+            // before the screen moves on by itself.
             if (state.showResult)
-              Text(
-                state.selectedAnswer == question.correctIndex ? 'Correct!' : 'Incorrect',
-                style: TextStyle(
-                  color: state.selectedAnswer == question.correctIndex ? Colors.green : Colors.orange,
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  state.selectedAnswer == question.correctIndex ? 'Correct!' : 'Incorrect',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: state.selectedAnswer == question.correctIndex
+                            ? Colors.green
+                            : Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
               ),
             const Spacer(),
-            FilledButton(
-              onPressed: state.showResult
-                  ? controller.nextQuestion
-                  : (state.selectedAnswer == null ? null : controller.submitAnswer),
-              child: Text(state.showResult ? 'Next Question' : 'Submit Answer'),
-            ),
           ],
         ),
       ),

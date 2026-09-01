@@ -54,6 +54,7 @@ dependencies:
   flutter_tts: ^4.2.0
   firebase_storage: ^12.3.0
   file_picker: ^8.1.0
+  permission_handler: ^11.3.1
   url_launcher: ^6.3.2
 
   # Phase 4 (Teacher Web) UI packages
