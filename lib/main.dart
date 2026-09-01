@@ -13,6 +13,7 @@ import 'core/services/quiz_attempt_service.dart';
 import 'core/services/quiz_repository.dart';
 import 'core/services/student_repository.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/student_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
 import 'features/student/app/router.dart';
 import 'features/student/app/student_providers.dart';
@@ -159,6 +160,7 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
           overrides: studentProviderOverridesFor(studentId, services: services),
           child: MaterialApp.router(
             title: 'AR Science Explorer',
+            theme: studentTheme,
             routerConfig: _studentRouter!,
           ),
         );
