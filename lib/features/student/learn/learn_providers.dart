@@ -1,8 +1,11 @@
 // lib/features/student/learn/learn_providers.dart
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:rxdart/rxdart.dart';
 
+import '../../../core/models/student_record.dart';
 import '../../../core/models/subject_key.dart';
+import '../../../core/models/teacher_lesson.dart';
 import '../../../core/services/access_code_service.dart';
 import '../../../core/services/lesson_repository.dart';
 import '../../../core/services/student_repository.dart';
@@ -75,31 +78,42 @@ Stream<LearnViewModel> buildLearnViewModel({
   required Set<String> preTestLessonIds,
   required void Function(SubjectKey) onSelectSubject,
 }) {
-  return lessonRepository.watchTeacherLessons().asyncMap((teacherLessons) async {
-    final merged = lessonRepository.mergedLessons(teacherLessons);
-    final student = await studentRepository.getStudent(studentId);
-    final unlockedIds = student?.unlockedLessonIds.toSet() ?? const <String>{};
-    final completedIds = student?.completedLessonIds.toSet() ?? const <String>{};
+  // Combined, not chained: the old `.asyncMap` here did a one-time
+  // `getStudent()` fetch inside a callback keyed to the teacher-lessons
+  // stream, so redeeming an access code (which only touches the student's
+  // own doc) never re-triggered this stream -- a student had to navigate
+  // away and back (recreating the provider) to see a lesson they'd just
+  // unlocked. `CombineLatestStream` re-emits whenever *either* live source
+  // (`watchTeacherLessons()` or `watchStudent()`, both real `.snapshots()`
+  // streams) changes, so an unlock reflects immediately.
+  return Rx.combineLatest2<List<TeacherLesson>, StudentRecord?, LearnViewModel>(
+    lessonRepository.watchTeacherLessons(),
+    studentRepository.watchStudent(studentId),
+    (teacherLessons, student) {
+      final merged = lessonRepository.mergedLessons(teacherLessons);
+      final unlockedIds = student?.unlockedLessonIds.toSet() ?? const <String>{};
+      final completedIds = student?.completedLessonIds.toSet() ?? const <String>{};
 
-    final cards = merged
-        .where((l) => l.subject == initialSubject)
-        .map((l) => LessonCardData(
-              lessonId: l.id,
-              title: l.title,
-              week: l.week,
-              summary: l.summary,
-              isUnlocked: l.isUnlockedByDefault || unlockedIds.contains(l.id),
-              hasPreTest: preTestLessonIds.contains(l.id),
-              isCompleted: completedIds.contains(l.id),
-            ))
-        .toList();
+      final cards = merged
+          .where((l) => l.subject == initialSubject)
+          .map((l) => LessonCardData(
+                lessonId: l.id,
+                title: l.title,
+                week: l.week,
+                summary: l.summary,
+                isUnlocked: l.isUnlockedByDefault || unlockedIds.contains(l.id),
+                hasPreTest: preTestLessonIds.contains(l.id),
+                isCompleted: completedIds.contains(l.id),
+              ))
+          .toList();
 
-    return LearnViewModel(
-      activeSubject: initialSubject,
-      cards: cards,
-      onSelectSubject: onSelectSubject,
-      studentId: studentId,
-      accessCodeService: accessCodeService,
-    );
-  });
+      return LearnViewModel(
+        activeSubject: initialSubject,
+        cards: cards,
+        onSelectSubject: onSelectSubject,
+        studentId: studentId,
+        accessCodeService: accessCodeService,
+      );
+    },
+  );
 }

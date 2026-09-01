@@ -8,7 +8,13 @@ import '../quiz_id.dart';
 import 'quiz_attempt_service.dart';
 
 const int _codeLength = 6;
-const String _codeAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+// Excludes 0/O and 1/I -- a real bug found during live device testing: a
+// teacher-issued code containing a zero was misread/mistyped as the letter
+// O by a student, and the redemption failed with "isn't valid" (a correct,
+// working rejection -- the codes genuinely differed -- but an entirely
+// avoidable one). Codes are read off a screen or handwritten far more often
+// than they're copy-pasted, so ambiguous characters are a real cost.
+const String _codeAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const int _maxGenerationAttempts = 10;
 
 /// Implements PROJECT_FLOW.md Part 9's teacher-issuance side — the mirror
