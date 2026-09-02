@@ -55,7 +55,16 @@ class _ArLabScreenState extends ConsumerState<ArLabScreen> {
               tabs: [Tab(text: 'Scan'), Tab(text: 'Read'), Tab(text: 'Review')],
             ),
           ),
+          // Swipe navigation is disabled: TabBarView is a PageView under the
+          // hood, and its horizontal-drag recognizer competes in the gesture
+          // arena with the embedded Unity AndroidView's own touch handling.
+          // On the Scan tab that fight is what made a swipe-right jump to
+          // the next tab instead of rotating the model, and made rotate/zoom
+          // feel loose even when it didn't -- Unity was only getting partial
+          // gesture claims. Tabs are switched via the TabBar only now, which
+          // leaves the embed the whole gesture arena to itself.
           body: TabBarView(
+            physics: const NeverScrollableScrollPhysics(),
             children: [
               ScanTab(vm: vm, voiceOverController: _voiceOverController),
               ReadTab(vm: vm),

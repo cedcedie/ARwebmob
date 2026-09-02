@@ -2,12 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:permission_handler_platform_interface/permission_handler_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:ar_science_explorer/core/services/voice_over_controller.dart';
 import 'package:ar_science_explorer/features/student/ar_lab/ar_lab_providers.dart';
 import 'package:ar_science_explorer/features/student/ar_lab/ar_lab_screen.dart';
 import 'package:ar_science_explorer/core/services/access_code_service.dart';
 import 'package:ar_science_explorer/core/services/quiz_attempt_service.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+
+/// Grants every permission it's asked about. ScanTab (rendered as the
+/// screen's first tab) gates mounting EmbedUnity on
+/// `Permission.camera.request()` resolving granted -- without this, the
+/// real `MethodChannelPermissionHandler` has no platform to talk to in a
+/// widget test, so `pumpAndSettle` never settles and every test here times
+/// out.
+class _FakeGrantedPermissionHandler extends PermissionHandlerPlatform
+    with MockPlatformInterfaceMixin {
+  @override
+  Future<PermissionStatus> checkPermissionStatus(Permission permission) async =>
+      PermissionStatus.granted;
+
+  @override
+  Future<Map<Permission, PermissionStatus>> requestPermissions(
+    List<Permission> permissions,
+  ) async => {for (final p in permissions) p: PermissionStatus.granted};
+}
 
 class _FakeFlutterTts implements FlutterTts {
   int stopCallCount = 0;
@@ -32,6 +52,10 @@ class _FakeFlutterTts implements FlutterTts {
 }
 
 void main() {
+  setUp(() {
+    PermissionHandlerPlatform.instance = _FakeGrantedPermissionHandler();
+  });
+
   testWidgets('renders three tabs: Scan, Read, Review', (tester) async {
     final firestore = FakeFirebaseFirestore();
     final quizAttemptService = QuizAttemptService(firestore: firestore);

@@ -12,14 +12,21 @@ String markerAssetForLesson(Lesson lesson) {
   return '/markers/Q${lesson.quarter}W${lesson.week}.jpg';
 }
 
-/// Extracts the `Q<n>W<n>` pattern from a Vuforia trackable name (e.g.
-/// "DemocritusAtomQ1W1" -> lesson with quarter 1, week 1) and finds the
-/// matching lesson. Case-insensitive because trackable names in the Unity
-/// scene are inconsistently cased (e.g. "q3w2inclined_plane_slide_playground"
-/// vs "DemocritusAtomQ1W1"). Returns null if no `Q<n>W<n>` pattern is found
-/// in the name, or if no lesson matches the extracted quarter/week.
+/// Extracts a quarter/week pair from a Vuforia trackable name and finds the
+/// matching lesson. `trackableName` is `ObserverBehaviour.TargetName` --
+/// Vuforia's ImageTarget database entry name -- which in this project's
+/// database is spelled out in full (e.g. "Quarter2Week1"), not the abbreviated
+/// `Q<n>W<n>` some model GameObjects use (e.g. "DemocritusAtomQ1W1" or
+/// "q3w2inclined_plane_slide_playground"). Matches "quarter"/"week" as
+/// optional, so both the abbreviated and spelled-out forms resolve to the
+/// same lesson. Case-insensitive because trackable/GameObject names in the
+/// Unity scene are inconsistently cased. Returns null if no quarter/week
+/// pattern is found in the name, or if no lesson matches the extracted values.
 Lesson? lessonForTrackableName(List<Lesson> orderedLessons, String trackableName) {
-  final match = RegExp(r'[Qq](\d+)[Ww](\d+)').firstMatch(trackableName);
+  final match = RegExp(
+    r'q(?:uarter)?\s*(\d+)\s*w(?:eek)?\s*(\d+)',
+    caseSensitive: false,
+  ).firstMatch(trackableName);
   if (match == null) return null;
   final quarter = int.parse(match.group(1)!);
   final week = int.parse(match.group(2)!);

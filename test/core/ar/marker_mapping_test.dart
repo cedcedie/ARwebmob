@@ -77,6 +77,12 @@ void main() {
     test('returns null when the trackable name has no Q<n>W<n> pattern', () {
       expect(lessonForTrackableName(kBuiltInLessons, 'SomeNameWithNoPattern'), isNull);
     });
+
+    test('finds q2w1 from the spelled-out Vuforia database target name '
+        '(ObserverBehaviour.TargetName, e.g. "Quarter2Week1")', () {
+      final found = lessonForTrackableName(kBuiltInLessons, 'Quarter2Week1');
+      expect(found?.id, 'q2w1');
+    });
   });
 
   test('q1w5 has no arPayload and hasAR is false', () {

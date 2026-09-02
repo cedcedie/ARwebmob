@@ -200,12 +200,15 @@ class _DetectedLessonOverlay extends StatelessWidget {
 
     // Capped and scrollable rather than sized to content: a lesson with a
     // long description plus several key ideas would otherwise grow tall
-    // enough to cover most of the live Unity camera feed above it.
+    // enough to cover most of the live Unity camera feed above it. 0.32 of
+    // screen height still overlapped the model too much on-device, so this
+    // is capped tighter (0.2) and uses smaller text/padding/spacing than
+    // the rest of the app's cards to stay out of the way of the model.
     return Card(
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.32),
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.2),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(8),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -213,18 +216,18 @@ class _DetectedLessonOverlay extends StatelessWidget {
               children: [
                 Text(
                   payload?.title ?? lesson.title,
-                  style: textTheme.titleMedium,
+                  style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 if (payload?.subtitle != null)
-                  Text(payload!.subtitle!, style: textTheme.bodyMedium),
+                  Text(payload!.subtitle!, style: textTheme.bodySmall),
                 if (payload?.description != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(payload!.description!, style: textTheme.bodyMedium),
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(payload!.description!, style: textTheme.bodySmall),
                   ),
                 if (keyIdeas != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.only(top: 4),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
