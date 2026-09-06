@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/models/built_in_question.dart';
 import '../../../core/models/question_type.dart';
 import '../../../core/models/subject_key.dart';
 import '../../../core/services/item_analysis_calculator.dart';
 import '../widgets/error_state.dart';
+import '../../../core/util/file_download.dart';
+import 'item_analysis_csv.dart';
 import 'item_analysis_providers.dart';
 
 /// Narrow-viewport breakpoint — matches `TeacherShell`'s and
@@ -56,9 +59,7 @@ class ItemAnalysisScreen extends ConsumerWidget {
                     children: [
                       Text(
                         'Item Analysis',
-                        style: ShadTheme.of(
-                          context,
-                        ).textTheme.muted.copyWith(
+                        style: ShadTheme.of(context).textTheme.muted.copyWith(
                           color: ShadTheme.of(
                             context,
                           ).colorScheme.mutedForeground,
@@ -72,6 +73,11 @@ class ItemAnalysisScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                // Export is only offered once there is something to export —
+                // an empty CSV is worse than no button.
+                if (asyncViewModel.valueOrNull case final vm?
+                    when vm.attemptCount > 0)
+                  _ExportCsvButton(viewModel: vm, isCompact: isCompact),
               ],
             ),
             SizedBox(height: isCompact ? 16 : 20),
@@ -83,9 +89,8 @@ class ItemAnalysisScreen extends ConsumerWidget {
                     error,
                     subjectLabel: 'item analysis',
                   ),
-                  onRetry: () => ref.invalidate(
-                    itemAnalysisViewModelProvider(quizId),
-                  ),
+                  onRetry: () =>
+                      ref.invalidate(itemAnalysisViewModelProvider(quizId)),
                 ),
                 data: (vm) {
                   if (vm.attemptCount == 0) {
@@ -102,6 +107,7 @@ class ItemAnalysisScreen extends ConsumerWidget {
                               _QuestionAnalysisCard(
                                 question: vm.questions[i],
                                 result: vm.results[i],
+                                attemptCount: vm.attemptCount,
                                 isCompact: isCompact,
                               ).animate().fadeIn(
                                 duration: 220.ms,
@@ -196,21 +202,21 @@ class _ItemAnalysisSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = ShadTheme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    // A ListView, not a Column: three 180px placeholders overflow a short
+    // viewport (and a teacher's browser window can be short).
+    return ListView(
       children: [
         for (var i = 0; i < 3; i++) ...[
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: double.infinity,
-              height: 180,
-              child: ColoredBox(color: scheme.muted),
-            ),
-          ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(
-            duration: 700.ms,
-            begin: 0.5,
-          ),
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 180,
+                  child: ColoredBox(color: scheme.muted),
+                ),
+              )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .fadeIn(duration: 700.ms, begin: 0.5),
           const SizedBox(height: 12),
         ],
       ],
@@ -222,17 +228,27 @@ class _QuestionAnalysisCard extends StatelessWidget {
   const _QuestionAnalysisCard({
     required this.question,
     required this.result,
+    required this.attemptCount,
     required this.isCompact,
   });
 
   final BuiltInQuestion question;
   final QuestionItemAnalysis result;
+
+  /// How many attempts this analysis was computed over. Kept alongside the
+  /// rates so every percentage can also be stated as a headcount — UAT
+  /// feedback was that teachers want "how many students got this right",
+  /// not only a percentage they'd have to convert back themselves.
+  final int attemptCount;
   final bool isCompact;
 
   @override
   Widget build(BuildContext context) {
     final scheme = ShadTheme.of(context).colorScheme;
     final difficultyPct = (result.difficultyIndex * 100).round();
+    // `difficultyIndex` is exactly correctCount / attemptCount, so this
+    // recovers the original headcount without rounding drift.
+    final correctCount = (result.difficultyIndex * attemptCount).round();
     final discriminationLabel = result.discriminationIndex >= 0
         ? '+${(result.discriminationIndex * 100).round()}%'
         : '${(result.discriminationIndex * 100).round()}%';
@@ -250,6 +266,17 @@ class _QuestionAnalysisCard extends StatelessWidget {
           label: 'Difficulty',
           value: '$difficultyPct% correct',
           color: physicsAccent,
+        ),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: Text(
+            '$correctCount of $attemptCount '
+            '${attemptCount == 1 ? 'student' : 'students'} answered correctly',
+            style: ShadTheme.of(
+              context,
+            ).textTheme.small.copyWith(color: scheme.mutedForeground),
+          ),
         ),
         const SizedBox(height: 8),
         _StatRow(
@@ -274,7 +301,9 @@ class _QuestionAnalysisCard extends StatelessWidget {
               padding: const EdgeInsets.only(top: 2),
               child: Text(
                 '${question.options[entry.key]}: '
-                '${(entry.value * 100).round()}%',
+                '${(entry.value * 100).round()}% '
+                '(${(entry.value * attemptCount).round()} '
+                '${(entry.value * attemptCount).round() == 1 ? 'student' : 'students'})',
                 style: ShadTheme.of(
                   context,
                 ).textTheme.small.copyWith(color: scheme.mutedForeground),
@@ -397,7 +426,11 @@ class _QuestionAnalysisCard extends StatelessWidget {
 }
 
 class _StatRow extends StatelessWidget {
-  const _StatRow({required this.label, required this.value, required this.color});
+  const _StatRow({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   final String label;
   final String value;
@@ -414,17 +447,24 @@ class _StatRow extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: ShadTheme.of(
-            context,
-          ).textTheme.small.copyWith(color: scheme.mutedForeground),
+        Flexible(
+          child: Text(
+            '$label: ',
+            style: ShadTheme.of(
+              context,
+            ).textTheme.small.copyWith(color: scheme.mutedForeground),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-        Text(
-          value,
-          style: ShadTheme.of(
-            context,
-          ).textTheme.small.copyWith(fontWeight: FontWeight.w600),
+        // Flexible: in a narrow card the label + value can exceed the row's
+        // width, which used to clip the number itself.
+        Flexible(
+          child: Text(
+            value,
+            style: ShadTheme.of(
+              context,
+            ).textTheme.small.copyWith(fontWeight: FontWeight.w600),
+          ),
         ),
       ],
     );
@@ -442,5 +482,62 @@ Color _subjectAccent(BuildContext context, SubjectKey subject) {
     SubjectKey.biology => 'biology',
     SubjectKey.physics => 'physics',
   };
-  return custom[key] as Color;
+  // Fall back to the static palette when the active ShadThemeData carries
+  // no `custom` map (a bare `ShadApp` with no theme, as in widget tests) —
+  // a missing accent must never crash a whole screen.
+  return custom[key] ?? subjectColor(subject);
+}
+
+/// Downloads the item-analysis table as a CSV the teacher can open in Excel
+/// or print. Requested at UAT: the teachers wanted the numbers to take away,
+/// not just to read on screen.
+class _ExportCsvButton extends StatelessWidget {
+  const _ExportCsvButton({required this.viewModel, required this.isCompact});
+
+  final ItemAnalysisViewModel viewModel;
+  final bool isCompact;
+
+  void _export(BuildContext context) {
+    final saved = downloadTextFile(
+      fileName: itemAnalysisCsvFileName(viewModel.quizTitle),
+      content: buildItemAnalysisCsv(viewModel),
+    );
+    if (!context.mounted) return;
+    if (saved) {
+      ShadToaster.of(
+        context,
+      ).show(const ShadToast(description: Text('Item analysis downloaded')));
+    } else {
+      // Non-web build: say so rather than leaving the button looking broken.
+      ShadToaster.of(context).show(
+        const ShadToast.destructive(
+          description: Text(
+            "Downloading isn't supported here. Open the teacher portal in a "
+            'web browser to export.',
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (isCompact) {
+      return ShadIconButton.outline(
+        icon: const Icon(LucideIcons.download),
+        onPressed: () => _export(context),
+      );
+    }
+    return ShadButton.outline(
+      onPressed: () => _export(context),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(LucideIcons.download, size: 16),
+          SizedBox(width: 8),
+          Text('Export CSV'),
+        ],
+      ),
+    );
+  }
 }

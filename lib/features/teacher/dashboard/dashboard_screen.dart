@@ -38,27 +38,47 @@ class DashboardScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Dashboard', style: ShadTheme.of(context).textTheme.h2),
+              Text('Dashboard', style: ShadTheme.of(context).textTheme.h2)
+                  .animate()
+                  .fadeIn(duration: 220.ms)
+                  .slideY(
+                    begin: 0.06,
+                    end: 0,
+                    duration: 220.ms,
+                    curve: Curves.easeOut,
+                  ),
               const SizedBox(height: 4),
               Text(
                 "Here's what's happening across your classes.",
                 style: ShadTheme.of(
                   context,
                 ).textTheme.muted.copyWith(fontSize: 15),
-              ),
+              ).animate().fadeIn(duration: 220.ms, delay: 40.ms),
               const SizedBox(height: 24),
-              _StatGrid(isNarrow: isNarrow),
+              _StatGrid(isNarrow: isNarrow)
+                  .animate()
+                  .fadeIn(duration: 260.ms, delay: 100.ms)
+                  .slideY(begin: 0.04, end: 0, duration: 260.ms, delay: 100.ms),
               const SizedBox(height: 32),
               Text(
                 'Lessons by subject',
                 style: ShadTheme.of(context).textTheme.h4,
-              ),
+              ).animate().fadeIn(duration: 240.ms, delay: 160.ms),
               const SizedBox(height: 12),
-              const _SubjectBreakdownCard(),
+              const _SubjectBreakdownCard()
+                  .animate()
+                  .fadeIn(duration: 260.ms, delay: 200.ms)
+                  .slideY(begin: 0.04, end: 0, duration: 260.ms, delay: 200.ms),
               const SizedBox(height: 32),
-              Text('Quick actions', style: ShadTheme.of(context).textTheme.h4),
+              Text(
+                'Quick actions',
+                style: ShadTheme.of(context).textTheme.h4,
+              ).animate().fadeIn(duration: 240.ms, delay: 260.ms),
               const SizedBox(height: 12),
-              _QuickActions(isNarrow: isNarrow),
+              _QuickActions(isNarrow: isNarrow)
+                  .animate()
+                  .fadeIn(duration: 260.ms, delay: 300.ms)
+                  .slideY(begin: 0.04, end: 0, duration: 260.ms, delay: 300.ms),
             ],
           ),
         ),
@@ -341,11 +361,7 @@ class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = [
-      (
-        icon: LucideIcons.plus,
-        label: 'New lesson',
-        route: '/teacher/lessons',
-      ),
+      (icon: LucideIcons.plus, label: 'New lesson', route: '/teacher/lessons'),
       (
         icon: LucideIcons.clipboardPlus,
         label: 'New quiz',

@@ -125,7 +125,10 @@ class ErrorState extends StatelessWidget {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 16),
-              ShadButton.outline(onPressed: onRetry, child: const Text('Retry')),
+              ShadButton.outline(
+                onPressed: onRetry,
+                child: const Text('Retry'),
+              ),
             ],
           ],
         ),

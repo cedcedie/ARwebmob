@@ -101,6 +101,7 @@ void main() {
         students: const [],
         lessons: kBuiltInLessons,
         issuedCodes: const [],
+        onDeleteCode: (_) async {},
         onIssueSubjectCode: ({required subjects, lessonIds, customCode}) async {
           issuedCode = await services.accessCodeIssuanceService
               .issueSubjectCode(
@@ -153,6 +154,7 @@ void main() {
           students: const [],
           lessons: kBuiltInLessons,
           issuedCodes: const [],
+          onDeleteCode: (_) async {},
           onIssueSubjectCode: ({required subjects, lessonIds, customCode}) =>
               services.accessCodeIssuanceService.issueSubjectCode(
                 subjects: subjects,
@@ -211,6 +213,7 @@ void main() {
           students: [_blankStudent('222222', name: 'Maria')],
           lessons: kBuiltInLessons,
           issuedCodes: const [],
+          onDeleteCode: (_) async {},
           onIssueSubjectCode: ({required subjects, lessonIds, customCode}) =>
               services.accessCodeIssuanceService.issueSubjectCode(
                 subjects: subjects,
@@ -275,6 +278,7 @@ void main() {
           students: [_blankStudent('333333', name: 'No Attempt')],
           lessons: kBuiltInLessons,
           issuedCodes: const [],
+          onDeleteCode: (_) async {},
           onIssueSubjectCode:
               ({required subjects, lessonIds, customCode}) async => 'unused',
           onIssueLessonCode:
@@ -351,6 +355,7 @@ void main() {
         students: [_blankStudent('444444', name: 'Has Attempt')],
         lessons: kBuiltInLessons,
         issuedCodes: const [],
+        onDeleteCode: (_) async {},
         onIssueSubjectCode:
             ({required subjects, lessonIds, customCode}) async => 'unused',
         onIssueLessonCode:
@@ -416,6 +421,7 @@ void main() {
           students: const [],
           lessons: kBuiltInLessons,
           issuedCodes: const [],
+          onDeleteCode: (_) async {},
           onIssueSubjectCode: ({required subjects, lessonIds, customCode}) =>
               services.accessCodeIssuanceService.issueSubjectCode(
                 subjects: subjects,
@@ -459,6 +465,7 @@ void main() {
           students: const [],
           lessons: kBuiltInLessons,
           issuedCodes: const [],
+          onDeleteCode: (_) async {},
           onIssueSubjectCode:
               ({required subjects, lessonIds, customCode}) async {
                 throw FirebaseException(
@@ -504,6 +511,7 @@ void main() {
       viewModel: AccessCodesViewModel(
         students: const [],
         lessons: kBuiltInLessons,
+        onDeleteCode: (_) async {},
         issuedCodes: const [
           IssuedCodeRow(
             code: 'SUBJ01',
@@ -547,6 +555,7 @@ void main() {
           students: const [],
           lessons: kBuiltInLessons,
           issuedCodes: const [],
+          onDeleteCode: (_) async {},
           onIssueSubjectCode:
               ({required subjects, lessonIds, customCode}) async => 'unused',
           onIssueLessonCode:

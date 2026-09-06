@@ -23,6 +23,7 @@ class IssuedCodeRow {
     required this.status,
     required this.issuedAt,
     this.subject,
+    this.retakeDocId,
   });
 
   final String code;
@@ -36,6 +37,12 @@ class IssuedCodeRow {
   /// for a subject code scoped to multiple subjects at once, or when the
   /// underlying lesson/subject couldn't be resolved.
   final SubjectKey? subject;
+
+  /// Firestore document id, for retake codes only. `/quizUnlockCodes` docs
+  /// have auto-generated ids with the code as a mere field, so deleting one
+  /// needs the id; subject/lesson codes are keyed by the code itself and so
+  /// need nothing extra.
+  final String? retakeDocId;
 }
 
 class AccessCodesViewModel {
@@ -47,6 +54,7 @@ class AccessCodesViewModel {
     required this.onIssueLessonCode,
     required this.onIssueQuizRetakeCode,
     required this.checkRetakeEligible,
+    required this.onDeleteCode,
   });
 
   final List<StudentRecord> students;
@@ -74,6 +82,10 @@ class AccessCodesViewModel {
     required String lessonId,
   })
   checkRetakeEligible;
+
+  /// Permanently removes an issued code. Separate from archiving, which
+  /// invalidates a code but keeps it listed.
+  final Future<void> Function(IssuedCodeRow row) onDeleteCode;
 }
 
 final accessCodesViewModelProvider =
@@ -97,8 +109,12 @@ Stream<AccessCodesViewModel> buildAccessCodesViewModel({
     studentRepository.watchAllStudents(includeArchived: true),
     (unlockCodes, retakeCodes, students) {
       final issuedCodes = [
-        ...unlockCodes.map((doc) => _rowFromUnlockCode(doc, resolvedLessons)),
-        ...retakeCodes.map((code) => _rowFromRetakeCode(code, resolvedLessons)),
+        ...unlockCodes.map(
+          (doc) => _rowFromUnlockCode(doc, resolvedLessons, students),
+        ),
+        ...retakeCodes.map(
+          (code) => _rowFromRetakeCode(code, resolvedLessons, students),
+        ),
       ]..sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
 
       return AccessCodesViewModel(
@@ -131,14 +147,48 @@ Stream<AccessCodesViewModel> buildAccessCodesViewModel({
           );
           return eligibility.attemptCount >= 1;
         },
+        onDeleteCode: (row) {
+          // Retake codes live in a different collection, keyed differently
+          // (auto id + code field) from subject/lesson codes (keyed by the
+          // code itself), so the row's own type decides which delete to run.
+          if (row.type == IssuedCodeType.retake) {
+            final docId = row.retakeDocId;
+            if (docId == null) {
+              throw StateError(
+                'This retake code is missing its record id and cannot be '
+                'deleted. Refresh the page and try again.',
+              );
+            }
+            return issuanceService.deleteRetakeCode(docId);
+          }
+          return issuanceService.deleteUnlockCode(row.code);
+        },
       );
     },
   );
 }
 
+/// Renders a code's assignee for the table's "Target" column.
+///
+/// Client feedback (UAT): this column used to show the bare student id, so a
+/// teacher looking at a list of codes couldn't tell who each one was for
+/// without cross-referencing the roster by hand. Shows "Name (id)" when the
+/// student is on the roster, and falls back to the raw id when they aren't
+/// (e.g. a code issued to a student who was later removed).
+String _assigneeLabel(String? studentId, List<StudentRecord> students) {
+  if (studentId == null || studentId.isEmpty) return '—';
+  for (final student in students) {
+    if (student.studentId == studentId) {
+      return '${student.name} ($studentId)';
+    }
+  }
+  return studentId;
+}
+
 IssuedCodeRow _rowFromUnlockCode(
   Map<String, dynamic> doc,
   List<Lesson> lessons,
+  List<StudentRecord> students,
 ) {
   final typeRaw = doc['type'] as String? ?? 'subject';
   final type = typeRaw == 'lesson'
@@ -147,7 +197,7 @@ IssuedCodeRow _rowFromUnlockCode(
   final isUsed = doc['isUsed'] as bool? ?? false;
   final isArchived = doc['isArchived'] as bool? ?? false;
   final target = type == IssuedCodeType.lesson
-      ? (doc['targetStudentId'] as String? ?? '—')
+      ? _assigneeLabel(doc['targetStudentId'] as String?, students)
       : 'any';
   final issuedAt =
       doc['createdAt'] as String? ?? doc['generatedAt'] as String? ?? '—';
@@ -177,15 +227,20 @@ IssuedCodeRow _rowFromUnlockCode(
   );
 }
 
-IssuedCodeRow _rowFromRetakeCode(QuizUnlockCode code, List<Lesson> lessons) {
+IssuedCodeRow _rowFromRetakeCode(
+  QuizUnlockCode code,
+  List<Lesson> lessons,
+  List<StudentRecord> students,
+) {
   final lessonId = parseBuiltinId(code.quizId).lessonId;
   return IssuedCodeRow(
     code: code.code,
     type: IssuedCodeType.retake,
-    target: code.studentId,
+    target: _assigneeLabel(code.studentId, students),
     status: code.isArchived ? 'archived' : (code.isUsed ? 'used' : 'unused'),
     issuedAt: code.generatedAt,
     subject: _subjectForLessonId(lessonId, lessons),
+    retakeDocId: code.id,
   );
 }
 
@@ -226,18 +281,25 @@ Stream<T> _combineLatest3<A, B, C, T>(
     }
   }
 
+  // Every source needs `onError` forwarded. Without it a Firestore error on
+  // any of the three (a momentary `unavailable`, a rules `permission-denied`)
+  // went to the zone as an uncaught async error while this controller stayed
+  // silent and open forever — so the StreamProvider never left `loading`,
+  // the Access Codes screen span a spinner that could never resolve, its
+  // ErrorState/Retry branch was unreachable, and the dashboard's "Unused
+  // access codes" tile stayed a skeleton for the rest of the session.
   subA = streamA.listen((value) {
     lastA = value;
     maybeEmit();
-  });
+  }, onError: controller.addError);
   subB = streamB.listen((value) {
     lastB = value;
     maybeEmit();
-  });
+  }, onError: controller.addError);
   subC = streamC.listen((value) {
     lastC = value;
     maybeEmit();
-  });
+  }, onError: controller.addError);
 
   controller.onCancel = () async {
     await subA.cancel();

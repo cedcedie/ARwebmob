@@ -24,7 +24,9 @@ GoRouter buildStudentRouter({required StudentServices services}) {
     routes: [
       ShellRoute(
         builder: (context, state, child) {
-          final index = _tabs.indexWhere((t) => state.matchedLocation.startsWith(t));
+          final index = _tabs.indexWhere(
+            (t) => state.matchedLocation.startsWith(t),
+          );
           return StudentShell(
             currentIndex: index < 0 ? 0 : index,
             onDestinationSelected: (i) => context.go(_tabs[i]),
@@ -32,16 +34,27 @@ GoRouter buildStudentRouter({required StudentServices services}) {
           );
         },
         routes: [
-          GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
-          GoRoute(path: '/learn', builder: (context, state) => const LearnScreen()),
-          GoRoute(path: '/progress', builder: (context, state) => const ProgressScreen()),
+          GoRoute(
+            path: '/home',
+            builder: (context, state) => const HomeScreen(),
+          ),
+          GoRoute(
+            path: '/learn',
+            builder: (context, state) => const LearnScreen(),
+          ),
+          GoRoute(
+            path: '/progress',
+            builder: (context, state) => const ProgressScreen(),
+          ),
           GoRoute(
             path: '/lesson/:lessonId',
             builder: (context, state) {
               final lessonId = state.pathParameters['lessonId']!;
               return Consumer(
                 builder: (context, ref, _) {
-                  final studentId = ref.watch(currentStudentIdProvider).valueOrNull;
+                  final studentId = ref
+                      .watch(currentStudentIdProvider)
+                      .valueOrNull;
                   if (studentId == null) return const SizedBox.shrink();
                   // Invalidating the quiz session right before the student
                   // navigates in guarantees a fresh attempt deterministically
@@ -52,13 +65,15 @@ GoRouter buildStudentRouter({required StudentServices services}) {
                   // controller from the locked attempt). See
                   // quiz_session_controller.dart's provider doc comment.
                   void invalidateQuizSession(QuizPhase phase) {
-                    ref.invalidate(quizSessionControllerProvider(
-                      QuizSessionKey.identity(
-                        studentId: studentId,
-                        quizId: builtinQuizId(lessonId, phase),
-                        quizAttemptService: services.quizAttemptService,
+                    ref.invalidate(
+                      quizSessionControllerProvider(
+                        QuizSessionKey.identity(
+                          studentId: studentId,
+                          quizId: builtinQuizId(lessonId, phase),
+                          quizAttemptService: services.quizAttemptService,
+                        ),
                       ),
-                    ));
+                    );
                   }
 
                   return ProviderScope(
@@ -67,8 +82,10 @@ GoRouter buildStudentRouter({required StudentServices services}) {
                         studentId,
                         lessonId,
                         services: services,
-                        onStartPreTest: () => invalidateQuizSession(QuizPhase.pre),
-                        onStartPostTest: () => invalidateQuizSession(QuizPhase.post),
+                        onStartPreTest: () =>
+                            invalidateQuizSession(QuizPhase.pre),
+                        onStartPostTest: () =>
+                            invalidateQuizSession(QuizPhase.post),
                       ),
                     ],
                     child: ArLabScreen(lessonId: lessonId),
@@ -83,18 +100,20 @@ GoRouter buildStudentRouter({required StudentServices services}) {
         path: '/quiz/:lessonId/:phase',
         builder: (context, state) {
           final lessonId = state.pathParameters['lessonId']!;
-          final phase = state.pathParameters['phase'] == 'pre' ? QuizPhase.pre : QuizPhase.post;
+          final phase = state.pathParameters['phase'] == 'pre'
+              ? QuizPhase.pre
+              : QuizPhase.post;
           final quizId = builtinQuizId(lessonId, phase);
 
           Widget unavailable(String message) => Scaffold(
-                appBar: AppBar(title: const Text('Test unavailable')),
-                body: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(message),
-                  ),
-                ),
-              );
+            appBar: AppBar(title: const Text('Test unavailable')),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(message),
+              ),
+            ),
+          );
 
           return Consumer(
             builder: (context, ref, _) {
@@ -103,9 +122,12 @@ GoRouter buildStudentRouter({required StudentServices services}) {
 
               final mergedAsync = ref.watch(mergedLessonsProvider);
               return mergedAsync.when(
-                loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-                error: (error, stack) =>
-                    Scaffold(body: Center(child: Text('Could not load this test: $error'))),
+                loading: () => const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                ),
+                error: (error, stack) => Scaffold(
+                  body: Center(child: Text('Could not load this test: $error')),
+                ),
                 data: (merged) {
                   Lesson? lesson;
                   for (final candidate in merged) {
@@ -133,7 +155,11 @@ GoRouter buildStudentRouter({required StudentServices services}) {
                         quizAttemptService: services.quizAttemptService,
                       ),
                     );
-                    return QuizPlayerScreen(controllerProvider: controllerProvider);
+                    return QuizPlayerScreen(
+                      controllerProvider: controllerProvider,
+                      studentId: studentId,
+                      accessCodeService: services.accessCodeService,
+                    );
                   }
 
                   // Post-test path for a teacher-authored lesson with a
@@ -144,14 +170,20 @@ GoRouter buildStudentRouter({required StudentServices services}) {
                   // through to the branch below unchanged.
                   final linkedQuizId = lesson.linkedQuizId;
                   if (phase == QuizPhase.post && linkedQuizId != null) {
-                    final quizAsync = ref.watch(teacherQuizByIdProvider(linkedQuizId));
+                    final quizAsync = ref.watch(
+                      teacherQuizByIdProvider(linkedQuizId),
+                    );
                     return quizAsync.when(
-                      loading: () =>
-                          const Scaffold(body: Center(child: CircularProgressIndicator())),
-                      error: (error, stack) => unavailable('Could not load this test: $error'),
+                      loading: () => const Scaffold(
+                        body: Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (error, stack) =>
+                          unavailable('Could not load this test: $error'),
                       data: (quiz) {
                         if (quiz == null || quiz.questions.isEmpty) {
-                          return unavailable('This test is not available for this lesson.');
+                          return unavailable(
+                            'This test is not available for this lesson.',
+                          );
                         }
                         final questions = services.quizRepository
                             .questionsFromTeacherQuiz(quiz, lessonId: lessonId);
@@ -173,7 +205,9 @@ GoRouter buildStudentRouter({required StudentServices services}) {
                   // `vm.hasPostTest`) — this is the fallback for a stale
                   // link or a manually-typed URL, not the primary guard.
                   if (questions == null || questions.isEmpty) {
-                    return unavailable('This test is not available for this lesson.');
+                    return unavailable(
+                      'This test is not available for this lesson.',
+                    );
                   }
                   return buildPlayer(questions);
                 },

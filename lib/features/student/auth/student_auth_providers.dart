@@ -58,9 +58,9 @@ class StudentAuthViewModel extends StateNotifier<StudentAuthState> {
   StudentAuthViewModel({
     required AuthService authService,
     StudentRepository? studentRepository,
-  })  : _authService = authService,
-        _studentRepository = studentRepository,
-        super(const StudentAuthState());
+  }) : _authService = authService,
+       _studentRepository = studentRepository,
+       super(const StudentAuthState());
 
   final AuthService _authService;
   // Nullable so existing tests that don't care about archive-checking can
@@ -93,7 +93,9 @@ class StudentAuthViewModel extends StateNotifier<StudentAuthState> {
       );
 
       final email = user?.email;
-      final studentId = email != null && isStudentEmail(email) ? email.split('@').first : null;
+      final studentId = email != null && isStudentEmail(email)
+          ? email.split('@').first
+          : null;
       if (studentId != null && _studentRepository != null) {
         final record = await _studentRepository.getStudent(studentId);
         if (record != null && record.isArchived) {
@@ -118,15 +120,18 @@ class StudentAuthViewModel extends StateNotifier<StudentAuthState> {
 
 String _authErrorMessage(Object error) {
   if (error is FirebaseAuthException) {
-    return error.message ?? 'Sign-in failed. Check your student ID and password.';
+    return error.message ??
+        'Sign-in failed. Check your student ID and password.';
   }
   return error.toString();
 }
 
 final studentAuthViewModelProvider =
-    StateNotifierProvider.autoDispose<StudentAuthViewModel, StudentAuthState>((ref) {
-  return StudentAuthViewModel(
-    authService: ref.watch(studentAuthServiceProvider),
-    studentRepository: ref.watch(studentAuthRepositoryProvider),
-  );
-});
+    StateNotifierProvider.autoDispose<StudentAuthViewModel, StudentAuthState>((
+      ref,
+    ) {
+      return StudentAuthViewModel(
+        authService: ref.watch(studentAuthServiceProvider),
+        studentRepository: ref.watch(studentAuthRepositoryProvider),
+      );
+    });

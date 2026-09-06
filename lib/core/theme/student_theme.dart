@@ -78,7 +78,9 @@ final ThemeData studentTheme = ThemeData(
     }),
     iconTheme: WidgetStateProperty.resolveWith((states) {
       final selected = states.contains(WidgetState.selected);
-      return IconThemeData(color: selected ? AppColors.physics : AppColors.inkMuted);
+      return IconThemeData(
+        color: selected ? AppColors.physics : AppColors.inkMuted,
+      );
     }),
   ),
   progressIndicatorTheme: const ProgressIndicatorThemeData(

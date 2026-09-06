@@ -6,7 +6,8 @@
 // see PROJECT_HANDOVER.md for why there are two). Do not edit by hand —
 // re-run `flutterfire configure` if these values ever need to change.
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, TargetPlatform, defaultTargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, TargetPlatform, defaultTargetPlatform;
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {

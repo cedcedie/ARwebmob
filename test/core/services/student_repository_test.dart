@@ -4,20 +4,20 @@ import 'package:ar_science_explorer/core/models/student_record.dart';
 import 'package:ar_science_explorer/core/services/student_repository.dart';
 
 StudentRecord _sampleStudent() => StudentRecord.fromJson(const {
-      'id': '123456',
-      'studentId': '123456',
-      'name': 'Juan Dela Cruz',
-      'grade': '7',
-      'section': 'Rizal',
-      'scores': {'chemistry': 85, 'biology': null, 'physics': null},
-      'completedLessonIds': ['q1w1'],
-      'completedLabExperimentIds': <String>[],
-      'completedQuizIds': <String>[],
-      'unlockedLessonIds': ['q1w1', 'q1w2'],
-      'unlockedQuizIds': <String>[],
-      'quizAttempts': <Map<String, dynamic>>[],
-      'isArchived': false,
-    });
+  'id': '123456',
+  'studentId': '123456',
+  'name': 'Juan Dela Cruz',
+  'grade': '7',
+  'section': 'Rizal',
+  'scores': {'chemistry': 85, 'biology': null, 'physics': null},
+  'completedLessonIds': ['q1w1'],
+  'completedLabExperimentIds': <String>[],
+  'completedQuizIds': <String>[],
+  'unlockedLessonIds': ['q1w1', 'q1w2'],
+  'unlockedQuizIds': <String>[],
+  'quizAttempts': <Map<String, dynamic>>[],
+  'isArchived': false,
+});
 
 void main() {
   test('getStudent returns null when the document does not exist', () async {
@@ -29,22 +29,25 @@ void main() {
     expect(result, isNull);
   });
 
-  test('saveStudent writes to /students/{studentId}, then getStudent reads it back', () async {
-    final firestore = FakeFirebaseFirestore();
-    final repo = StudentRepository(firestore: firestore);
-    final student = _sampleStudent();
+  test(
+    'saveStudent writes to /students/{studentId}, then getStudent reads it back',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = StudentRepository(firestore: firestore);
+      final student = _sampleStudent();
 
-    await repo.saveStudent(student);
-    final result = await repo.getStudent('123456');
+      await repo.saveStudent(student);
+      final result = await repo.getStudent('123456');
 
-    expect(result, isNotNull);
-    expect(result!.name, 'Juan Dela Cruz');
-    expect(result.completedLessonIds, ['q1w1']);
+      expect(result, isNotNull);
+      expect(result!.name, 'Juan Dela Cruz');
+      expect(result.completedLessonIds, ['q1w1']);
 
-    // Confirm the document id is the plain studentId, not a generated id.
-    final rawDoc = await firestore.collection('students').doc('123456').get();
-    expect(rawDoc.exists, true);
-  });
+      // Confirm the document id is the plain studentId, not a generated id.
+      final rawDoc = await firestore.collection('students').doc('123456').get();
+      expect(rawDoc.exists, true);
+    },
+  );
 
   test('watchStudent streams updates as the document changes', () async {
     // Note: this keeps ONE subscription open across both the initial value
@@ -69,40 +72,53 @@ void main() {
     expect(events, isNotEmpty);
     expect(events.first?.name, 'Juan Dela Cruz');
 
-    await firestore
-        .collection('students')
-        .doc('123456')
-        .update({'name': 'Juan Dela Cruz Jr.'});
+    await firestore.collection('students').doc('123456').update({
+      'name': 'Juan Dela Cruz Jr.',
+    });
     await pumpEventQueue();
 
     expect(events.last?.name, 'Juan Dela Cruz Jr.');
   });
 
-  test('watchAllStudents returns only non-archived students by default', () async {
-    final firestore = FakeFirebaseFirestore();
-    final repo = StudentRepository(firestore: firestore);
-    final active = _sampleStudent();
-    final archived = _sampleStudent().copyWith(id: '999999', studentId: '999999', isArchived: true);
-    await repo.saveStudent(active);
-    await repo.saveStudent(archived);
+  test(
+    'watchAllStudents returns only non-archived students by default',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = StudentRepository(firestore: firestore);
+      final active = _sampleStudent();
+      final archived = _sampleStudent().copyWith(
+        id: '999999',
+        studentId: '999999',
+        isArchived: true,
+      );
+      await repo.saveStudent(active);
+      await repo.saveStudent(archived);
 
-    final result = await repo.watchAllStudents().first;
+      final result = await repo.watchAllStudents().first;
 
-    expect(result.map((s) => s.studentId), ['123456']);
-  });
+      expect(result.map((s) => s.studentId), ['123456']);
+    },
+  );
 
-  test('watchAllStudents(includeArchived: true) returns archived students too', () async {
-    final firestore = FakeFirebaseFirestore();
-    final repo = StudentRepository(firestore: firestore);
-    final active = _sampleStudent();
-    final archived = _sampleStudent().copyWith(id: '999999', studentId: '999999', isArchived: true);
-    await repo.saveStudent(active);
-    await repo.saveStudent(archived);
+  test(
+    'watchAllStudents(includeArchived: true) returns archived students too',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = StudentRepository(firestore: firestore);
+      final active = _sampleStudent();
+      final archived = _sampleStudent().copyWith(
+        id: '999999',
+        studentId: '999999',
+        isArchived: true,
+      );
+      await repo.saveStudent(active);
+      await repo.saveStudent(archived);
 
-    final result = await repo.watchAllStudents(includeArchived: true).first;
+      final result = await repo.watchAllStudents(includeArchived: true).first;
 
-    expect(result.map((s) => s.studentId).toSet(), {'123456', '999999'});
-  });
+      expect(result.map((s) => s.studentId).toSet(), {'123456', '999999'});
+    },
+  );
 
   test('createStudent writes a new doc keyed by studentId', () async {
     final firestore = FakeFirebaseFirestore();
@@ -118,22 +134,25 @@ void main() {
     expect(result!.name, 'Juan Dela Cruz');
   });
 
-  test('archiveStudent sets isArchived without touching any other field', () async {
-    final firestore = FakeFirebaseFirestore();
-    final repo = StudentRepository(firestore: firestore);
-    final student = _sampleStudent();
-    await repo.saveStudent(student);
+  test(
+    'archiveStudent sets isArchived without touching any other field',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = StudentRepository(firestore: firestore);
+      final student = _sampleStudent();
+      await repo.saveStudent(student);
 
-    await repo.archiveStudent('123456');
+      await repo.archiveStudent('123456');
 
-    final result = await repo.getStudent('123456');
-    expect(result, isNotNull);
-    expect(result!.isArchived, true);
-    // Explicitly assert these survive untouched — Part 9/7's logic elsewhere
-    // depends on these never being silently reset by an archive operation.
-    expect(result.scores, student.scores);
-    expect(result.completedLessonIds, student.completedLessonIds);
-    expect(result.unlockedLessonIds, student.unlockedLessonIds);
-    expect(result.quizAttempts, student.quizAttempts);
-  });
+      final result = await repo.getStudent('123456');
+      expect(result, isNotNull);
+      expect(result!.isArchived, true);
+      // Explicitly assert these survive untouched — Part 9/7's logic elsewhere
+      // depends on these never being silently reset by an archive operation.
+      expect(result.scores, student.scores);
+      expect(result.completedLessonIds, student.completedLessonIds);
+      expect(result.unlockedLessonIds, student.unlockedLessonIds);
+      expect(result.quizAttempts, student.quizAttempts);
+    },
+  );
 }

@@ -3,17 +3,36 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/services/access_code_service.dart';
+import '../access_code/access_code_sheet.dart';
+
 const _autoContinueSeconds = 4;
 
 /// Part 7.4: pass shows a visibly cancelable auto-continue countdown; fail
 /// never auto-redirects and states the retry rule plainly.
 class QuizResultsScreen extends StatefulWidget {
-  const QuizResultsScreen({super.key, required this.score, required this.isPreTest});
+  const QuizResultsScreen({
+    super.key,
+    required this.score,
+    required this.isPreTest,
+    this.lessonId,
+    this.studentId,
+    this.accessCodeService,
+  });
   final int score;
 
   /// Which retry-rule copy to show on fail: pre-tests retry anytime with no
   /// code, post-tests require a teacher-issued retake code.
   final bool isPreTest;
+
+  /// These three are only needed to show the retake-code entry button on a
+  /// failed post-test — every other case (pre-test, or a pass) leaves them
+  /// null. Nullable (rather than required) so this screen stays trivially
+  /// constructible in tests/other call sites that don't exercise the retake
+  /// path.
+  final String? lessonId;
+  final String? studentId;
+  final AccessCodeService? accessCodeService;
 
   @override
   State<QuizResultsScreen> createState() => _QuizResultsScreenState();
@@ -47,6 +66,36 @@ class _QuizResultsScreenState extends State<QuizResultsScreen> {
     setState(() => _secondsLeft = -1);
   }
 
+  bool get _canEnterRetakeCode =>
+      widget.lessonId != null &&
+      widget.studentId != null &&
+      widget.accessCodeService != null;
+
+  // Previously there was no UI anywhere in the student app for a student to
+  // actually redeem a quiz-retake code — quiz_results_screen.dart told them
+  // to "ask your teacher for a retake code" but gave no field to type it
+  // into. Reuses the same shared `AccessCodeSheet` every other redemption
+  // point (locked lesson card, Home's generic box) already goes through,
+  // scoped with `AccessCodeTarget.quiz` + this lesson's id, matching how
+  // `AccessCodeService.redeem`'s quiz-retake branches expect `targetId` to
+  // be the lesson id (they build the actual quiz id internally via
+  // `builtinQuizId`). On a successful redemption, send the student back to
+  // the lesson so they can retry through the normal "Start Post-Test" flow
+  // (see student router.dart's `invalidateQuizSession`) rather than trying
+  // to reset this already-`isComplete` session in place.
+  Future<void> _enterRetakeCode() async {
+    await showAccessCodeSheet(
+      context,
+      studentId: widget.studentId!,
+      accessCodeService: widget.accessCodeService!,
+      targetId: widget.lessonId,
+      targetType: AccessCodeTarget.quiz,
+      title: 'Enter retake code',
+    );
+    if (!mounted) return;
+    context.go('/lesson/${widget.lessonId}');
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -60,8 +109,10 @@ class _QuizResultsScreenState extends State<QuizResultsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_passed ? 'Nice work!' : 'Not quite there yet',
-                style: Theme.of(context).textTheme.headlineMedium),
+            Text(
+              _passed ? 'Nice work!' : 'Not quite there yet',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
             Text('${widget.score}%'),
             if (!_passed)
               Padding(
@@ -70,6 +121,14 @@ class _QuizResultsScreenState extends State<QuizResultsScreen> {
                   widget.isPreTest
                       ? "This is a pre-test — you can retry it anytime, no code needed."
                       : 'Ask your teacher for a retake code to try this test again.',
+                ),
+              ),
+            if (!_passed && !widget.isPreTest && _canEnterRetakeCode)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: OutlinedButton(
+                  onPressed: _enterRetakeCode,
+                  child: const Text('Enter retake code'),
                 ),
               ),
             FilledButton(

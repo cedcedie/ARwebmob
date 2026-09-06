@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -13,7 +14,11 @@ import 'ar_lab_providers.dart';
 /// camera feed and overlays the description of whatever marker it currently
 /// recognizes, plus optional voice narration controls.
 class ScanTab extends StatefulWidget {
-  const ScanTab({super.key, required this.vm, required this.voiceOverController});
+  const ScanTab({
+    super.key,
+    required this.vm,
+    required this.voiceOverController,
+  });
 
   final ArLabViewModel vm;
   final VoiceOverController voiceOverController;
@@ -22,7 +27,7 @@ class ScanTab extends StatefulWidget {
   State<ScanTab> createState() => _ScanTabState();
 }
 
-class _ScanTabState extends State<ScanTab> {
+class _ScanTabState extends State<ScanTab> with WidgetsBindingObserver {
   String _language = 'en';
 
   // Fixes a real first-launch bug: Unity's own native camera init used to
@@ -35,21 +40,115 @@ class _ScanTabState extends State<ScanTab> {
   // result means Unity never starts until Android has confirmed access.
   PermissionStatus? _cameraPermission;
 
+  // Set once, the first time EmbedUnity actually mounts (camera permission
+  // just got granted) — Unity's ARSessionManager GameObject only exists once
+  // its scene is running, so sending this any earlier would be a message
+  // into the void. Cleared on dispose so a later Scan tab (a different
+  // lesson) doesn't inherit a stale restriction from this one.
+  bool _sentActiveLesson = false;
+
+  // A wrong-lesson scan (Unity's "wrongModel" event) is shown as a
+  // self-dismissing banner rather than a persistent one — it's telling the
+  // student about a single scan attempt, not an ongoing state like
+  // _DetectedLessonOverlay below.
+  String? _wrongModelMessage;
+  Timer? _wrongModelTimer;
+
+  /// Retry timers for the SetActiveLesson handshake (see _sendActiveLesson),
+  /// cancelled on dispose so a pending send can't fire into a dead widget.
+  final List<Timer> _activeLessonTimers = [];
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.vm.addListener(_onViewModelChanged);
     _requestCameraPermission();
   }
 
+  /// Unity keeps running (camera session live, rendering every frame) even
+  /// once this tab is gone, because unmounting `EmbedUnity` only removes the
+  /// Android view — the player itself stays loaded. On a low-end school
+  /// phone that meant the Vuforia camera ran through the entire post-test,
+  /// draining battery, heating the device, and holding the camera against
+  /// every other app. Pausing on background/unmount and resuming on return
+  /// is the fix.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (!mounted) return;
+    if (state == AppLifecycleState.resumed) {
+      if (_cameraPermission?.isGranted == true) resumeUnity();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      pauseUnity();
+    }
+  }
+
   Future<void> _requestCameraPermission() async {
     final status = await Permission.camera.request();
-    if (mounted) setState(() => _cameraPermission = status);
+    if (!mounted) return;
+    setState(() => _cameraPermission = status);
+    if (status.isGranted) {
+      resumeUnity();
+      _sendActiveLesson();
+    }
+  }
+
+  /// Tells Unity which lesson is open, so `ARSessionManager` can reject
+  /// markers belonging to other lessons.
+  ///
+  /// Sent repeatedly on purpose. `setState` above only *schedules* a
+  /// rebuild, so `EmbedUnity` hasn't been built yet at that point — let
+  /// alone finished loading its scene and created the `ARSessionManager`
+  /// GameObject. A single send therefore landed in the void on the first
+  /// lesson opened after launch (Unity not loaded yet) while working on
+  /// later lessons (Unity already resident), which made the per-lesson
+  /// scan restriction silently inconsistent: the first lesson of a session
+  /// would happily show another lesson's model. Re-sending over the first
+  /// few seconds costs nothing — the Unity side just re-assigns the same
+  /// string — and guarantees the restriction actually applies.
+  void _sendActiveLesson() {
+    _sentActiveLesson = true;
+    final fragment = widget.vm.activeLessonFragment ?? '';
+
+    // Send straight away for the common case where Unity is already
+    // resident (any lesson after the first in a session)...
+    sendToUnity('ARSessionManager', 'SetActiveLesson', fragment);
+
+    // ...then repeat over the next few seconds to cover a cold start, where
+    // the scene and its ARSessionManager GameObject don't exist yet.
+    const retryDelays = [
+      Duration(milliseconds: 500),
+      Duration(seconds: 1),
+      Duration(seconds: 2),
+      Duration(seconds: 4),
+    ];
+    for (final delay in retryDelays) {
+      _activeLessonTimers.add(
+        Timer(delay, () {
+          if (!mounted) return;
+          sendToUnity('ARSessionManager', 'SetActiveLesson', fragment);
+        }),
+      );
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.vm.removeListener(_onViewModelChanged);
+    _wrongModelTimer?.cancel();
+    for (final timer in _activeLessonTimers) {
+      timer.cancel();
+    }
+    if (_sentActiveLesson) {
+      sendToUnity('ARSessionManager', 'ClearActiveLesson', '');
+    }
+    // Leaving the Scan tab must stop Unity's camera/render loop — see
+    // didChangeAppLifecycleState above.
+    pauseUnity();
     super.dispose();
   }
 
@@ -66,6 +165,8 @@ class _ScanTabState extends State<ScanTab> {
         widget.vm.onMarkerFound(trackableName);
       } else if (event == 'markerLost') {
         widget.vm.onMarkerLost(trackableName);
+      } else if (event == 'wrongModel') {
+        _showWrongModelMessage();
       }
     } catch (error) {
       // A malformed or unrecognized message from Unity (bad JSON, wrong
@@ -73,6 +174,16 @@ class _ScanTabState extends State<ScanTab> {
       // swallow it after logging for debugging.
       debugPrint('ScanTab: ignoring malformed Unity message: $error');
     }
+  }
+
+  void _showWrongModelMessage() {
+    _wrongModelTimer?.cancel();
+    setState(
+      () => _wrongModelMessage = "Sorry, that's not this lesson's model.",
+    );
+    _wrongModelTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _wrongModelMessage = null);
+    });
   }
 
   @override
@@ -116,7 +227,9 @@ class _ScanTabState extends State<ScanTab> {
                     ? openAppSettings
                     : _requestCameraPermission,
                 child: Text(
-                  _cameraPermission!.isPermanentlyDenied ? 'Open Settings' : 'Allow Camera',
+                  _cameraPermission!.isPermanentlyDenied
+                      ? 'Open Settings'
+                      : 'Allow Camera',
                 ),
               ),
             ],
@@ -139,6 +252,7 @@ class _ScanTabState extends State<ScanTab> {
             right: 16,
             child: _InstructionOverlay(
               text: 'Point your camera at the printed marker for this lesson.',
+              markerImage: widget.vm.markerImage,
             ),
           )
         else
@@ -147,6 +261,13 @@ class _ScanTabState extends State<ScanTab> {
             right: 16,
             bottom: 16,
             child: _DetectedLessonOverlay(lesson: widget.vm.detectedLesson!),
+          ),
+        if (_wrongModelMessage != null)
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: _WrongModelOverlay(text: _wrongModelMessage!),
           ),
         if (scripts != null)
           Positioned(
@@ -168,9 +289,14 @@ class _ScanTabState extends State<ScanTab> {
 }
 
 class _InstructionOverlay extends StatelessWidget {
-  const _InstructionOverlay({required this.text});
+  const _InstructionOverlay({required this.text, this.markerImage});
 
   final String text;
+
+  /// Reference/printable marker image for this lesson, if the teacher
+  /// uploaded one — shown above [text] so the student can see exactly what
+  /// to point their camera at before anything has been recognized yet.
+  final String? markerImage;
 
   @override
   Widget build(BuildContext context) {
@@ -178,68 +304,184 @@ class _InstructionOverlay extends StatelessWidget {
       color: Colors.black.withValues(alpha: 0.6),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Text(
-          text,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (markerImage != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  markerImage!,
+                  height: 96,
+                  fit: BoxFit.contain,
+                  // A broken/unreachable marker-image URL should never block
+                  // the actual instruction text below it — just drop the
+                  // thumbnail silently.
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: Colors.white),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _DetectedLessonOverlay extends StatelessWidget {
+/// Shown briefly when Unity rejects a scan because the marker belongs to a
+/// different lesson than the one currently open (the per-lesson scan
+/// restriction — see `ARSessionManager`/`ARTargetVisibilityAndInteraction`
+/// on the Unity side, and `ArLabViewModel.activeLessonFragment`).
+class _WrongModelOverlay extends StatelessWidget {
+  const _WrongModelOverlay({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.red.withValues(alpha: 0.85),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The recognized lesson's info panel.
+///
+/// Collapsible (client feedback, on-device test): expanded it covers the
+/// bottom fifth of the screen, which sits directly on top of the AR model
+/// and makes rotating/pinch-zooming it awkward — the student's fingers and
+/// the model itself are both fighting this card for the same space. It
+/// starts expanded (students should see the description on first
+/// recognition) but collapses to a single title bar on tap, freeing the
+/// whole camera view for interacting with the model.
+class _DetectedLessonOverlay extends StatefulWidget {
   const _DetectedLessonOverlay({required this.lesson});
 
   final Lesson lesson;
 
   @override
+  State<_DetectedLessonOverlay> createState() => _DetectedLessonOverlayState();
+}
+
+class _DetectedLessonOverlayState extends State<_DetectedLessonOverlay> {
+  bool _expanded = true;
+
+  @override
+  void didUpdateWidget(_DetectedLessonOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A newly recognized lesson gets its description shown again — the
+    // student collapsed the *previous* lesson's panel, not this one's.
+    if (oldWidget.lesson.id != widget.lesson.id) {
+      _expanded = true;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final payload = lesson.arPayload;
+    final payload = widget.lesson.arPayload;
     final keyIdeas = payload?.keyIdeas;
+
+    final header = InkWell(
+      key: const Key('scan-description-toggle'),
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                payload?.title ?? widget.lesson.title,
+                style: textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Icon(_expanded ? Icons.expand_more : Icons.expand_less, size: 20),
+          ],
+        ),
+      ),
+    );
+
+    if (!_expanded) {
+      return Card(child: header);
+    }
 
     // Capped and scrollable rather than sized to content: a lesson with a
     // long description plus several key ideas would otherwise grow tall
-    // enough to cover most of the live Unity camera feed above it. 0.32 of
-    // screen height still overlapped the model too much on-device, so this
-    // is capped tighter (0.2) and uses smaller text/padding/spacing than
-    // the rest of the app's cards to stay out of the way of the model.
+    // enough to cover most of the live Unity camera feed above it.
     return Card(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.2),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  payload?.title ?? lesson.title,
-                  style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          header,
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.2,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (payload?.subtitle != null)
+                      Text(payload!.subtitle!, style: textTheme.bodySmall),
+                    if (payload?.description != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          payload!.description!,
+                          style: textTheme.bodySmall,
+                        ),
+                      ),
+                    if (keyIdeas != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (final idea in keyIdeas)
+                              Text('• $idea', style: textTheme.bodySmall),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
-                if (payload?.subtitle != null)
-                  Text(payload!.subtitle!, style: textTheme.bodySmall),
-                if (payload?.description != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(payload!.description!, style: textTheme.bodySmall),
-                  ),
-                if (keyIdeas != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (final idea in keyIdeas)
-                          Text('• $idea', style: textTheme.bodySmall),
-                      ],
-                    ),
-                  ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -276,10 +518,7 @@ class _VoiceControls extends StatelessWidget {
                 if (value != null) onLanguageChanged(value);
               },
             ),
-            IconButton(
-              icon: const Icon(Icons.volume_up),
-              onPressed: onPlay,
-            ),
+            IconButton(icon: const Icon(Icons.volume_up), onPressed: onPlay),
           ],
         ),
       ),

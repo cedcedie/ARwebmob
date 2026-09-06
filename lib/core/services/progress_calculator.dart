@@ -12,7 +12,10 @@ ScoreBand scoreBandFor(num score) {
 }
 
 /// First lesson in curriculum order not yet in [student]'s completedLessonIds.
-Lesson? nextIncompleteLesson(List<Lesson> orderedLessons, StudentRecord student) {
+Lesson? nextIncompleteLesson(
+  List<Lesson> orderedLessons,
+  StudentRecord student,
+) {
   final completed = student.completedLessonIds.toSet();
   for (final lesson in orderedLessons) {
     if (!completed.contains(lesson.id)) return lesson;
@@ -35,6 +38,9 @@ double percentComplete(StudentRecord student, {int totalLessons = 24}) {
 
 List<QuizAttempt> lastNAttempts(StudentRecord student, {int n = 3}) {
   final sorted = [...student.quizAttempts]
-    ..sort((a, b) => DateTime.parse(b.timestamp).compareTo(DateTime.parse(a.timestamp)));
+    ..sort(
+      (a, b) =>
+          DateTime.parse(b.timestamp).compareTo(DateTime.parse(a.timestamp)),
+    );
   return sorted.take(n).toList();
 }

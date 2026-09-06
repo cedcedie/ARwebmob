@@ -42,8 +42,7 @@ class FakeFlutterTts implements FlutterTts {
 
 void main() {
   group('VoiceOverController', () {
-    test(
-        'playAll speaks each line in order, sets language once, and clears '
+    test('playAll speaks each line in order, sets language once, and clears '
         'isPlaying once the queue is exhausted', () async {
       final fakeTts = FakeFlutterTts();
       final controller = VoiceOverController(tts: fakeTts);
@@ -80,17 +79,20 @@ void main() {
       expect(fakeTts.stopped, isTrue);
     });
 
-    test('a completion callback arriving after stop() does not resume playback', () async {
-      final fakeTts = FakeFlutterTts();
-      final controller = VoiceOverController(tts: fakeTts);
+    test(
+      'a completion callback arriving after stop() does not resume playback',
+      () async {
+        final fakeTts = FakeFlutterTts();
+        final controller = VoiceOverController(tts: fakeTts);
 
-      await controller.playAll(['a', 'b'], 'en');
-      await controller.stop();
+        await controller.playAll(['a', 'b'], 'en');
+        await controller.stop();
 
-      fakeTts.completeCurrentUtterance();
+        fakeTts.completeCurrentUtterance();
 
-      expect(controller.isPlaying, isFalse);
-      expect(fakeTts.spokenTexts, ['a']);
-    });
+        expect(controller.isPlaying, isFalse);
+        expect(fakeTts.spokenTexts, ['a']);
+      },
+    );
   });
 }

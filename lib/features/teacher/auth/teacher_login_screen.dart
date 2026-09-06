@@ -23,6 +23,7 @@ class TeacherLoginScreen extends HookConsumerWidget {
     final passwordController = useTextEditingController(
       text: authState.password,
     );
+    final obscurePassword = useState(true);
 
     Future<void> onSubmit() async {
       auth.email = emailController.text;
@@ -169,7 +170,21 @@ class TeacherLoginScreen extends HookConsumerWidget {
                                       color: scheme.mutedForeground,
                                     ),
                                   ),
-                                  obscureText: true,
+                                  trailing: IconButton(
+                                    icon: Icon(
+                                      obscurePassword.value
+                                          ? LucideIcons.eye
+                                          : LucideIcons.eyeOff,
+                                      size: 16,
+                                      color: scheme.mutedForeground,
+                                    ),
+                                    tooltip: obscurePassword.value
+                                        ? 'Show password'
+                                        : 'Hide password',
+                                    onPressed: () => obscurePassword.value =
+                                        !obscurePassword.value,
+                                  ),
+                                  obscureText: obscurePassword.value,
                                   textInputAction: TextInputAction.done,
                                   onChanged: (value) => auth.password = value,
                                   onSubmitted: (_) => onSubmit(),
@@ -192,6 +207,61 @@ class TeacherLoginScreen extends HookConsumerWidget {
                                           ),
                                         )
                                       : const Text('Sign in'),
+                                ),
+                                const SizedBox(height: 18),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Divider(color: scheme.border),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                      ),
+                                      child: Text(
+                                        'or continue with',
+                                        style: ShadTheme.of(context)
+                                            .textTheme
+                                            .small
+                                            .copyWith(
+                                              color: scheme.mutedForeground,
+                                            ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Divider(color: scheme.border),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: ShadButton.outline(
+                                        onPressed: authState.isSubmitting
+                                            ? null
+                                            : auth.signInWithGoogle,
+                                        leading: const _BrandBadge(
+                                          label: 'G',
+                                          color: Color(0xFF4285F4),
+                                        ),
+                                        child: const Text('Google'),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: ShadButton.outline(
+                                        onPressed: authState.isSubmitting
+                                            ? null
+                                            : auth.signInWithMicrosoft,
+                                        leading: const _BrandBadge(
+                                          label: 'M',
+                                          color: Color(0xFF00A4EF),
+                                        ),
+                                        child: const Text('Microsoft'),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -285,6 +355,36 @@ class _LoginHero extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Minimal colored-initial badge used as a stand-in for the Google/Microsoft
+/// logos on the OAuth buttons — this repo doesn't pull in a brand-icon
+/// package, so a plain circular initial avoids adding one just for two
+/// icons.
+class _BrandBadge extends StatelessWidget {
+  const _BrandBadge({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 16,
+      height: 16,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          height: 1,
+        ),
+      ),
     );
   }
 }

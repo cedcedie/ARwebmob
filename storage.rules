@@ -1,0 +1,38 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isStudent() {
+      return isSignedIn() &&
+        request.auth.token.email.matches('^[0-9]+@arscience[.]school$');
+    }
+    // Mirrors firestore.rules' definition: an allowlisted non-student
+    // account, plus the project owner as the permanent bootstrap teacher.
+    // Storage rules cannot read Firestore, so membership is checked with
+    // firestore.exists(), which Storage rules *do* support.
+    function isTeacher() {
+      return isSignedIn() && !isStudent() &&
+        (request.auth.token.email == 'nadinevictoria17@gmail.com' ||
+         firestore.exists(/databases/(default)/documents/teachers/$(request.auth.token.email)));
+    }
+
+    // Lesson content: source PPTX/PDF uploads and the slide PNGs the
+    // convertLessonPptx function generates from them. Every signed-in user
+    // reads (students need the slides and the lesson PDF); only teachers
+    // write.
+    match /lessons/{lessonId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isTeacher();
+    }
+
+    // Nothing else in the bucket is part of this app. Denying by default
+    // here is deliberate: this file exists precisely because the bucket's
+    // rules were previously whatever had been clicked into the console,
+    // unversioned and unreviewed.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

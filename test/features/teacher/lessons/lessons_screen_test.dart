@@ -29,16 +29,16 @@ Future<void> _pumpLessonsScreen(
   await tester.pumpWidget(
     ProviderScope(
       overrides: teacherProviderOverridesFor(services: services),
-      child: ShadApp(
-        home: Scaffold(body: const LessonsScreen()),
-      ),
+      child: ShadApp(home: Scaffold(body: const LessonsScreen())),
     ),
   );
   await tester.pumpAndSettle();
 }
 
 void main() {
-  testWidgets('built-in lessons are non-editable and show a Built-in badge', (tester) async {
+  testWidgets('built-in lessons are non-editable and show a Built-in badge', (
+    tester,
+  ) async {
     final firestore = FakeFirebaseFirestore();
     await _pumpLessonsScreen(tester, firestore: firestore);
 
@@ -89,9 +89,15 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('lesson-title')));
-    await tester.enterText(find.byKey(const Key('lesson-title')), 'New Teacher Lesson');
+    await tester.enterText(
+      find.byKey(const Key('lesson-title')),
+      'New Teacher Lesson',
+    );
     await tester.tap(find.byKey(const Key('lesson-summary')));
-    await tester.enterText(find.byKey(const Key('lesson-summary')), 'A custom summary');
+    await tester.enterText(
+      find.byKey(const Key('lesson-summary')),
+      'A custom summary',
+    );
     await tester.tap(find.byKey(const Key('lesson-quarter')));
     await tester.enterText(find.byKey(const Key('lesson-quarter')), '1');
     await tester.tap(find.byKey(const Key('lesson-week')));
@@ -131,7 +137,9 @@ void main() {
     expect(find.text('Add lesson'), findsOneWidget);
   });
 
-  testWidgets('AR model index shows a preview placeholder in tests', (tester) async {
+  testWidgets('AR model index shows a preview placeholder in tests', (
+    tester,
+  ) async {
     final firestore = FakeFirebaseFirestore();
     await _pumpLessonsScreen(tester, firestore: firestore);
 
@@ -142,43 +150,55 @@ void main() {
     await tester.enterText(find.byKey(const Key('lesson-week')), '1');
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Model preview: assets/models/democritus_atom.glb'), findsOneWidget);
+    expect(
+      find.textContaining('Model preview: assets/models/democritus_atom.glb'),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('editing a teacher lesson pre-fills the form and calls updateLesson', (tester) async {
-    final firestore = FakeFirebaseFirestore();
-    final repo = LessonRepository(firestore: firestore);
-    await repo.createLesson(
-      const TeacherLesson(
-        id: 'teacher-edit-1',
-        title: 'Editable Lesson',
-        subject: SubjectKey.biology,
-        summary: 'Original summary',
-      ),
-    );
+  testWidgets(
+    'editing a teacher lesson pre-fills the form and calls updateLesson',
+    (tester) async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = LessonRepository(firestore: firestore);
+      await repo.createLesson(
+        const TeacherLesson(
+          id: 'teacher-edit-1',
+          title: 'Editable Lesson',
+          subject: SubjectKey.biology,
+          summary: 'Original summary',
+        ),
+      );
 
-    await _pumpLessonsScreen(tester, firestore: firestore);
+      await _pumpLessonsScreen(tester, firestore: firestore);
 
-    await _scrollTo(tester, find.byTooltip('Edit'));
-    await tester.tap(find.byTooltip('Edit'));
-    await tester.pumpAndSettle();
+      await _scrollTo(tester, find.byTooltip('Edit'));
+      await tester.tap(find.byTooltip('Edit'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Edit lesson'), findsOneWidget);
-    expect(find.byKey(const Key('lesson-title')), findsOneWidget);
+      expect(find.text('Edit lesson'), findsOneWidget);
+      expect(find.byKey(const Key('lesson-title')), findsOneWidget);
 
-    await tester.enterText(find.byKey(const Key('lesson-title')), 'Updated Lesson Title');
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('lesson-submit')),
-      50,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.tap(find.byKey(const Key('lesson-submit')));
-    await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('lesson-title')),
+        'Updated Lesson Title',
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('lesson-submit')),
+        50,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.byKey(const Key('lesson-submit')));
+      await tester.pumpAndSettle();
 
-    final doc = await firestore.collection('lessons').doc('teacher-edit-1').get();
-    expect(doc.data()!['title'], 'Updated Lesson Title');
-    expect(find.text('Updated Lesson Title'), findsOneWidget);
-  });
+      final doc = await firestore
+          .collection('lessons')
+          .doc('teacher-edit-1')
+          .get();
+      expect(doc.data()!['title'], 'Updated Lesson Title');
+      expect(find.text('Updated Lesson Title'), findsOneWidget);
+    },
+  );
 
   testWidgets('tapping the Title column header sorts rows alphabetically', (
     tester,
@@ -306,7 +326,9 @@ void main() {
     },
   );
 
-  testWidgets('archiving a teacher lesson removes it from the default view', (tester) async {
+  testWidgets('archiving a teacher lesson removes it from the default view', (
+    tester,
+  ) async {
     final firestore = FakeFirebaseFirestore();
     final repo = LessonRepository(firestore: firestore);
     await repo.createLesson(
@@ -328,7 +350,10 @@ void main() {
 
     expect(find.text('Archive Me'), findsNothing);
 
-    final doc = await firestore.collection('lessons').doc('teacher-archive-1').get();
+    final doc = await firestore
+        .collection('lessons')
+        .doc('teacher-archive-1')
+        .get();
     expect(doc.data()!['isArchived'], true);
     // Item 2: success feedback after a successful archive.
     expect(find.text('Lesson archived'), findsOneWidget);
@@ -394,38 +419,41 @@ void main() {
 
       expect(find.text('Archive Me Too'), findsOneWidget);
       expect(find.textContaining('Exception'), findsNothing);
-      expect(find.textContaining("Couldn't archive this lesson"), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    'an empty lesson list shows a tailored empty state (item 5)',
-    (tester) async {
-      final viewModel = LessonsViewModel(
-        rows: const [],
-        quizOptions: const <TeacherQuiz>[],
-        onCreateLesson: (_) async {},
-        onUpdateLesson: (_) async {},
-        onArchiveLesson: (_) async {},
-        fetchLessonById: (_) async => null,
-      );
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            lessonsViewModelProvider.overrideWith(
-              (ref) => Stream.value(viewModel),
-            ),
-          ],
-          child: ShadApp(home: Scaffold(body: const LessonsScreen())),
-        ),
-      );
-      await tester.pumpAndSettle();
-
       expect(
-        find.text('No lessons yet — add your first lesson to get started.'),
+        find.textContaining("Couldn't archive this lesson"),
         findsOneWidget,
       );
     },
   );
+
+  testWidgets('an empty lesson list shows a tailored empty state (item 5)', (
+    tester,
+  ) async {
+    final viewModel = LessonsViewModel(
+      rows: const [],
+      quizOptions: const <TeacherQuiz>[],
+      onCreateLesson: (_) async {},
+      onUpdateLesson: (_) async {},
+      onArchiveLesson: (_) async {},
+      fetchLessonById: (_) async => null,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          lessonsViewModelProvider.overrideWith(
+            (ref) => Stream.value(viewModel),
+          ),
+        ],
+        child: ShadApp(home: Scaffold(body: const LessonsScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The empty state is a card: heading, supporting line, and a direct
+    // "Add Lesson" action, rather than one run-on sentence.
+    expect(find.text('No lessons yet'), findsOneWidget);
+    expect(find.text('Add your first lesson to get started.'), findsOneWidget);
+    expect(find.text('Add Lesson'), findsWidgets);
+  });
 }

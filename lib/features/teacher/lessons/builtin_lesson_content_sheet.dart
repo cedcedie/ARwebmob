@@ -66,7 +66,8 @@ class BuiltinLessonContentSheet extends StatefulWidget {
   }
 
   @override
-  State<BuiltinLessonContentSheet> createState() => _BuiltinLessonContentSheetState();
+  State<BuiltinLessonContentSheet> createState() =>
+      _BuiltinLessonContentSheetState();
 }
 
 class _BuiltinLessonContentSheetState extends State<BuiltinLessonContentSheet> {
@@ -125,9 +126,9 @@ class _BuiltinLessonContentSheetState extends State<BuiltinLessonContentSheet> {
       if (!mounted) return;
       setState(() => _isUploading = false);
       Navigator.of(context).pop();
-      ShadToaster.of(context).show(
-        const ShadToast(description: Text('Content uploaded')),
-      );
+      ShadToaster.of(
+        context,
+      ).show(const ShadToast(description: Text('Content uploaded')));
     } catch (error) {
       if (!mounted) return;
       setState(() => _isUploading = false);

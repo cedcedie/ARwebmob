@@ -7,7 +7,9 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/models/student_record.dart';
 import '../../../core/models/subject_key.dart';
 import '../widgets/error_state.dart';
+import '../../../core/services/student_account_service.dart';
 import 'student_form.dart';
+import 'student_import_dialog.dart';
 import 'student_id_format.dart';
 import 'students_providers.dart';
 
@@ -61,41 +63,40 @@ class _StudentsLoadingSkeleton extends StatelessWidget {
     }
 
     return Padding(
-      padding: EdgeInsets.all(isCompact ? 16 : 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+          padding: EdgeInsets.all(isCompact ? 16 : 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              bar(width: 100, height: 24),
-              const Spacer(),
-              bar(width: 120, height: 36),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Expanded(
-            child: ShadCard(
-              padding: const EdgeInsets.all(16),
-              child: ListView.separated(
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: 6,
-                separatorBuilder: (_, _) => const SizedBox(height: 16),
-                itemBuilder: (context, index) => Row(
-                  children: [
-                    bar(width: 36, height: 36),
-                    const SizedBox(width: 12),
-                    Expanded(child: bar(height: 14)),
-                  ],
+              Row(
+                children: [
+                  bar(width: 100, height: 24),
+                  const Spacer(),
+                  bar(width: 120, height: 36),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: ShadCard(
+                  padding: const EdgeInsets.all(16),
+                  child: ListView.separated(
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: 6,
+                    separatorBuilder: (_, _) => const SizedBox(height: 16),
+                    itemBuilder: (context, index) => Row(
+                      children: [
+                        bar(width: 36, height: 36),
+                        const SizedBox(width: 12),
+                        Expanded(child: bar(height: 14)),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(
-      duration: 700.ms,
-      begin: 0.55,
-    );
+        )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .fadeIn(duration: 700.ms, begin: 0.55);
   }
 }
 
@@ -191,6 +192,90 @@ class _StudentsBody extends HookWidget {
   // entirely and had no try/catch/toast — inconsistent with the bulk path
   // above, which confirms first and always gives feedback. Mirrors that
   // same pattern for a single student.
+  /// Sets a new password for [student], creating their login first if they
+  /// never had one (every student added before Add Student began
+  /// provisioning accounts is in that state — on the roster, unable to sign
+  /// in). The teacher types the new password, so they can hand it straight
+  /// to the student.
+  Future<void> _resetPassword(
+    BuildContext context,
+    StudentsViewModel viewModel,
+    StudentRecord student,
+  ) async {
+    final controller = TextEditingController();
+    final result = await showShadDialog<String>(
+      context: context,
+      builder: (dialogContext) => ShadDialog(
+        title: Text('Password for ${student.name}'),
+        description: Text(
+          'Set a new password for student ID '
+          '${formatStudentIdForDisplay(student.studentId)}. Write it down — '
+          'it is shown only here, and there is no email to send it to.',
+        ),
+        actions: [
+          ShadButton.outline(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          ShadButton(
+            onPressed: () {
+              final value = controller.text;
+              if (value.length < StudentAccountService.minPasswordLength) {
+                ShadToaster.of(dialogContext).show(
+                  ShadToast.destructive(
+                    description: Text(
+                      'Password must be at least '
+                      '${StudentAccountService.minPasswordLength} characters.',
+                    ),
+                  ),
+                );
+                return;
+              }
+              Navigator.of(dialogContext).pop(value);
+            },
+            child: const Text('Set password'),
+          ),
+        ],
+        child: SizedBox(
+          width: 380,
+          child: Material(
+            type: MaterialType.transparency,
+            child: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'New password',
+                helperText: 'At least 6 characters.',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    if (result == null || !context.mounted) return;
+
+    final messenger = ShadToaster.of(context);
+    try {
+      await viewModel.onResetStudentPassword(student.studentId, result);
+    } catch (error) {
+      messenger.show(
+        ShadToast.destructive(
+          description: Text(
+            humanizeSubmitError(error, actionLabel: 'set this password'),
+          ),
+        ),
+      );
+      return;
+    }
+    messenger.show(
+      ShadToast(
+        description: Text(
+          'Password updated. Give "$result" to ${student.name}.',
+        ),
+      ),
+    );
+  }
+
   Future<void> _archiveOne(BuildContext context, String studentId) async {
     final confirmed = await showShadDialog<bool>(
       context: context,
@@ -226,6 +311,74 @@ class _StudentsBody extends HookWidget {
         ShadToast.destructive(
           description: Text(
             humanizeSubmitError(error, actionLabel: 'archive this student'),
+          ),
+        ),
+      );
+    }
+  }
+
+  // Resets every student's scores, completed/unlocked lessons, and quiz
+  // attempts — the whole roster, not just a selection, so this needs a
+  // clearly heavier confirmation than a single/bulk archive: the teacher
+  // must type the roster size to confirm, mirroring how other apps gate an
+  // irreversible bulk-wipe action.
+  Future<void> _resetAllProgress(BuildContext context, int studentCount) async {
+    final confirmController = TextEditingController();
+    final confirmed = await showShadDialog<bool>(
+      context: context,
+      builder: (context) => ShadDialog.alert(
+        title: const Text('Reset progress for all students?'),
+        description: Text(
+          'This permanently clears every student\'s scores, completed and '
+          'unlocked lessons, and quiz attempts — all $studentCount of them. '
+          'Every access code issued so far is also invalidated, so codes you '
+          'handed out before this reset will stop working. '
+          'Names, IDs, and passwords are not affected. This cannot be undone.'
+          '\n\nType $studentCount to confirm.',
+        ),
+        actions: [
+          ShadButton.outline(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: confirmController,
+            builder: (context, value, _) {
+              final canConfirm = value.text.trim() == '$studentCount';
+              return ShadButton.destructive(
+                onPressed: canConfirm
+                    ? () => Navigator.pop(context, true)
+                    : null,
+                child: const Text('Reset all progress'),
+              );
+            },
+          ),
+        ],
+        child: Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: ShadInput(
+            controller: confirmController,
+            placeholder: Text('$studentCount'),
+            keyboardType: TextInputType.number,
+          ),
+        ),
+      ),
+    );
+    confirmController.dispose();
+    if (confirmed != true) return;
+
+    try {
+      await viewModel.onResetAllProgress();
+      if (!context.mounted) return;
+      ShadToaster.of(context).show(
+        const ShadToast(description: Text('Progress reset for all students')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ShadToaster.of(context).show(
+        ShadToast.destructive(
+          description: Text(
+            humanizeSubmitError(error, actionLabel: 'reset student progress'),
           ),
         ),
       );
@@ -291,6 +444,18 @@ class _StudentsBody extends HookWidget {
               context,
               onSubmit: viewModel.onCreateStudent,
             ),
+            onImportStudents: () => StudentImportDialog.show(
+              context,
+              // Passing the ids already on the roster lets the dialog flag
+              // duplicates during the review step, before anything is
+              // written, instead of failing halfway through the file.
+              existingStudentIds: {
+                for (final student in viewModel.students) student.studentId,
+              },
+              onImport: viewModel.onImportStudents,
+            ),
+            onResetAllProgress: () =>
+                _resetAllProgress(context, viewModel.students.length),
           ),
           SizedBox(height: isCompact ? 12 : 16),
           Expanded(
@@ -398,9 +563,7 @@ class _StudentsBody extends HookWidget {
                               DataCell(Text(student.name)),
                               DataCell(
                                 Text(
-                                  formatStudentIdForDisplay(
-                                    student.studentId,
-                                  ),
+                                  formatStudentIdForDisplay(student.studentId),
                                 ),
                               ),
                               DataCell(Text(student.grade)),
@@ -419,6 +582,24 @@ class _StudentsBody extends HookWidget {
                                         student,
                                       ),
                                     ),
+                                    if (!student.isArchived)
+                                      _CompactIconButton(
+                                        // A student who forgets their
+                                        // password has no other way back in:
+                                        // their `<id>@arscience.school`
+                                        // address has no mailbox, so the
+                                        // usual reset email can never reach
+                                        // them.
+                                        tooltip:
+                                            'Reset password / create '
+                                            'login',
+                                        icon: LucideIcons.keyRound,
+                                        onPressed: () => _resetPassword(
+                                          context,
+                                          viewModel,
+                                          student,
+                                        ),
+                                      ),
                                     if (!student.isArchived)
                                       _CompactIconButton(
                                         tooltip: 'Archive',
@@ -468,6 +649,8 @@ class _StudentsHeader extends StatelessWidget {
     required this.onToggleIncludeArchived,
     required this.onArchiveSelected,
     required this.onAddStudent,
+    required this.onImportStudents,
+    required this.onResetAllProgress,
   });
 
   final bool isCompact;
@@ -476,6 +659,8 @@ class _StudentsHeader extends StatelessWidget {
   final ValueChanged<bool> onToggleIncludeArchived;
   final VoidCallback onArchiveSelected;
   final VoidCallback onAddStudent;
+  final VoidCallback onImportStudents;
+  final VoidCallback onResetAllProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -500,6 +685,16 @@ class _StudentsHeader extends StatelessWidget {
         selected: includeArchived,
         onSelected: onToggleIncludeArchived,
       ),
+      ShadButton.outline(
+        onPressed: onResetAllProgress,
+        leading: const Icon(LucideIcons.rotateCcw, size: 16),
+        child: const Text('Reset progress for all'),
+      ),
+      ShadButton.outline(
+        onPressed: onImportStudents,
+        leading: const Icon(LucideIcons.fileUp, size: 16),
+        child: const Text('Import CSV'),
+      ),
       ShadButton(
         onPressed: onAddStudent,
         leading: const Icon(LucideIcons.userPlus, size: 16),
@@ -508,14 +703,26 @@ class _StudentsHeader extends StatelessWidget {
     ];
 
     if (!isCompact) {
+      // The action buttons wrap to a second line rather than overflowing:
+      // at the widest breakpoint the four actions (Archive selected / Show
+      // archived / Reset progress for all / Add Student) don't all fit on
+      // one line once a row is selected and "Archive selected (N)" appears,
+      // which previously blew the Row out by ~127px and rendered the
+      // yellow-and-black overflow stripe over the header.
       return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           title,
-          const Spacer(),
-          for (final action in actions) ...[
-            action,
-            if (action != actions.last) const SizedBox(width: 12),
-          ],
+          const SizedBox(width: 16),
+          Expanded(
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: actions,
+            ),
+          ),
         ],
       );
     }
@@ -525,11 +732,7 @@ class _StudentsHeader extends StatelessWidget {
       children: [
         title,
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: actions,
-        ),
+        Wrap(spacing: 8, runSpacing: 8, children: actions),
       ],
     );
   }
@@ -796,7 +999,12 @@ class _ScoreChips extends StatelessWidget {
       spacing: 4,
       runSpacing: 4,
       children: [
-        _subjectChip(context, 'Chem', scores['chemistry'], SubjectKey.chemistry),
+        _subjectChip(
+          context,
+          'Chem',
+          scores['chemistry'],
+          SubjectKey.chemistry,
+        ),
         _subjectChip(context, 'Bio', scores['biology'], SubjectKey.biology),
         _subjectChip(context, 'Phys', scores['physics'], SubjectKey.physics),
       ],
@@ -817,7 +1025,8 @@ class _ScoreChips extends StatelessWidget {
   ) {
     final text = score != null ? '$label ${score.round()}' : '$label —';
     final custom = ShadTheme.of(context).colorScheme.custom;
-    final accent = custom[subject.name] ?? ShadTheme.of(context).colorScheme.primary;
+    final accent =
+        custom[subject.name] ?? ShadTheme.of(context).colorScheme.primary;
     return ShadBadge.outline(
       backgroundColor: accent.withValues(alpha: 0.10),
       foregroundColor: accent,

@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../data/curriculum_data.dart';
 import '../models/quiz_phase.dart';
 import '../models/student_record.dart';
+import '../models/subject_key.dart';
 import '../quiz_id.dart';
 import 'quiz_attempt_service.dart';
 
@@ -21,8 +23,8 @@ class AccessCodeService {
   AccessCodeService({
     required FirebaseFirestore firestore,
     required QuizAttemptService quizAttemptService,
-  })  : _firestore = firestore,
-        _quizAttemptService = quizAttemptService;
+  }) : _firestore = firestore,
+       _quizAttemptService = quizAttemptService;
 
   final FirebaseFirestore _firestore;
   final QuizAttemptService _quizAttemptService;
@@ -59,15 +61,35 @@ class AccessCodeService {
     final data = doc.data();
     if (data == null) return invalid;
 
+    // An archived code is a deliberately invalidated one — "reset progress
+    // for all" archives every outstanding code (see
+    // `AccessCodeIssuanceService.archiveAllCodes`), so a stale code handed
+    // out before the reset must stop working. Without this check the
+    // teacher UI's "archived" status was purely cosmetic and archived codes
+    // still redeemed successfully.
+    final isArchived = data['isArchived'] as bool? ?? false;
+    if (isArchived) {
+      return (
+        success: false,
+        message:
+            'Code "$code" is no longer active. Ask your teacher for a new one.',
+      );
+    }
+
     final targetStudentId = data['targetStudentId'] as String?;
     if (targetStudentId != null && targetStudentId != studentId) {
-      return (success: false, message: 'Code "$code" is assigned to a different student.');
+      return (
+        success: false,
+        message: 'Code "$code" is assigned to a different student.',
+      );
     }
-    final usedBy = (data['usedByStudentIds'] as List?)?.cast<String>() ?? const [];
+    final usedBy =
+        (data['usedByStudentIds'] as List?)?.cast<String>() ?? const [];
     if (usedBy.contains(studentId)) {
       return (
         success: false,
-        message: 'Code "$code" has already been used. Ask your teacher for a new one.',
+        message:
+            'Code "$code" has already been used. Ask your teacher for a new one.',
       );
     }
 
@@ -79,8 +101,13 @@ class AccessCodeService {
 
     // ── 2. Subject code with an explicit lesson-id list ──
     if (type == 'subject' && lessonIds != null && lessonIds.isNotEmpty) {
-      if (targetType != AccessCodeTarget.lesson || targetId == null || !lessonIds.contains(targetId)) {
-        return (success: false, message: 'Code "$code" isn\'t valid for this lesson.');
+      if (targetType != AccessCodeTarget.lesson ||
+          targetId == null ||
+          !lessonIds.contains(targetId)) {
+        return (
+          success: false,
+          message: 'Code "$code" isn\'t valid for this lesson.',
+        );
       }
       await _unlockLessons(studentId, lessonIds);
       await _trackUsage(code, studentId);
@@ -89,6 +116,21 @@ class AccessCodeService {
 
     // ── 3. Full-subject code, no explicit lesson list ──
     if (type == 'subject' && subjects != null && subjects.isNotEmpty) {
+      // This branch used to report success without unlocking anything: it
+      // called _trackUsage and returned, never touching unlockedLessonIds.
+      // The student saw "Subject unlocked successfully!", went to Learn,
+      // and found every lesson still padlocked — and because the code was
+      // now marked used, retyping it was rejected as already redeemed.
+      final lessonIds = _lessonIdsForSubjects(subjects);
+      if (lessonIds.isEmpty) {
+        return (
+          success: false,
+          message:
+              'Code "$code" isn\'t linked to any lessons yet. '
+              'Ask your teacher to check it.',
+        );
+      }
+      await _unlockLessons(studentId, lessonIds);
       await _trackUsage(code, studentId);
       return (success: true, message: 'Subject unlocked successfully!');
     }
@@ -96,7 +138,10 @@ class AccessCodeService {
     // ── 4. First-time test-unlock code (type 'lesson', redeemed against a quiz) ──
     if (type == 'lesson' && targetType == AccessCodeTarget.quiz) {
       if (codeTargetId != null && codeTargetId != targetId) {
-        return (success: false, message: 'Code "$code" isn\'t valid for this test.');
+        return (
+          success: false,
+          message: 'Code "$code" isn\'t valid for this test.',
+        );
       }
       // No further gating action needed: QuizAttemptService already treats
       // a post-test's first attempt as free (Task 3). This code type is
@@ -111,14 +156,21 @@ class AccessCodeService {
       if (isUsed) {
         return (
           success: false,
-          message: 'Code "$code" has already been used. Ask your teacher for a new one.',
+          message:
+              'Code "$code" has already been used. Ask your teacher for a new one.',
         );
       }
       if (codeTargetId != null && codeTargetId != targetId) {
-        return (success: false, message: 'Code "$code" isn\'t valid for this test.');
+        return (
+          success: false,
+          message: 'Code "$code" isn\'t valid for this test.',
+        );
       }
       if (targetId == null) {
-        return (success: false, message: 'Code "$code" isn\'t valid for this test.');
+        return (
+          success: false,
+          message: 'Code "$code" isn\'t valid for this test.',
+        );
       }
       final quizId = builtinQuizId(targetId, QuizPhase.post);
       await _quizAttemptService.unlockRetake(studentId, quizId);
@@ -130,7 +182,10 @@ class AccessCodeService {
     // ── 6. Single specific-lesson code ──
     if (type == 'lesson' && targetType == AccessCodeTarget.lesson) {
       if (codeTargetId != null && codeTargetId != targetId) {
-        return (success: false, message: 'Code "$code" isn\'t valid for this lesson.');
+        return (
+          success: false,
+          message: 'Code "$code" isn\'t valid for this lesson.',
+        );
       }
       if (targetId != null) {
         await _unlockLessons(studentId, [targetId]);
@@ -141,7 +196,8 @@ class AccessCodeService {
 
     return (
       success: false,
-      message: 'Code "$code" isn\'t for this ${targetType == AccessCodeTarget.quiz ? 'test' : 'lesson'}.',
+      message:
+          'Code "$code" isn\'t for this ${targetType == AccessCodeTarget.quiz ? 'test' : 'lesson'}.',
     );
   }
 
@@ -150,19 +206,49 @@ class AccessCodeService {
     String studentId,
     String quizId,
   ) async {
+    // Filtering on `studentId` as well as `code` is a security requirement,
+    // not an optimization. Firestore evaluates a rule per matched document,
+    // so `quizUnlockCodes`' read rule can only be narrowed to "rows
+    // belonging to this student" if the query itself is already narrowed
+    // that way — an unfiltered query would simply be denied. Before this,
+    // the rule had to allow any signed-in user to list the collection,
+    // which let a student read every retake code in the school and mark
+    // other students' codes as used.
     final snapshot = await _firestore
         .collection('quizUnlockCodes')
+        .where('studentId', isEqualTo: studentId)
         .where('code', isEqualTo: code)
         .get();
     for (final doc in snapshot.docs) {
       final data = doc.data();
-      final docStudentId = data['studentId'] as String?;
       final docQuizId = data['quizId'] as String?;
       final used = data['isUsed'] as bool? ?? false;
-      final studentMatches = docStudentId == null || docStudentId == studentId;
-      if (studentMatches && docQuizId == quizId && !used) return doc;
+      // Same reasoning as the /unlockCodes archived check in redeem():
+      // an archived retake code has been deliberately invalidated.
+      final archived = data['isArchived'] as bool? ?? false;
+      if (docQuizId == quizId && !used && !archived) return doc;
     }
     return null;
+  }
+
+  /// Every built-in lesson id belonging to any of [subjects] (the Firestore
+  /// string values written by `AccessCodeIssuanceService.issueSubjectCode`).
+  /// An unrecognized subject string is skipped rather than throwing, so one
+  /// bad entry can't fail a code that also names valid subjects.
+  List<String> _lessonIdsForSubjects(List<String> subjects) {
+    final wanted = <SubjectKey>{};
+    for (final raw in subjects) {
+      try {
+        wanted.add(SubjectKey.fromFirestore(raw));
+      } on ArgumentError {
+        continue;
+      }
+    }
+    if (wanted.isEmpty) return const [];
+    return [
+      for (final lesson in kBuiltInLessons)
+        if (wanted.contains(lesson.subject)) lesson.id,
+    ];
   }
 
   Future<void> _unlockLessons(String studentId, List<String> lessonIds) async {
@@ -178,7 +264,9 @@ class AccessCodeService {
   Future<void> _trackUsage(String code, String studentId) async {
     final codeDoc = _firestore.collection('unlockCodes').doc(code);
     final snapshot = await codeDoc.get();
-    final existing = (snapshot.data()?['usedByStudentIds'] as List?)?.cast<String>() ?? const [];
+    final existing =
+        (snapshot.data()?['usedByStudentIds'] as List?)?.cast<String>() ??
+        const [];
     if (existing.contains(studentId)) return;
     await codeDoc.update({
       'usedByStudentIds': [...existing, studentId],

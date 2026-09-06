@@ -44,7 +44,9 @@ class LessonsViewModel {
   final Future<TeacherLesson?> Function(String lessonId) fetchLessonById;
 }
 
-final lessonsViewModelProvider = StreamProvider.autoDispose<LessonsViewModel>((ref) {
+final lessonsViewModelProvider = StreamProvider.autoDispose<LessonsViewModel>((
+  ref,
+) {
   throw UnimplementedError(
     'lessonsViewModelProvider must be overridden at app startup — see '
     'teacherProviderOverridesFor.',
@@ -55,7 +57,9 @@ Stream<LessonsViewModel> buildLessonsViewModel({
   required LessonRepository lessonRepository,
   required QuizRepository quizRepository,
 }) {
-  return lessonRepository.watchTeacherLessons().asyncMap((teacherLessons) async {
+  return lessonRepository.watchTeacherLessons().asyncMap((
+    teacherLessons,
+  ) async {
     final merged = lessonRepository.mergedLessons(teacherLessons);
     final builtInIds = kBuiltInLessons.map((lesson) => lesson.id).toSet();
     final teacherById = {for (final tl in teacherLessons) tl.id: tl};
@@ -65,7 +69,9 @@ Stream<LessonsViewModel> buildLessonsViewModel({
           (lesson) => DisplayLesson(
             lesson: lesson,
             isBuiltIn: builtInIds.contains(lesson.id),
-            teacherLesson: builtInIds.contains(lesson.id) ? null : teacherById[lesson.id],
+            teacherLesson: builtInIds.contains(lesson.id)
+                ? null
+                : teacherById[lesson.id],
           ),
         )
         .toList();

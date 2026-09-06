@@ -46,8 +46,14 @@ class StudentShell extends ConsumerWidget {
         onDestinationSelected: onDestinationSelected,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: 'Learn'),
-          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'Progress'),
+          NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            label: 'Learn',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bar_chart_outlined),
+            label: 'Progress',
+          ),
         ],
       ),
     );

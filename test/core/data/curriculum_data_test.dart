@@ -31,25 +31,25 @@ void main() {
     expect(ids, hasLength(24));
   });
 
-  test(
-    'hasAR is true for all 23 AR-enabled lessons and false only for Q1W5 '
-    '(PROJECT_FLOW.md Part 6.1\'s marker table)',
-    () {
-      for (final lesson in kBuiltInLessons) {
-        expect(
-          lesson.hasAR,
-          lesson.arPayload != null,
-          reason: '${lesson.id}.hasAR must match whether it has an arPayload',
-        );
-      }
+  test('hasAR is true for all 23 AR-enabled lessons and false only for Q1W5 '
+      '(PROJECT_FLOW.md Part 6.1\'s marker table)', () {
+    for (final lesson in kBuiltInLessons) {
+      expect(
+        lesson.hasAR,
+        lesson.arPayload != null,
+        reason: '${lesson.id}.hasAR must match whether it has an arPayload',
+      );
+    }
 
-      final noArLessons = kBuiltInLessons.where((l) => !l.hasAR).map((l) => l.id).toList();
-      expect(noArLessons, ['q1w5']);
+    final noArLessons = kBuiltInLessons
+        .where((l) => !l.hasAR)
+        .map((l) => l.id)
+        .toList();
+    expect(noArLessons, ['q1w5']);
 
-      final arLessons = kBuiltInLessons.where((l) => l.hasAR).toList();
-      expect(arLessons, hasLength(23));
-    },
-  );
+    final arLessons = kBuiltInLessons.where((l) => l.hasAR).toList();
+    expect(arLessons, hasLength(23));
+  });
 
   test('Q1W1 matches the worked example in PROJECT_FLOW.md Part 6.0.1', () {
     final q1w1 = kBuiltInLessons.firstWhere((l) => l.id == 'q1w1');

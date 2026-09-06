@@ -66,7 +66,9 @@ class _DynamicStringListFieldState extends State<DynamicStringListField> {
   }
 
   void _notifyChanged() {
-    widget.onChanged(_controllers.map((controller) => controller.text).toList());
+    widget.onChanged(
+      _controllers.map((controller) => controller.text).toList(),
+    );
   }
 
   @override
@@ -87,7 +89,8 @@ class _DynamicStringListFieldState extends State<DynamicStringListField> {
                       : Key('${widget.fieldKeyPrefix}-$i'),
                   controller: _controllers[i],
                   decoration: InputDecoration(
-                    labelText: widget.itemLabelBuilder?.call(i) ?? 'Item ${i + 1}',
+                    labelText:
+                        widget.itemLabelBuilder?.call(i) ?? 'Item ${i + 1}',
                   ),
                   onChanged: (_) => _notifyChanged(),
                 ),
@@ -99,7 +102,9 @@ class _DynamicStringListFieldState extends State<DynamicStringListField> {
                       ? null
                       : () {
                           final next = [...widget.values]..removeAt(i);
-                          widget.onChanged(next.isEmpty && widget.minItems == 0 ? [''] : next);
+                          widget.onChanged(
+                            next.isEmpty && widget.minItems == 0 ? [''] : next,
+                          );
                         },
                   icon: const Icon(LucideIcons.trash2),
                 ),

@@ -32,3 +32,9 @@ firebase.json
 *service-account*.json
 *firebase-adminsdk*.json
 scripts/node_modules/
+
+# Firebase CLI deploy cache
+.firebase/
+
+# JVM crash dumps from Gradle/Unity builds
+hs_err_pid*.log

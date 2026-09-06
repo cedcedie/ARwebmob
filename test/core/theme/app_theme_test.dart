@@ -10,25 +10,22 @@ double _hueDistance(double a, double b) {
 }
 
 void main() {
-  test(
-    'AppColors.success is widely hue-separated from AppColors.biology '
-    '(item 6)',
-    () {
-      final successHue = HSLColor.fromColor(AppColors.success).hue;
-      final biologyHue = HSLColor.fromColor(AppColors.biology).hue;
+  test('AppColors.success is widely hue-separated from AppColors.biology '
+      '(item 6)', () {
+    final successHue = HSLColor.fromColor(AppColors.success).hue;
+    final biologyHue = HSLColor.fromColor(AppColors.biology).hue;
 
-      final distance = _hueDistance(successHue, biologyHue);
+    final distance = _hueDistance(successHue, biologyHue);
 
-      // The pre-fix value was only ~16° apart — too close to read as
-      // unambiguously different colors when shown together. Assert a wide
-      // margin so this can't silently regress back toward biology's green.
-      expect(
-        distance,
-        greaterThan(30),
-        reason:
-            'success ($successHue°) and biology ($biologyHue°) must stay '
-            'clearly distinguishable — got only $distance° apart',
-      );
-    },
-  );
+    // The pre-fix value was only ~16° apart — too close to read as
+    // unambiguously different colors when shown together. Assert a wide
+    // margin so this can't silently regress back toward biology's green.
+    expect(
+      distance,
+      greaterThan(30),
+      reason:
+          'success ($successHue°) and biology ($biologyHue°) must stay '
+          'clearly distinguishable — got only $distance° apart',
+    );
+  });
 }

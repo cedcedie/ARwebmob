@@ -19,75 +19,74 @@ import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/features/student/learn/learn_providers.dart';
 
 StudentRecord _blankStudent(String studentId) => StudentRecord(
-      id: studentId,
-      name: 'Test Student',
-      studentId: studentId,
-      grade: '10',
-      section: 'A',
-      scores: const {},
-      completedLessonIds: const [],
-      completedLabExperimentIds: const [],
-      completedQuizIds: const [],
-      unlockedLessonIds: const [],
-      unlockedQuizIds: const [],
-      quizAttempts: const [],
-    );
+  id: studentId,
+  name: 'Test Student',
+  studentId: studentId,
+  grade: '10',
+  section: 'A',
+  scores: const {},
+  completedLessonIds: const [],
+  completedLabExperimentIds: const [],
+  completedQuizIds: const [],
+  unlockedLessonIds: const [],
+  unlockedQuizIds: const [],
+  quizAttempts: const [],
+);
 
 void main() {
-  test(
-    'a change to the student\'s own doc (an unlock) re-emits the view model '
-    'without the teacher-lessons stream changing at all',
-    () async {
-      final firestore = FakeFirebaseFirestore();
-      final lessonRepository = LessonRepository(firestore: firestore);
-      final studentRepository = StudentRepository(firestore: firestore);
-      final quizAttemptService = QuizAttemptService(firestore: firestore);
-      final accessCodeService = AccessCodeService(
-        firestore: firestore,
-        quizAttemptService: quizAttemptService,
-      );
-      const studentId = '100001';
+  test('a change to the student\'s own doc (an unlock) re-emits the view model '
+      'without the teacher-lessons stream changing at all', () async {
+    final firestore = FakeFirebaseFirestore();
+    final lessonRepository = LessonRepository(firestore: firestore);
+    final studentRepository = StudentRepository(firestore: firestore);
+    final quizAttemptService = QuizAttemptService(firestore: firestore);
+    final accessCodeService = AccessCodeService(
+      firestore: firestore,
+      quizAttemptService: quizAttemptService,
+    );
+    const studentId = '100001';
 
-      await firestore.collection('students').doc(studentId).set(
-            _blankStudent(studentId).toJson(),
-          );
+    await firestore
+        .collection('students')
+        .doc(studentId)
+        .set(_blankStudent(studentId).toJson());
 
-      final stream = buildLearnViewModel(
-        studentId: studentId,
-        initialSubject: SubjectKey.chemistry,
-        lessonRepository: lessonRepository,
-        studentRepository: studentRepository,
-        accessCodeService: accessCodeService,
-        preTestLessonIds: const {},
-        onSelectSubject: (_) {},
-      );
+    final stream = buildLearnViewModel(
+      studentId: studentId,
+      initialSubject: SubjectKey.chemistry,
+      lessonRepository: lessonRepository,
+      studentRepository: studentRepository,
+      accessCodeService: accessCodeService,
+      preTestLessonIds: const {},
+      onSelectSubject: (_) {},
+    );
 
-      final emissions = <bool>[]; // tracks q1w5's isUnlocked per emission
-      final subscription = stream.listen((vm) {
-        final q1w5 = vm.cards.firstWhere((c) => c.lessonId == 'q1w5');
-        emissions.add(q1w5.isUnlocked);
-      });
+    final emissions = <bool>[]; // tracks q1w5's isUnlocked per emission
+    final subscription = stream.listen((vm) {
+      final q1w5 = vm.cards.firstWhere((c) => c.lessonId == 'q1w5');
+      emissions.add(q1w5.isUnlocked);
+    });
 
-      // First emission: locked, exactly like the built-in curriculum data
-      // says (isUnlockedByDefault: false) and no unlockedLessonIds yet.
-      await Future.delayed(Duration.zero);
-      expect(emissions, [false]);
+    // First emission: locked, exactly like the built-in curriculum data
+    // says (isUnlockedByDefault: false) and no unlockedLessonIds yet.
+    await Future.delayed(Duration.zero);
+    expect(emissions, [false]);
 
-      // Simulate a successful code redemption -- the real path
-      // (AccessCodeService._unlockLessons) does exactly this write to the
-      // student's own doc, nothing to the lessons collection.
-      final student = await studentRepository.getStudent(studentId);
-      await firestore.collection('students').doc(studentId).set(
-            student!.copyWith(unlockedLessonIds: const ['q1w5']).toJson(),
-          );
+    // Simulate a successful code redemption -- the real path
+    // (AccessCodeService._unlockLessons) does exactly this write to the
+    // student's own doc, nothing to the lessons collection.
+    final student = await studentRepository.getStudent(studentId);
+    await firestore
+        .collection('students')
+        .doc(studentId)
+        .set(student!.copyWith(unlockedLessonIds: const ['q1w5']).toJson());
 
-      // The bug: with the old one-time getStudent() fetch, no second
-      // emission would ever arrive here -- this await would time out if
-      // the fix regressed.
-      await Future.delayed(Duration.zero);
-      expect(emissions, [false, true]);
+    // The bug: with the old one-time getStudent() fetch, no second
+    // emission would ever arrive here -- this await would time out if
+    // the fix regressed.
+    await Future.delayed(Duration.zero);
+    expect(emissions, [false, true]);
 
-      await subscription.cancel();
-    },
-  );
+    await subscription.cancel();
+  });
 }

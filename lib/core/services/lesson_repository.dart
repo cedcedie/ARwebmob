@@ -11,13 +11,19 @@ import '../models/teacher_lesson.dart';
 /// `mergedLessons` pattern; a built-in id always wins on collision, since the
 /// built-in curriculum is the authoritative 24-lesson set).
 class LessonRepository {
-  LessonRepository({required FirebaseFirestore firestore}) : _firestore = firestore;
+  LessonRepository({required FirebaseFirestore firestore})
+    : _firestore = firestore;
 
   final FirebaseFirestore _firestore;
 
   Stream<List<TeacherLesson>> watchTeacherLessons() {
-    return _firestore.collection('lessons').snapshots().map(
-          (snapshot) => snapshot.docs.map((doc) => TeacherLesson.fromJson(doc.data())).toList(),
+    return _firestore
+        .collection('lessons')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => TeacherLesson.fromJson(doc.data()))
+              .toList(),
         );
   }
 
@@ -42,7 +48,9 @@ class LessonRepository {
   /// do if called repeatedly inside an `asyncMap`.
   Future<List<TeacherLesson>> fetchTeacherLessons() async {
     final snapshot = await _firestore.collection('lessons').get();
-    return snapshot.docs.map((doc) => TeacherLesson.fromJson(doc.data())).toList();
+    return snapshot.docs
+        .map((doc) => TeacherLesson.fromJson(doc.data()))
+        .toList();
   }
 
   /// Creates (or overwrites) a teacher-authored lesson doc at
@@ -61,7 +69,9 @@ class LessonRepository {
   /// id elsewhere (e.g. `linkedQuizId`, students' `unlockedLessonIds`), so a
   /// hard delete would leave dangling references.
   Future<void> archiveLesson(String lessonId) async {
-    await _firestore.collection('lessons').doc(lessonId).update({'isArchived': true});
+    await _firestore.collection('lessons').doc(lessonId).update({
+      'isArchived': true,
+    });
   }
 
   List<Lesson> mergedLessons(
@@ -82,6 +92,12 @@ class LessonRepository {
     // Content" action on built-in rows, which writes only those two
     // fields (plus the id/title/subject required to satisfy TeacherLesson
     // itself) for exactly this purpose.
+    //
+    // markerImage gets the same narrow overlay treatment, for the same
+    // reason: a teacher can print/re-print an AR marker for a built-in
+    // lesson (LessonForm's "Upload AR marker image" action), but the
+    // built-in's modelIndex/detectionMode/anchorHint/lessonSteps stay
+    // authoritative — only the marker image itself is teacher-replaceable.
     final contentOverridesByLessonId = {
       for (final tl in teacherLessons)
         if (builtInIds.contains(tl.id)) tl.id: tl,
@@ -89,9 +105,13 @@ class LessonRepository {
     final builtIns = kBuiltInLessons.map((lesson) {
       final override = contentOverridesByLessonId[lesson.id];
       if (override == null) return lesson;
+      final overrideMarkerImage = override.arPayload?.markerImage;
       return lesson.copyWith(
         contentImageUrls: override.contentImageUrls,
         contentStatus: override.contentStatus,
+        arPayload: overrideMarkerImage == null || lesson.arPayload == null
+            ? lesson.arPayload
+            : lesson.arPayload!.copyWith(markerImage: overrideMarkerImage),
       );
     });
 

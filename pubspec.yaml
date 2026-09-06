@@ -53,10 +53,18 @@ dependencies:
   flutter_embed_unity_6000_0_android: ^2.0.0
   flutter_tts: ^4.2.0
   firebase_storage: ^12.3.0
+  # Callable functions: resetting a student's password and creating a login
+  # for a student who has none both need Admin-SDK privileges, which no
+  # client SDK has. See functions/src/index.js.
+  cloud_functions: ^5.1.3
   file_picker: ^8.1.0
   permission_handler: ^11.3.1
   rxdart: ^0.28.0
   url_launcher: ^6.3.2
+  # Browser APIs (Blob/anchor) behind a conditional import, so the teacher
+  # portal can hand a generated CSV to the user. Web-only; see
+  # core/util/file_download.dart.
+  web: ^1.1.1
 
   # Phase 4 (Teacher Web) UI packages
   shadcn_ui: ^0.56.2
@@ -67,6 +75,7 @@ dependencies:
   photo_view: ^0.15.0
   model_viewer_plus: ^1.10.0
   fl_chart: ^0.69.0
+  pdfx: ^2.11.0
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +92,12 @@ dev_dependencies:
   json_serializable: ^6.8.0
   fake_cloud_firestore: ^3.1.0
   firebase_auth_mocks: ^0.14.1
+  # Used directly (not just transitively via permission_handler) in
+  # scan_tab_test.dart / ar_lab_screen_test.dart to fake
+  # PermissionHandlerPlatform, so ScanTab's camera-permission gate has
+  # something to talk to under `flutter test`.
+  permission_handler_platform_interface: ^4.4.0
+  plugin_platform_interface: ^2.1.8
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

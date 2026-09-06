@@ -20,7 +20,9 @@ class QuizzesViewModel {
   final Future<void> Function(String quizId) onDeleteQuiz;
 }
 
-final quizzesViewModelProvider = StreamProvider.autoDispose<QuizzesViewModel>((ref) {
+final quizzesViewModelProvider = StreamProvider.autoDispose<QuizzesViewModel>((
+  ref,
+) {
   throw UnimplementedError(
     'quizzesViewModelProvider must be overridden at app startup — see '
     'teacherProviderOverridesFor.',

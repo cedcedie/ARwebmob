@@ -7,6 +7,7 @@ import 'package:ar_science_explorer/core/models/quiz_attempt.dart';
 import 'package:ar_science_explorer/core/models/student_record.dart';
 import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/features/teacher/students/student_id_format.dart';
+import 'package:ar_science_explorer/features/teacher/students/student_csv_import.dart';
 import 'package:ar_science_explorer/features/teacher/students/students_providers.dart';
 import 'package:ar_science_explorer/features/teacher/students/students_screen.dart';
 
@@ -39,15 +40,22 @@ StudentsViewModel _viewModel({
   required List<StudentRecord> students,
   bool includeArchived = false,
   void Function(bool)? onToggleIncludeArchived,
-  Future<void> Function(StudentRecord)? onCreateStudent,
+  Future<void> Function(StudentRecord, String)? onCreateStudent,
+  Future<List<StudentImportOutcome>> Function(List<StudentImportRow>)?
+  onImportStudents,
+  Future<void> Function(String, String)? onResetStudentPassword,
   Future<void> Function(String)? onArchiveStudent,
+  Future<void> Function()? onResetAllProgress,
 }) {
   return StudentsViewModel(
     students: students,
     includeArchived: includeArchived,
     onToggleIncludeArchived: onToggleIncludeArchived ?? (_) {},
-    onCreateStudent: onCreateStudent ?? (_) async {},
+    onCreateStudent: onCreateStudent ?? (_, _) async {},
+    onImportStudents: onImportStudents ?? (_) async => const [],
+    onResetStudentPassword: onResetStudentPassword ?? (_, _) async {},
     onArchiveStudent: onArchiveStudent ?? (_) async {},
+    onResetAllProgress: onResetAllProgress ?? () async {},
   );
 }
 
@@ -69,7 +77,12 @@ Future<void> _pumpStudentsScreen(
       child: const ShadApp(home: StudentsScreen()),
     ),
   );
+  // Two pumps: the first frame renders the loading skeleton (whose shimmer
+  // is a *repeating* animation, so a stray extra frame would leave its
+  // timer pending at teardown); the second lets the stream's value land and
+  // replaces the skeleton with the real table.
   await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
 }
 
 void main() {
@@ -153,13 +166,15 @@ void main() {
     final firestore = FakeFirebaseFirestore();
     final repo = StudentRepository(firestore: firestore);
     StudentRecord? created;
+    String? createdPassword;
 
     await _pumpStudentsScreen(
       tester,
       viewModel: _viewModel(
         students: const [],
-        onCreateStudent: (student) async {
+        onCreateStudent: (student, password) async {
           created = student;
+          createdPassword = password;
           await repo.createStudent(student);
         },
       ),
@@ -175,6 +190,15 @@ void main() {
       find.byKey(const Key('student_section')),
       'Bonifacio',
     );
+    // The teacher sets the student's login password here (UAT request).
+    await tester.enterText(
+      find.byKey(const Key('student_password')),
+      'science123',
+    );
+    await tester.enterText(
+      find.byKey(const Key('student_password_confirm')),
+      'science123',
+    );
 
     await tester.tap(find.text('Create'));
     await tester.pumpAndSettle();
@@ -188,6 +212,7 @@ void main() {
     expect(created!.completedLessonIds, isEmpty);
     expect(created!.quizAttempts, isEmpty);
     expect(created!.studentId, '123456');
+    expect(createdPassword, 'science123');
 
     final doc = await firestore.collection('students').doc('123456').get();
     expect(doc.exists, true);
@@ -204,7 +229,7 @@ void main() {
         tester,
         viewModel: _viewModel(
           students: const [],
-          onCreateStudent: (_) async {
+          onCreateStudent: (_, _) async {
             throw Exception('boom');
           },
         ),
@@ -222,6 +247,14 @@ void main() {
       await tester.enterText(
         find.byKey(const Key('student_section')),
         'Bonifacio',
+      );
+      await tester.enterText(
+        find.byKey(const Key('student_password')),
+        'science123',
+      );
+      await tester.enterText(
+        find.byKey(const Key('student_password_confirm')),
+        'science123',
       );
 
       await tester.tap(find.text('Create'));
@@ -353,10 +386,7 @@ void main() {
 
       expect(archived, ['000001']);
       expect(find.textContaining('Exception'), findsNothing);
-      expect(
-        find.textContaining("couldn't be archived"),
-        findsOneWidget,
-      );
+      expect(find.textContaining("couldn't be archived"), findsOneWidget);
       // The failed student stays selected — "Archive selected" still shows
       // for just that one — so the teacher can retry it directly.
       expect(find.text('Archive selected (1)'), findsOneWidget);
@@ -395,56 +425,52 @@ void main() {
     },
   );
 
-  testWidgets(
-    'archiving a row shows Cancel keeps the student unarchived',
-    (tester) async {
-      final archivedIds = <String>[];
+  testWidgets('archiving a row shows Cancel keeps the student unarchived', (
+    tester,
+  ) async {
+    final archivedIds = <String>[];
 
-      await _pumpStudentsScreen(
-        tester,
-        viewModel: _viewModel(
-          students: [_sampleStudent(id: '123456', name: 'Keep Me')],
-          onArchiveStudent: (id) async => archivedIds.add(id),
-        ),
-      );
+    await _pumpStudentsScreen(
+      tester,
+      viewModel: _viewModel(
+        students: [_sampleStudent(id: '123456', name: 'Keep Me')],
+        onArchiveStudent: (id) async => archivedIds.add(id),
+      ),
+    );
 
-      await tester.tap(find.byTooltip('Archive'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Archive'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
 
-      expect(archivedIds, isEmpty);
-      expect(find.text('Keep Me'), findsOneWidget);
-    },
-  );
+    expect(archivedIds, isEmpty);
+    expect(find.text('Keep Me'), findsOneWidget);
+  });
 
-  testWidgets(
-    'a throwing single-row archive shows an error toast instead of '
-    'silently doing nothing (item 4)',
-    (tester) async {
-      await _pumpStudentsScreen(
-        tester,
-        viewModel: _viewModel(
-          students: [_sampleStudent(id: '123456', name: 'Fails To Archive')],
-          onArchiveStudent: (_) async {
-            throw Exception('boom');
-          },
-        ),
-      );
+  testWidgets('a throwing single-row archive shows an error toast instead of '
+      'silently doing nothing (item 4)', (tester) async {
+    await _pumpStudentsScreen(
+      tester,
+      viewModel: _viewModel(
+        students: [_sampleStudent(id: '123456', name: 'Fails To Archive')],
+        onArchiveStudent: (_) async {
+          throw Exception('boom');
+        },
+      ),
+    );
 
-      await tester.tap(find.byTooltip('Archive'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Archive'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Archive'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Archive'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Fails To Archive'), findsOneWidget);
-      expect(find.textContaining('Exception'), findsNothing);
-      expect(
-        find.textContaining("Couldn't archive this student"),
-        findsOneWidget,
-      );
-    },
-  );
+    expect(find.text('Fails To Archive'), findsOneWidget);
+    expect(find.textContaining('Exception'), findsNothing);
+    expect(
+      find.textContaining("Couldn't archive this student"),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('roster shows lesson-completion count and quiz-attempt count', (
     tester,

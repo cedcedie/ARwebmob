@@ -9,19 +9,19 @@ import 'package:ar_science_explorer/core/services/quiz_attempt_service.dart';
 import 'package:ar_science_explorer/core/services/student_repository.dart';
 
 StudentRecord _blankStudent(String id) => StudentRecord(
-      id: id,
-      name: 'Test Student',
-      studentId: id,
-      grade: '7',
-      section: 'Rizal',
-      scores: const {'chemistry': null, 'biology': null, 'physics': null},
-      completedLessonIds: const [],
-      completedLabExperimentIds: const [],
-      completedQuizIds: const [],
-      unlockedLessonIds: const [],
-      unlockedQuizIds: const [],
-      quizAttempts: const [],
-    );
+  id: id,
+  name: 'Test Student',
+  studentId: id,
+  grade: '7',
+  section: 'Rizal',
+  scores: const {'chemistry': null, 'biology': null, 'physics': null},
+  completedLessonIds: const [],
+  completedLabExperimentIds: const [],
+  completedQuizIds: const [],
+  unlockedLessonIds: const [],
+  unlockedQuizIds: const [],
+  quizAttempts: const [],
+);
 
 void main() {
   final preQuizId = builtinQuizId('q1w1', QuizPhase.pre);
@@ -53,105 +53,117 @@ void main() {
       expect(eligibility.attemptCount, 0);
     });
 
-    test('post-test is locked after one attempt, until a retake code unlocks it', () async {
-      final firestore = FakeFirebaseFirestore();
-      final studentRepo = StudentRepository(firestore: firestore);
-      final service = QuizAttemptService(firestore: firestore);
-      await studentRepo.saveStudent(_blankStudent('111111'));
+    test(
+      'post-test is locked after one attempt, until a retake code unlocks it',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final studentRepo = StudentRepository(firestore: firestore);
+        final service = QuizAttemptService(firestore: firestore);
+        await studentRepo.saveStudent(_blankStudent('111111'));
 
-      await service.recordAttempt(
-        studentId: '111111',
-        subject: SubjectKey.chemistry,
-        attempt: QuizAttempt(
-          id: 'attempt-1',
-          quizId: postQuizId,
+        await service.recordAttempt(
           studentId: '111111',
-          attemptNumber: 1,
-          score: 40,
-          totalQuestions: 5,
-          correctAnswers: 2,
-          answers: const [0, 1, 0, 1, 0],
-          timestamp: DateTime(2026, 8, 20).toIso8601String(),
-          locked: true,
-        ),
-      );
+          subject: SubjectKey.chemistry,
+          attempt: QuizAttempt(
+            id: 'attempt-1',
+            quizId: postQuizId,
+            studentId: '111111',
+            attemptNumber: 1,
+            score: 40,
+            totalQuestions: 5,
+            correctAnswers: 2,
+            answers: const [0, 1, 0, 1, 0],
+            timestamp: DateTime(2026, 8, 20).toIso8601String(),
+            locked: true,
+          ),
+        );
 
-      final eligibility = await service.checkEligibility('111111', postQuizId);
-      expect(eligibility.canTake, false);
-      expect(eligibility.isLocked, true);
-      expect(eligibility.reason, isNotNull);
-      expect(eligibility.attemptCount, 1);
-    });
+        final eligibility = await service.checkEligibility(
+          '111111',
+          postQuizId,
+        );
+        expect(eligibility.canTake, false);
+        expect(eligibility.isLocked, true);
+        expect(eligibility.reason, isNotNull);
+        expect(eligibility.attemptCount, 1);
+      },
+    );
   });
 
   group('recordAttempt', () {
-    test('post-test attempt updates scores, completedLessonIds, completedQuizIds', () async {
-      final firestore = FakeFirebaseFirestore();
-      final studentRepo = StudentRepository(firestore: firestore);
-      final service = QuizAttemptService(firestore: firestore);
-      await studentRepo.saveStudent(_blankStudent('111111'));
+    test(
+      'post-test attempt updates scores, completedLessonIds, completedQuizIds',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final studentRepo = StudentRepository(firestore: firestore);
+        final service = QuizAttemptService(firestore: firestore);
+        await studentRepo.saveStudent(_blankStudent('111111'));
 
-      await service.recordAttempt(
-        studentId: '111111',
-        subject: SubjectKey.chemistry,
-        attempt: QuizAttempt(
-          id: 'attempt-1',
-          quizId: postQuizId,
+        await service.recordAttempt(
           studentId: '111111',
-          attemptNumber: 1,
-          score: 80,
-          totalQuestions: 5,
-          correctAnswers: 4,
-          answers: const [0, 1, 0, 1, 0],
-          timestamp: DateTime(2026, 8, 20).toIso8601String(),
-          locked: true,
-        ),
-      );
+          subject: SubjectKey.chemistry,
+          attempt: QuizAttempt(
+            id: 'attempt-1',
+            quizId: postQuizId,
+            studentId: '111111',
+            attemptNumber: 1,
+            score: 80,
+            totalQuestions: 5,
+            correctAnswers: 4,
+            answers: const [0, 1, 0, 1, 0],
+            timestamp: DateTime(2026, 8, 20).toIso8601String(),
+            locked: true,
+          ),
+        );
 
-      final student = await studentRepo.getStudent('111111');
-      expect(student!.scores['chemistry'], 80);
-      expect(student.completedLessonIds, contains('q1w1'));
-      expect(student.completedQuizIds, contains(postQuizId));
-      expect(student.quizAttempts, hasLength(1));
+        final student = await studentRepo.getStudent('111111');
+        expect(student!.scores['chemistry'], 80);
+        expect(student.completedLessonIds, contains('q1w1'));
+        expect(student.completedQuizIds, contains(postQuizId));
+        expect(student.quizAttempts, hasLength(1));
 
-      // Backup subcollection write also happened.
-      final subDoc = await firestore
-          .collection('students')
-          .doc('111111')
-          .collection('quizAttempts')
-          .doc('attempt-1')
-          .get();
-      expect(subDoc.exists, true);
-    });
+        // Backup subcollection write also happened.
+        final subDoc = await firestore
+            .collection('students')
+            .doc('111111')
+            .collection('quizAttempts')
+            .doc('attempt-1')
+            .get();
+        expect(subDoc.exists, true);
+      },
+    );
 
-    test('pre-test attempt does NOT touch scores or completedLessonIds', () async {
-      final firestore = FakeFirebaseFirestore();
-      final studentRepo = StudentRepository(firestore: firestore);
-      final service = QuizAttemptService(firestore: firestore);
-      await studentRepo.saveStudent(_blankStudent('111111'));
+    test(
+      'pre-test attempt does NOT touch scores or completedLessonIds',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final studentRepo = StudentRepository(firestore: firestore);
+        final service = QuizAttemptService(firestore: firestore);
+        await studentRepo.saveStudent(_blankStudent('111111'));
 
-      await service.recordAttempt(
-        studentId: '111111',
-        subject: SubjectKey.chemistry,
-        attempt: QuizAttempt(
-          id: 'attempt-pre-1',
-          quizId: preQuizId,
+        await service.recordAttempt(
           studentId: '111111',
-          attemptNumber: 1,
-          score: 60,
-          totalQuestions: 8,
-          correctAnswers: 5,
-          answers: const [0, 1, 0, 1, 0, 1, 0, 1],
-          timestamp: DateTime(2026, 8, 20).toIso8601String(),
-          locked: false,
-        ),
-      );
+          subject: SubjectKey.chemistry,
+          attempt: QuizAttempt(
+            id: 'attempt-pre-1',
+            quizId: preQuizId,
+            studentId: '111111',
+            attemptNumber: 1,
+            score: 60,
+            totalQuestions: 8,
+            correctAnswers: 5,
+            answers: const [0, 1, 0, 1, 0, 1, 0, 1],
+            timestamp: DateTime(2026, 8, 20).toIso8601String(),
+            locked: false,
+          ),
+        );
 
-      final student = await studentRepo.getStudent('111111');
-      expect(student!.scores['chemistry'], isNull);
-      expect(student.completedLessonIds, isEmpty);
-      expect(student.completedQuizIds, contains(preQuizId));
-    });
+        final student = await studentRepo.getStudent('111111');
+        expect(student!.scores['chemistry'], isNull);
+        expect(student.completedLessonIds, isEmpty);
+        expect(student.completedQuizIds, contains(preQuizId));
+      },
+    );
 
     test('a retake attempt after unlockRetake is takeable again', () async {
       final firestore = FakeFirebaseFirestore();
@@ -240,8 +252,9 @@ void main() {
       );
 
       final updatedStudent = await studentRepo.getStudent('111111');
-      final preAttempt = updatedStudent!.quizAttempts
-          .firstWhere((a) => a.id == 'attempt-pre-wrong-flag');
+      final preAttempt = updatedStudent!.quizAttempts.firstWhere(
+        (a) => a.id == 'attempt-pre-wrong-flag',
+      );
       expect(preAttempt.locked, false);
 
       final preSubDoc = await firestore

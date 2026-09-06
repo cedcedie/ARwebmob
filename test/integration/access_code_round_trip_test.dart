@@ -27,19 +27,19 @@ import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/features/student/learn/learn_providers.dart';
 
 StudentRecord _blankStudent(String id) => StudentRecord(
-      id: id,
-      name: 'Student $id',
-      studentId: id,
-      grade: '7',
-      section: 'Rizal',
-      scores: const {'chemistry': null, 'biology': null, 'physics': null},
-      completedLessonIds: const [],
-      completedLabExperimentIds: const [],
-      completedQuizIds: const [],
-      unlockedLessonIds: const [],
-      unlockedQuizIds: const [],
-      quizAttempts: const [],
-    );
+  id: id,
+  name: 'Student $id',
+  studentId: id,
+  grade: '7',
+  section: 'Rizal',
+  scores: const {'chemistry': null, 'biology': null, 'physics': null},
+  completedLessonIds: const [],
+  completedLabExperimentIds: const [],
+  completedQuizIds: const [],
+  unlockedLessonIds: const [],
+  unlockedQuizIds: const [],
+  quizAttempts: const [],
+);
 
 /// Drives the real student-side Learn view model and returns just the
 /// lesson-unlock map for [subject], keyed by lesson id — the exact
@@ -123,33 +123,36 @@ void main() {
       },
     );
 
-    test(
-      'a full-subject code (no lessonIds) is redeemable by any student, '
-      'untargeted',
-      () async {
-        final firestore = FakeFirebaseFirestore();
-        final studentRepo = StudentRepository(firestore: firestore);
-        final quizAttemptService = QuizAttemptService(firestore: firestore);
-        final issuance = AccessCodeIssuanceService(
-          firestore: firestore,
-          quizAttemptService: quizAttemptService,
-        );
-        final accessCodeService = AccessCodeService(
-          firestore: firestore,
-          quizAttemptService: quizAttemptService,
-        );
-        await studentRepo.saveStudent(_blankStudent('AAA111'));
-        await studentRepo.saveStudent(_blankStudent('BBB222'));
+    test('a full-subject code (no lessonIds) is redeemable by any student, '
+        'untargeted', () async {
+      final firestore = FakeFirebaseFirestore();
+      final studentRepo = StudentRepository(firestore: firestore);
+      final quizAttemptService = QuizAttemptService(firestore: firestore);
+      final issuance = AccessCodeIssuanceService(
+        firestore: firestore,
+        quizAttemptService: quizAttemptService,
+      );
+      final accessCodeService = AccessCodeService(
+        firestore: firestore,
+        quizAttemptService: quizAttemptService,
+      );
+      await studentRepo.saveStudent(_blankStudent('AAA111'));
+      await studentRepo.saveStudent(_blankStudent('BBB222'));
 
-        final code = await issuance.issueSubjectCode(subjects: ['biology']);
+      final code = await issuance.issueSubjectCode(subjects: ['biology']);
 
-        final first = await accessCodeService.redeem(studentId: 'AAA111', rawCode: code);
-        final second = await accessCodeService.redeem(studentId: 'BBB222', rawCode: code);
+      final first = await accessCodeService.redeem(
+        studentId: 'AAA111',
+        rawCode: code,
+      );
+      final second = await accessCodeService.redeem(
+        studentId: 'BBB222',
+        rawCode: code,
+      );
 
-        expect(first.success, true);
-        expect(second.success, true);
-      },
-    );
+      expect(first.success, true);
+      expect(second.success, true);
+    });
   });
 
   group('Type 2 — lesson-specific code, targeted to one student', () {
@@ -185,7 +188,10 @@ void main() {
           targetType: AccessCodeTarget.lesson,
         );
         expect(otherResult.success, false);
-        expect(otherResult.message, contains('assigned to a different student'));
+        expect(
+          otherResult.message,
+          contains('assigned to a different student'),
+        );
         final otherMap = await _unlockMapFor(
           'OTHER0002',
           SubjectKey.chemistry,
@@ -216,78 +222,79 @@ void main() {
   });
 
   group('Type 3 — quiz-retake code, requires a prior post-test attempt', () {
-    test(
-      'issuing a retake code before any attempt exists is refused; after a '
-      'real first post-test attempt is recorded, the code round-trips '
-      'through redeem() and is one-time-use',
-      () async {
-        final firestore = FakeFirebaseFirestore();
-        final studentRepo = StudentRepository(firestore: firestore);
-        final quizAttemptService = QuizAttemptService(firestore: firestore);
-        final issuance = AccessCodeIssuanceService(
-          firestore: firestore,
-          quizAttemptService: quizAttemptService,
-        );
-        final accessCodeService = AccessCodeService(
-          firestore: firestore,
-          quizAttemptService: quizAttemptService,
-        );
-        await studentRepo.saveStudent(_blankStudent('222222'));
-        final postQuizId = builtinQuizId('q1w4', QuizPhase.post);
+    test('issuing a retake code before any attempt exists is refused; after a '
+        'real first post-test attempt is recorded, the code round-trips '
+        'through redeem() and is one-time-use', () async {
+      final firestore = FakeFirebaseFirestore();
+      final studentRepo = StudentRepository(firestore: firestore);
+      final quizAttemptService = QuizAttemptService(firestore: firestore);
+      final issuance = AccessCodeIssuanceService(
+        firestore: firestore,
+        quizAttemptService: quizAttemptService,
+      );
+      final accessCodeService = AccessCodeService(
+        firestore: firestore,
+        quizAttemptService: quizAttemptService,
+      );
+      await studentRepo.saveStudent(_blankStudent('222222'));
+      final postQuizId = builtinQuizId('q1w4', QuizPhase.post);
 
-        // Part 9.1's hard precondition: no attempt yet -> refused.
-        await expectLater(
-          () => issuance.issueQuizRetakeCode(lessonId: 'q1w4', studentId: '222222'),
-          throwsStateError,
-        );
+      // Part 9.1's hard precondition: no attempt yet -> refused.
+      await expectLater(
+        () =>
+            issuance.issueQuizRetakeCode(lessonId: 'q1w4', studentId: '222222'),
+        throwsStateError,
+      );
 
-        // The student's real first post-test attempt, via the same
-        // QuizAttemptService the quiz-player screen actually calls.
-        await quizAttemptService.recordAttempt(
+      // The student's real first post-test attempt, via the same
+      // QuizAttemptService the quiz-player screen actually calls.
+      await quizAttemptService.recordAttempt(
+        studentId: '222222',
+        subject: SubjectKey.chemistry,
+        attempt: QuizAttempt(
+          id: 'attempt-first',
+          quizId: postQuizId,
           studentId: '222222',
-          subject: SubjectKey.chemistry,
-          attempt: QuizAttempt(
-            id: 'attempt-first',
-            quizId: postQuizId,
-            studentId: '222222',
-            attemptNumber: 1,
-            score: 40,
-            totalQuestions: 5,
-            correctAnswers: 2,
-            answers: const [0, 1, 0, 1, 0],
-            timestamp: DateTime(2026, 8, 20).toIso8601String(),
-            locked: true,
-          ),
-        );
+          attemptNumber: 1,
+          score: 40,
+          totalQuestions: 5,
+          correctAnswers: 2,
+          answers: const [0, 1, 0, 1, 0],
+          timestamp: DateTime(2026, 8, 20).toIso8601String(),
+          locked: true,
+        ),
+      );
 
-        // Now the teacher can issue a retake code.
-        final code = await issuance.issueQuizRetakeCode(
-          lessonId: 'q1w4',
-          studentId: '222222',
-        );
+      // Now the teacher can issue a retake code.
+      final code = await issuance.issueQuizRetakeCode(
+        lessonId: 'q1w4',
+        studentId: '222222',
+      );
 
-        final firstRedeem = await accessCodeService.redeem(
-          studentId: '222222',
-          rawCode: code,
-          targetId: 'q1w4',
-          targetType: AccessCodeTarget.quiz,
-        );
-        expect(firstRedeem.success, true);
-        expect(firstRedeem.message, 'Test unlocked for retake!');
+      final firstRedeem = await accessCodeService.redeem(
+        studentId: '222222',
+        rawCode: code,
+        targetId: 'q1w4',
+        targetType: AccessCodeTarget.quiz,
+      );
+      expect(firstRedeem.success, true);
+      expect(firstRedeem.message, 'Test unlocked for retake!');
 
-        final eligibility = await quizAttemptService.checkEligibility('222222', postQuizId);
-        expect(eligibility.canTake, true);
+      final eligibility = await quizAttemptService.checkEligibility(
+        '222222',
+        postQuizId,
+      );
+      expect(eligibility.canTake, true);
 
-        // One-time-use: a second redemption of the same code fails.
-        final secondRedeem = await accessCodeService.redeem(
-          studentId: '222222',
-          rawCode: code,
-          targetId: 'q1w4',
-          targetType: AccessCodeTarget.quiz,
-        );
-        expect(secondRedeem.success, false);
-      },
-    );
+      // One-time-use: a second redemption of the same code fails.
+      final secondRedeem = await accessCodeService.redeem(
+        studentId: '222222',
+        rawCode: code,
+        targetId: 'q1w4',
+        targetType: AccessCodeTarget.quiz,
+      );
+      expect(secondRedeem.success, false);
+    });
   });
 
   group('Part 9.2 — validation order', () {
@@ -330,7 +337,10 @@ void main() {
         // Same literal code string written into BOTH stores directly, to
         // force the two-store collision the validation order exists to
         // resolve deterministically.
-        await firestore.collection('quizUnlockCodes').doc('retake-doc').set(
+        await firestore
+            .collection('quizUnlockCodes')
+            .doc('retake-doc')
+            .set(
               QuizUnlockCode(
                 id: 'retake-doc',
                 quizId: postQuizId,
@@ -362,33 +372,46 @@ void main() {
         // retake message proves step 1 matched first.
         expect(result.message, 'Test unlocked for retake!');
 
-        final eligibility = await quizAttemptService.checkEligibility('333333', postQuizId);
-        expect(eligibility.canTake, true, reason: 'unlockRetake must have actually run');
+        final eligibility = await quizAttemptService.checkEligibility(
+          '333333',
+          postQuizId,
+        );
+        expect(
+          eligibility.canTake,
+          true,
+          reason: 'unlockRetake must have actually run',
+        );
       },
     );
   });
 
   group('Part 9.3 — error messaging echoes the exact code typed', () {
-    test('an unknown code is rejected with a message that echoes it verbatim', () async {
-      final firestore = FakeFirebaseFirestore();
-      final studentRepo = StudentRepository(firestore: firestore);
-      final quizAttemptService = QuizAttemptService(firestore: firestore);
-      final accessCodeService = AccessCodeService(
-        firestore: firestore,
-        quizAttemptService: quizAttemptService,
-      );
-      await studentRepo.saveStudent(_blankStudent('444444'));
+    test(
+      'an unknown code is rejected with a message that echoes it verbatim',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final studentRepo = StudentRepository(firestore: firestore);
+        final quizAttemptService = QuizAttemptService(firestore: firestore);
+        final accessCodeService = AccessCodeService(
+          firestore: firestore,
+          quizAttemptService: quizAttemptService,
+        );
+        await studentRepo.saveStudent(_blankStudent('444444'));
 
-      final result = await accessCodeService.redeem(
-        studentId: '444444',
-        rawCode: 'xyz123',
-      );
+        final result = await accessCodeService.redeem(
+          studentId: '444444',
+          rawCode: 'xyz123',
+        );
 
-      expect(result.success, false);
-      // Echoed back upper-cased/trimmed, exactly as the service normalizes
-      // and displays it — not a generic "invalid code" message.
-      expect(result.message, 'Code "XYZ123" isn\'t valid. Check with your teacher.');
-    });
+        expect(result.success, false);
+        // Echoed back upper-cased/trimmed, exactly as the service normalizes
+        // and displays it — not a generic "invalid code" message.
+        expect(
+          result.message,
+          'Code "XYZ123" isn\'t valid. Check with your teacher.',
+        );
+      },
+    );
 
     test(
       'a code assigned to a different student still echoes the exact code typed',

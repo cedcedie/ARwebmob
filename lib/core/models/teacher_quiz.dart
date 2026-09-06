@@ -22,7 +22,11 @@ class TeacherQuiz with _$TeacherQuiz {
     String? topicId,
     required List<TeacherQuizQuestion> questions,
     required String createdAt,
-    @JsonKey(fromJson: _phaseFromJson, toJson: _phaseToJson, includeIfNull: false)
+    @JsonKey(
+      fromJson: _phaseFromJson,
+      toJson: _phaseToJson,
+      includeIfNull: false,
+    )
     @Default(QuizPhase.post)
     QuizPhase phase,
   }) = _TeacherQuiz;

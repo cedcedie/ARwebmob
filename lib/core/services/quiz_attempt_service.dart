@@ -26,19 +26,28 @@ typedef QuizEligibility = ({
 ///   `locked` flag back to false (see `unlockRetake`, called by
 ///   `AccessCodeService` when a valid retake code is redeemed).
 class QuizAttemptService {
-  QuizAttemptService({required FirebaseFirestore firestore}) : _firestore = firestore;
+  QuizAttemptService({required FirebaseFirestore firestore})
+    : _firestore = firestore;
 
   final FirebaseFirestore _firestore;
 
   DocumentReference<Map<String, dynamic>> _studentDoc(String studentId) =>
       _firestore.collection('students').doc(studentId);
 
-  Future<QuizEligibility> checkEligibility(String studentId, String quizId) async {
+  Future<QuizEligibility> checkEligibility(
+    String studentId,
+    String quizId,
+  ) async {
     final parsed = parseBuiltinId(quizId);
 
     if (parsed.phase == QuizPhase.pre) {
       final count = await _attemptsFor(studentId, quizId);
-      return (canTake: true, isLocked: false, reason: null, attemptCount: count.length);
+      return (
+        canTake: true,
+        isLocked: false,
+        reason: null,
+        attemptCount: count.length,
+      );
     }
 
     final attempts = await _attemptsFor(studentId, quizId);
@@ -51,20 +60,33 @@ class QuizAttemptService {
       return (
         canTake: false,
         isLocked: true,
-        reason: 'Test locked after your last attempt. Ask your teacher for a retake code.',
+        reason:
+            'Test locked after your last attempt. Ask your teacher for a retake code.',
         attemptCount: attempts.length,
       );
     }
-    return (canTake: true, isLocked: false, reason: null, attemptCount: attempts.length);
+    return (
+      canTake: true,
+      isLocked: false,
+      reason: null,
+      attemptCount: attempts.length,
+    );
   }
 
-  Future<List<QuizAttempt>> _attemptsFor(String studentId, String quizId) async {
+  Future<List<QuizAttempt>> _attemptsFor(
+    String studentId,
+    String quizId,
+  ) async {
     final snapshot = await _studentDoc(studentId).get();
     final data = snapshot.data();
     if (data == null) return const [];
     final student = StudentRecord.fromJson(data);
-    final attempts = student.quizAttempts.where((a) => a.quizId == quizId).toList()
-      ..sort((a, b) => DateTime.parse(b.timestamp).compareTo(DateTime.parse(a.timestamp)));
+    final attempts =
+        student.quizAttempts.where((a) => a.quizId == quizId).toList()..sort(
+          (a, b) => DateTime.parse(
+            b.timestamp,
+          ).compareTo(DateTime.parse(a.timestamp)),
+        );
     return attempts;
   }
 
@@ -79,7 +101,9 @@ class QuizAttemptService {
     final snapshot = await _studentDoc(studentId).get();
     final data = snapshot.data();
     if (data == null) {
-      throw StateError('Cannot record a quiz attempt for unknown student $studentId');
+      throw StateError(
+        'Cannot record a quiz attempt for unknown student $studentId',
+      );
     }
     final student = StudentRecord.fromJson(data);
 
@@ -94,7 +118,8 @@ class QuizAttemptService {
       scores: isPreTest
           ? student.scores
           : {...student.scores, subject.firestoreValue: attempt.score},
-      completedLessonIds: (!isPreTest && parsed.isBuiltin && parsed.lessonId != null)
+      completedLessonIds:
+          (!isPreTest && parsed.isBuiltin && parsed.lessonId != null)
           ? {...student.completedLessonIds, parsed.lessonId!}.toList()
           : student.completedLessonIds,
     );
@@ -119,8 +144,12 @@ class QuizAttemptService {
     if (data == null) return;
     final student = StudentRecord.fromJson(data);
 
-    final attempts = student.quizAttempts.where((a) => a.quizId == quizId).toList()
-      ..sort((a, b) => DateTime.parse(b.timestamp).compareTo(DateTime.parse(a.timestamp)));
+    final attempts =
+        student.quizAttempts.where((a) => a.quizId == quizId).toList()..sort(
+          (a, b) => DateTime.parse(
+            b.timestamp,
+          ).compareTo(DateTime.parse(a.timestamp)),
+        );
     if (attempts.isEmpty || !attempts.first.locked) return;
 
     final latestId = attempts.first.id;
@@ -128,8 +157,8 @@ class QuizAttemptService {
         .map((a) => a.id == latestId ? a.copyWith(locked: false) : a)
         .toList();
 
-    await _studentDoc(studentId).set(
-      student.copyWith(quizAttempts: updatedAttempts).toJson(),
-    );
+    await _studentDoc(
+      studentId,
+    ).set(student.copyWith(quizAttempts: updatedAttempts).toJson());
   }
 }

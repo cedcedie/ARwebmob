@@ -71,7 +71,10 @@ void main() {
       postTestEligible: false,
       postTestReason: 'Complete the lesson first.',
       studentId: '111111',
-      accessCodeService: AccessCodeService(firestore: firestore, quizAttemptService: quizAttemptService),
+      accessCodeService: AccessCodeService(
+        firestore: firestore,
+        quizAttemptService: quizAttemptService,
+      ),
       onMarkAsRead: () async {},
       onStartPreTest: () {},
       onStartPostTest: () {},
@@ -80,7 +83,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          arLabViewModelProvider('q1w1').overrideWith((ref) => Stream.value(vm)),
+          arLabViewModelProvider(
+            'q1w1',
+          ).overrideWith((ref) => Stream.value(vm)),
         ],
         child: const MaterialApp(home: ArLabScreen(lessonId: 'q1w1')),
       ),
@@ -92,7 +97,9 @@ void main() {
     expect(find.text('Review'), findsOneWidget);
   });
 
-  testWidgets('stops voice narration when the screen is disposed', (tester) async {
+  testWidgets('stops voice narration when the screen is disposed', (
+    tester,
+  ) async {
     final firestore = FakeFirebaseFirestore();
     final quizAttemptService = QuizAttemptService(firestore: firestore);
     final vm = ArLabViewModel(
@@ -107,7 +114,10 @@ void main() {
       postTestEligible: false,
       postTestReason: 'Complete the lesson first.',
       studentId: '111111',
-      accessCodeService: AccessCodeService(firestore: firestore, quizAttemptService: quizAttemptService),
+      accessCodeService: AccessCodeService(
+        firestore: firestore,
+        quizAttemptService: quizAttemptService,
+      ),
       onMarkAsRead: () async {},
       onStartPreTest: () {},
       onStartPostTest: () {},
@@ -119,10 +129,15 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          arLabViewModelProvider('q1w1').overrideWith((ref) => Stream.value(vm)),
+          arLabViewModelProvider(
+            'q1w1',
+          ).overrideWith((ref) => Stream.value(vm)),
         ],
         child: MaterialApp(
-          home: ArLabScreen(lessonId: 'q1w1', voiceOverController: voiceOverController),
+          home: ArLabScreen(
+            lessonId: 'q1w1',
+            voiceOverController: voiceOverController,
+          ),
         ),
       ),
     );

@@ -34,7 +34,8 @@ String normalizeStudentIdInput(String input) {
 /// constructor parameter (rather than reading `FirebaseAuth.instance`
 /// directly) so callers — including tests — can inject a fake.
 class AuthService {
-  AuthService({required FirebaseAuth firebaseAuth}) : _firebaseAuth = firebaseAuth;
+  AuthService({required FirebaseAuth firebaseAuth})
+    : _firebaseAuth = firebaseAuth;
 
   final FirebaseAuth _firebaseAuth;
 
@@ -65,6 +66,24 @@ class AuthService {
     final credential = await _firebaseAuth.signInWithEmailAndPassword(
       email: email,
       password: password,
+    );
+    return credential.user;
+  }
+
+  /// Teacher sign-in via Google, directly through Firebase Auth's OAuth
+  /// popup flow — never via manually adding an account in the Firebase
+  /// console (client was explicit that the old flow was wrong).
+  Future<User?> signInTeacherWithGoogle() async {
+    final credential = await _firebaseAuth.signInWithPopup(
+      GoogleAuthProvider(),
+    );
+    return credential.user;
+  }
+
+  /// Teacher sign-in via Microsoft, same OAuth popup flow as Google.
+  Future<User?> signInTeacherWithMicrosoft() async {
+    final credential = await _firebaseAuth.signInWithPopup(
+      OAuthProvider('microsoft.com'),
     );
     return credential.user;
   }

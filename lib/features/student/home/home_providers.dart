@@ -60,12 +60,15 @@ Stream<HomeViewModel> buildHomeViewModel({
         lessonsCompletedCount: 0,
         quizzesTakenCount: 0,
         lastAttempts: const [],
-        onRedeemCode: (code) => accessCodeService.redeem(studentId: studentId, rawCode: code),
+        onRedeemCode: (code) =>
+            accessCodeService.redeem(studentId: studentId, rawCode: code),
       );
     }
     final quarterWeek = currentQuarterWeek(orderedLessons, student);
     return HomeViewModel(
-      studentDisplayName: student.name.isNotEmpty ? student.name.split(' ').first : studentId,
+      studentDisplayName: student.name.isNotEmpty
+          ? student.name.split(' ').first
+          : studentId,
       currentQuarter: quarterWeek?.quarter,
       currentWeek: quarterWeek?.week,
       percentComplete: percentComplete(student),
@@ -73,7 +76,8 @@ Stream<HomeViewModel> buildHomeViewModel({
       lessonsCompletedCount: student.completedLessonIds.length,
       quizzesTakenCount: student.quizAttempts.length,
       lastAttempts: lastNAttempts(student),
-      onRedeemCode: (code) => accessCodeService.redeem(studentId: studentId, rawCode: code),
+      onRedeemCode: (code) =>
+          accessCodeService.redeem(studentId: studentId, rawCode: code),
     );
   });
 }

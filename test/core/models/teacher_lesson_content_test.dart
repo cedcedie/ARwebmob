@@ -9,7 +9,10 @@ void main() {
       'id': 'teacher-1',
       'title': 'Volcanoes',
       'subject': 'chemistry',
-      'contentImageUrls': ['https://example.com/slide1.png', 'https://example.com/slide2.png'],
+      'contentImageUrls': [
+        'https://example.com/slide1.png',
+        'https://example.com/slide2.png',
+      ],
       'contentStatus': 'ready',
     };
 
@@ -22,7 +25,9 @@ void main() {
 
   test('both fields default to null when absent', () {
     final lesson = TeacherLesson.fromJson(const {
-      'id': 'teacher-2', 'title': 'No content yet', 'subject': 'biology',
+      'id': 'teacher-2',
+      'title': 'No content yet',
+      'subject': 'biology',
     });
 
     expect(lesson.contentImageUrls, isNull);

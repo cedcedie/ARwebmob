@@ -40,7 +40,8 @@ List<QuestionItemAnalysis> computeItemAnalysis({
     ];
   }
 
-  final sortedByScore = [...attempts]..sort((a, b) => b.score.compareTo(a.score));
+  final sortedByScore = [...attempts]
+    ..sort((a, b) => b.score.compareTo(a.score));
   final groupSize = (total * 0.27).ceil().clamp(1, total);
   final topGroup = sortedByScore.take(groupSize).toList();
   final bottomGroup = sortedByScore.reversed.take(groupSize).toList();
@@ -60,7 +61,8 @@ QuestionItemAnalysis _analyzeQuestion(
   int total,
 ) {
   bool answeredCorrectly(QuizAttempt a) =>
-      questionIndex < a.answers.length && a.answers[questionIndex] == question.correctIndex;
+      questionIndex < a.answers.length &&
+      a.answers[questionIndex] == question.correctIndex;
 
   final correctCount = attempts.where(answeredCorrectly).length;
   final difficultyIndex = correctCount / total;
@@ -78,11 +80,13 @@ QuestionItemAnalysis _analyzeQuestion(
     if (questionIndex >= attempt.answers.length) continue;
     final chosen = attempt.answers[questionIndex];
     if (chosen == question.correctIndex) continue;
-    if (chosen < 0 || chosen >= question.options.length) continue; // unanswered (-1) or invalid
+    if (chosen < 0 || chosen >= question.options.length)
+      continue; // unanswered (-1) or invalid
     distractorCounts[chosen] = (distractorCounts[chosen] ?? 0) + 1;
   }
   final distractorRates = {
-    for (final entry in distractorCounts.entries) entry.key: entry.value / total,
+    for (final entry in distractorCounts.entries)
+      entry.key: entry.value / total,
   };
 
   return QuestionItemAnalysis(

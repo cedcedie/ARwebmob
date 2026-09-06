@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/models/quiz_phase.dart';
 import '../../../core/models/subject_key.dart';
 import '../../../core/models/teacher_quiz.dart';
@@ -35,7 +36,10 @@ Color _subjectAccent(BuildContext context, SubjectKey subject) {
     SubjectKey.biology => 'biology',
     SubjectKey.physics => 'physics',
   };
-  return custom[key] as Color;
+  // Fall back to the static palette when the active ShadThemeData carries
+  // no `custom` map (a bare `ShadApp` with no theme, as in widget tests) —
+  // a missing accent must never crash a whole screen.
+  return custom[key] ?? subjectColor(subject);
 }
 
 class QuizzesScreen extends ConsumerWidget {
@@ -93,16 +97,15 @@ class _QuizzesSkeleton extends StatelessWidget {
     required double height,
   }) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: ColoredBox(color: scheme.muted),
-      ),
-    ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(
-      duration: 700.ms,
-      begin: 0.5,
-    );
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: ColoredBox(color: scheme.muted),
+          ),
+        )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .fadeIn(duration: 700.ms, begin: 0.5);
   }
 }
 
@@ -285,8 +288,7 @@ class _QuizzesBody extends StatelessWidget {
                 : (isCompact
                       ? _QuizzesCardList(
                           rows: rows,
-                          onEdit: (quiz) =>
-                              _openForm(context, initial: quiz),
+                          onEdit: (quiz) => _openForm(context, initial: quiz),
                           onDelete: (id) => _confirmDelete(context, id),
                         )
                       : ShadCard(
@@ -390,11 +392,10 @@ class _QuizzesBody extends StatelessWidget {
                                                 icon: const Icon(
                                                   LucideIcons.trash2,
                                                 ),
-                                                onPressed: () =>
-                                                    _confirmDelete(
-                                                      context,
-                                                      quiz.id,
-                                                    ),
+                                                onPressed: () => _confirmDelete(
+                                                  context,
+                                                  quiz.id,
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -543,9 +544,9 @@ class _QuizCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             quiz.title,
-                            style: ShadTheme.of(context).textTheme.p.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: ShadTheme.of(
+                              context,
+                            ).textTheme.p.copyWith(fontWeight: FontWeight.w600),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),

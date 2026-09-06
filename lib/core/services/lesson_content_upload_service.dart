@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:firebase_storage/firebase_storage.dart';
@@ -9,17 +10,37 @@ abstract class StorageUploader {
   Future<String> upload(String path, Uint8List bytes);
 }
 
+/// How long an upload is allowed to sit with no completion before we give up
+/// on it. The Storage SDK retries a stalled/flaky `putData` transfer on its
+/// own, silently, with no surfaced error and no bound on how long it keeps
+/// trying — from the teacher's side that reads as "picks the file, then
+/// hangs on 'Uploading...' forever." Capping it here turns that into a clear,
+/// retryable failure instead.
+const _uploadTimeout = Duration(seconds: 60);
+
 /// Real, production `StorageUploader` backed by `firebase_storage`.
 class FirebaseStorageUploader implements StorageUploader {
   FirebaseStorageUploader({FirebaseStorage? storage})
-      : _storage = storage ?? FirebaseStorage.instance;
+    : _storage = storage ?? FirebaseStorage.instance;
 
   final FirebaseStorage _storage;
 
   @override
   Future<String> upload(String path, Uint8List bytes) async {
     final ref = _storage.ref(path);
-    await ref.putData(bytes);
+    final task = ref.putData(bytes);
+    try {
+      await task.timeout(_uploadTimeout);
+    } on TimeoutException {
+      // Best-effort cancel of the still-running transfer — its result no
+      // longer matters here, but leaving it uncancelled would keep retrying
+      // in the background for a file the caller has already been told
+      // failed.
+      unawaited(task.cancel());
+      throw StateError(
+        "Upload timed out — check your connection and try again.",
+      );
+    }
     return ref.getDownloadURL();
   }
 }
@@ -29,7 +50,8 @@ class FirebaseStorageUploader implements StorageUploader {
 /// conversion itself is NOT this class's job — that's the Cloud Function
 /// (Task 8), triggered automatically once this upload lands in Storage.
 class LessonContentUploadService {
-  LessonContentUploadService({required StorageUploader uploader}) : _uploader = uploader;
+  LessonContentUploadService({required StorageUploader uploader})
+    : _uploader = uploader;
 
   final StorageUploader _uploader;
 

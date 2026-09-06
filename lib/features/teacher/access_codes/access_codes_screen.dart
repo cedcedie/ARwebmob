@@ -268,7 +268,10 @@ class _AccessCodesBody extends HookWidget {
                 ),
               )
             else if (isCompact)
-              _IssuedCodesList(rows: viewModel.issuedCodes)
+              _IssuedCodesList(
+                rows: viewModel.issuedCodes,
+                onDelete: viewModel.onDeleteCode,
+              )
             else
               Card(
                 clipBehavior: Clip.antiAlias,
@@ -284,6 +287,7 @@ class _AccessCodesBody extends HookWidget {
                       DataColumn2(label: Text('Target'), size: ColumnSize.S),
                       DataColumn2(label: Text('Status'), size: ColumnSize.S),
                       DataColumn2(label: Text('Issued At'), size: ColumnSize.M),
+                      DataColumn2(label: Text(''), size: ColumnSize.S),
                     ],
                     rows: viewModel.issuedCodes.map((row) {
                       return DataRow(
@@ -304,6 +308,12 @@ class _AccessCodesBody extends HookWidget {
                           DataCell(Text(row.target)),
                           DataCell(_StatusBadge(status: row.status)),
                           DataCell(Text(row.issuedAt)),
+                          DataCell(
+                            _DeleteCodeButton(
+                              row: row,
+                              onDelete: viewModel.onDeleteCode,
+                            ),
+                          ),
                         ],
                       );
                     }).toList(),
@@ -322,9 +332,10 @@ class _AccessCodesBody extends HookWidget {
 /// columns don't get squeezed illegibly (or force horizontal scrolling)
 /// below the 720px breakpoint.
 class _IssuedCodesList extends StatelessWidget {
-  const _IssuedCodesList({required this.rows});
+  const _IssuedCodesList({required this.rows, required this.onDelete});
 
   final List<IssuedCodeRow> rows;
+  final Future<void> Function(IssuedCodeRow row) onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -376,6 +387,10 @@ class _IssuedCodesList extends StatelessWidget {
                     ],
                   ),
                 ),
+                // Same delete affordance as the wide table — a code the
+                // teacher can remove on a desktop must be removable on a
+                // narrow screen too.
+                _DeleteCodeButton(row: row, onDelete: onDelete),
               ],
             ),
           );
@@ -749,14 +764,25 @@ class _RetakeCodeForm extends HookWidget {
       }
       isChecking.value = true;
       var cancelled = false;
-      viewModel.checkRetakeEligible(studentId: sid, lessonId: lid).then((
-        eligible,
-      ) {
-        if (!cancelled) {
-          isEligible.value = eligible;
-          isChecking.value = false;
-        }
-      });
+      viewModel
+          .checkRetakeEligible(studentId: sid, lessonId: lid)
+          .then((eligible) {
+            if (!cancelled) {
+              isEligible.value = eligible;
+              isChecking.value = false;
+            }
+          })
+          // Without this, a failed eligibility read (offline blip, or a
+          // student doc that doesn't exist) left `isChecking` true forever:
+          // the panel showed "Checking post-test eligibility..." with no
+          // error, and "Issue retake code" stayed permanently disabled with
+          // no way to retry short of reloading the page.
+          .catchError((Object _) {
+            if (!cancelled) {
+              isEligible.value = null;
+              isChecking.value = false;
+            }
+          });
       return () {
         cancelled = true;
       };
@@ -843,6 +869,73 @@ class _RetakeCodeForm extends HookWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Deletes one issued code, after an explicit confirmation.
+///
+/// Deletion is permanent and separate from archiving: archiving invalidates a
+/// code while keeping the record of it, whereas this removes the row outright
+/// — which is what a teacher wants for a typo, a test code, or a batch issued
+/// to the wrong section, none of which should sit in the table forever.
+class _DeleteCodeButton extends StatelessWidget {
+  const _DeleteCodeButton({required this.row, required this.onDelete});
+
+  final IssuedCodeRow row;
+  final Future<void> Function(IssuedCodeRow row) onDelete;
+
+  Future<void> _confirmAndDelete(BuildContext context) async {
+    final confirmed = await showShadDialog<bool>(
+      context: context,
+      builder: (dialogContext) => ShadDialog.alert(
+        title: const Text('Delete this code?'),
+        description: Text(
+          'Code ${row.code} will be removed permanently. If a student has '
+          'already been given it, it will stop working. This cannot be '
+          'undone.',
+        ),
+        actions: [
+          ShadButton.outline(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ShadButton.destructive(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete code'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final messenger = ShadToaster.of(context);
+    try {
+      await onDelete(row);
+    } catch (error) {
+      messenger.show(
+        ShadToast.destructive(
+          description: Text(
+            humanizeSubmitError(error, actionLabel: 'delete this code'),
+          ),
+        ),
+      );
+      return;
+    }
+    messenger.show(ShadToast(description: Text('Code ${row.code} deleted')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: 'Delete code',
+      iconSize: 18,
+      visualDensity: VisualDensity.compact,
+      icon: Icon(
+        LucideIcons.trash2,
+        color: ShadTheme.of(context).colorScheme.destructive,
+      ),
+      onPressed: () => _confirmAndDelete(context),
     );
   }
 }

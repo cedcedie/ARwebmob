@@ -8,14 +8,87 @@ service cloud.firestore {
       return isSignedIn() &&
         request.auth.token.email.matches('^[0-9]+@arscience[.]school$');
     }
+
+    // The account that owns this system. Hard-coded on purpose:
+    // it is the bootstrap teacher, so there is always at least one account
+    // that can sign in and populate /teachers, and so a mistake in that
+    // collection can never lock every teacher out of the portal.
+    function isBootstrapTeacher() {
+      return isSignedIn() &&
+        request.auth.token.email == 'nadinevictoria17@gmail.com';
+    }
+
+    // A teacher is an ALLOWLISTED non-student account -- not merely "any
+    // signed-in account that doesn't look like a student".
+    //
+    // The earlier definition was `isSignedIn() && !isStudent()`, which was a
+    // hole big enough to drive a truck through: the Firebase web API key is
+    // public (it ships inside the JS bundle, as it is designed to), and
+    // Email/Password sign-up has to be enabled for student accounts to
+    // exist at all. Together those meant anyone on the internet could
+    // register any address that isn't `<digits>@arscience.school` and
+    // instantly hold full read/write over every student's name, section,
+    // scores and attempts -- plus the power to delete lessons and quizzes
+    // and to reset everyone's progress. Signing in with an arbitrary Google
+    // or Microsoft account did the same thing.
+    //
+    // Membership now has to be granted explicitly by an existing teacher.
     function isTeacher() {
-      return isSignedIn() && !isStudent();
+      return isSignedIn() && !isStudent() &&
+        (isBootstrapTeacher() ||
+         exists(/databases/$(database)/documents/teachers/$(request.auth.token.email)));
+    }
+
+    function isOwnStudentDoc(studentId) {
+      return isStudent() &&
+        request.auth.token.email == studentId + '@arscience.school';
+    }
+
+    // The teacher allowlist. Documents are keyed by the teacher's email
+    // address, so the rule above can check membership with a single
+    // exists() and no query.
+    //
+    // `get` is open to any signed-in account on purpose: the portal has to
+    // be able to ask "am I a teacher?" about *itself* before it knows the
+    // answer, and a signed-in account can only ever learn whether an
+    // address it already typed is on the list. Enumerating the list, and
+    // changing it, are teacher-only.
+    match /teachers/{email} {
+      allow get: if isSignedIn();
+      allow list: if isTeacher();
+      allow create, update, delete: if isTeacher();
     }
 
     match /students/{studentId} {
-      allow read, write: if isTeacher() ||
-        (isStudent() &&
-         request.auth.token.email == studentId + '@arscience.school');
+      allow read: if isTeacher() || isOwnStudentDoc(studentId);
+
+      // Roster rows are created and removed by teachers only. A student
+      // creating their own document could invent a student that the teacher
+      // never added.
+      allow create, delete: if isTeacher();
+
+      // A student may only write their own *activity*. Previously they had
+      // blanket write access to their own document, which let them (through
+      // the raw API, not the app) rename themselves, change their student
+      // ID, or un-archive an account a teacher had deliberately archived.
+      //
+      // Known, deliberate residual: because quizzes are scored on the
+      // client, `scores` and `quizAttempts` must remain student-writable,
+      // so a determined student can still submit a score they didn't earn.
+      // Closing that means moving scoring into a Cloud Function; it is a
+      // documented limitation, not an oversight.
+      allow update: if isTeacher() ||
+        (isOwnStudentDoc(studentId) &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly([
+             'scores',
+             'completedLessonIds',
+             'completedLabExperimentIds',
+             'completedQuizIds',
+             'unlockedLessonIds',
+             'unlockedQuizIds',
+             'quizAttempts'
+           ]));
 
       // quizAttempts is a SUBCOLLECTION nested under each student doc
       // (students/{studentId}/quizAttempts/{attemptId} -- see
@@ -27,9 +100,7 @@ service cloud.firestore {
       // path had no rule at all (defaults to deny), which silently broke
       // every quiz-completion write for students.
       match /quizAttempts/{attemptId} {
-        allow read, write: if isTeacher() ||
-          (isStudent() &&
-           request.auth.token.email == studentId + '@arscience.school');
+        allow read, write: if isTeacher() || isOwnStudentDoc(studentId);
       }
     }
     match /lessons/{lessonId} {
@@ -40,13 +111,71 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create, update, delete: if isTeacher();
     }
+    // Access codes. Three things matter here, all of them learned the hard
+    // way:
+    //
+    // 1. `update` must be allowed, not just create. Redemption is not a
+    //    read-only act: AccessCodeService._trackUsage and redeem() write
+    //    `isUsed`/`usedAt`/`usedByStudentIds` back onto the code, and the
+    //    teacher's "reset progress for all" archives every code via
+    //    AccessCodeIssuanceService.archiveAllCodes. Without update: a
+    //    redeemed code's status never leaves "unused" in the teacher's
+    //    table, single-use retake codes stay reusable forever, and the
+    //    reset flow wipes all student progress and *then* throws on the
+    //    archive step -- telling the teacher it failed after it already
+    //    destroyed the data.
+    //
+    // 2. A student may only touch the redemption bookkeeping fields. The
+    //    `affectedKeys().hasOnly(...)` guard is what stops a student from
+    //    un-archiving a code, retargeting it at themselves, or rewriting
+    //    which lessons it unlocks.
+    //
+    // 3. `get` vs `list`: a student redeems by typing one exact code, so
+    //    single-document `get` is all they need. Granting collection-wide
+    //    `list` (what plain `read` does) let any signed-in student
+    //    enumerate every valid access code in the school.
     match /unlockCodes/{code} {
-      allow read: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isTeacher();
       allow create: if isTeacher();
+      // Teachers can remove a code outright. Archiving invalidates a code
+      // while keeping the record; deleting is for codes that should never
+      // have existed (a typo, a test code, a batch issued to the wrong
+      // section) and would otherwise clutter the table permanently.
+      allow delete: if isTeacher();
+      // An archived code is invalidated; a student must not be able to keep
+      // writing bookkeeping onto it.
+      allow update: if isTeacher() ||
+        (isStudent() &&
+         resource.data.get('isArchived', false) == false &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['isUsed', 'usedAt', 'usedByStudentIds']));
     }
+    // Retake codes are looked up with a query rather than by document id
+    // (AccessCodeService._findQuizUnlockCode), so students need `list` here
+    // and it cannot be narrowed to `get`. What it CAN be narrowed to is the
+    // caller's own rows: rule conditions are evaluated per matched document,
+    // so a query that isn't already restricted to this student's codes
+    // simply fails. That is why _findQuizUnlockCode filters on `studentId`
+    // as well as `code`.
+    //
+    // Before this, `allow read: if isSignedIn()` let any student enumerate
+    // every retake code in the school, and the update rule let them mark
+    // any of those codes used -- i.e. burn other students' retakes.
     match /quizUnlockCodes/{docId} {
-      allow read: if isSignedIn();
+      allow read: if isTeacher() ||
+        (isStudent() &&
+         resource.data.studentId + '@arscience.school' ==
+           request.auth.token.email);
       allow create: if isTeacher();
+      allow delete: if isTeacher();
+      allow update: if isTeacher() ||
+        (isStudent() &&
+         resource.data.studentId + '@arscience.school' ==
+           request.auth.token.email &&
+         resource.data.get('isArchived', false) == false &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['isUsed', 'usedAt']));
     }
   }
 }

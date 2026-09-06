@@ -1,6 +1,8 @@
 import 'dart:io' show Platform;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
@@ -224,6 +226,7 @@ class LessonFormState extends State<LessonForm> {
                   widget.initial?.arPayload?.anchorHint ??
                   'Scan the lesson marker.',
               lessonSteps: steps.isEmpty ? const ['View the 3D model'] : steps,
+              markerImage: widget.initial?.arPayload?.markerImage,
             ),
       hasAR: modelIndexRaw != null || widget.initial?.hasAR == true,
       isArchived: widget.initial?.isArchived ?? false,
@@ -484,7 +487,14 @@ class _LessonModelPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTest = Platform.environment.containsKey('FLUTTER_TEST');
+    // `kIsWeb` MUST be checked first: `Platform.environment` compiles on
+    // Flutter web but throws `UnsupportedError: Platform._environment` the
+    // moment it's read, which took down this preview (and the whole
+    // Add/Edit Lesson dialog) for any lesson with a quarter/week or model
+    // index set — i.e. every built-in curriculum lesson — in the deployed
+    // teacher web portal. Short-circuiting keeps `Platform` off the web
+    // code path entirely while preserving the widget-test behaviour below.
+    final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
     if (isTest) {
       return DecoratedBox(
         decoration: BoxDecoration(

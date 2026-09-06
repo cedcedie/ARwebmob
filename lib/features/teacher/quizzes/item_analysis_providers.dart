@@ -23,13 +23,13 @@ class ItemAnalysisViewModel {
   final int attemptCount;
 }
 
-final itemAnalysisViewModelProvider =
-    StreamProvider.autoDispose.family<ItemAnalysisViewModel, String>((ref, quizId) {
-  throw UnimplementedError(
-    'itemAnalysisViewModelProvider must be overridden at app startup with a '
-    'real stream for the given quizId.',
-  );
-});
+final itemAnalysisViewModelProvider = StreamProvider.autoDispose
+    .family<ItemAnalysisViewModel, String>((ref, quizId) {
+      throw UnimplementedError(
+        'itemAnalysisViewModelProvider must be overridden at app startup with a '
+        'real stream for the given quizId.',
+      );
+    });
 
 Stream<ItemAnalysisViewModel> buildItemAnalysisViewModel({
   required String quizId,
@@ -51,13 +51,18 @@ Stream<ItemAnalysisViewModel> buildItemAnalysisViewModel({
   var attemptQuizId = quizId;
   if (parsed.isBuiltin && parsed.lessonId != null) {
     questions = parsed.phase == QuizPhase.pre
-        ? kPreTestQuestionsByLesson[parsed.lessonId!] ?? const <BuiltInQuestion>[]
-        : kPostTestQuestionsByLesson[parsed.lessonId!] ?? const <BuiltInQuestion>[];
+        ? kPreTestQuestionsByLesson[parsed.lessonId!] ??
+              const <BuiltInQuestion>[]
+        : kPostTestQuestionsByLesson[parsed.lessonId!] ??
+              const <BuiltInQuestion>[];
   } else {
     final teacherQuiz = await quizRepository.fetchQuizById(quizId);
     questions = teacherQuiz == null
         ? const <BuiltInQuestion>[]
-        : quizRepository.questionsFromTeacherQuiz(teacherQuiz, lessonId: quizId);
+        : quizRepository.questionsFromTeacherQuiz(
+            teacherQuiz,
+            lessonId: quizId,
+          );
 
     final teacherLessons = await lessonRepository.fetchTeacherLessons();
     for (final lesson in teacherLessons) {
@@ -68,7 +73,9 @@ Stream<ItemAnalysisViewModel> buildItemAnalysisViewModel({
     }
   }
 
-  yield* studentRepository.watchAllStudents(includeArchived: true).map((students) {
+  yield* studentRepository.watchAllStudents(includeArchived: true).map((
+    students,
+  ) {
     final attempts = [
       for (final student in students)
         for (final attempt in student.quizAttempts)

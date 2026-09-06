@@ -16,46 +16,80 @@ import 'package:ar_science_explorer/core/services/student_repository.dart';
 import 'package:ar_science_explorer/features/teacher/quizzes/item_analysis_providers.dart';
 
 StudentRecord _studentWith(String id, QuizAttempt attempt) => StudentRecord(
-      id: id, name: 'Student $id', studentId: id, grade: '7', section: 'A',
-      scores: const {'chemistry': null, 'biology': null, 'physics': null},
-      completedLessonIds: const [], completedLabExperimentIds: const [],
-      completedQuizIds: const [], unlockedLessonIds: const [], unlockedQuizIds: const [],
-      quizAttempts: [attempt],
-    );
+  id: id,
+  name: 'Student $id',
+  studentId: id,
+  grade: '7',
+  section: 'A',
+  scores: const {'chemistry': null, 'biology': null, 'physics': null},
+  completedLessonIds: const [],
+  completedLabExperimentIds: const [],
+  completedQuizIds: const [],
+  unlockedLessonIds: const [],
+  unlockedQuizIds: const [],
+  quizAttempts: [attempt],
+);
 
 void main() {
-  test('resolves the built-in question bank and every attempt on this quiz', () async {
-    final firestore = FakeFirebaseFirestore();
-    final studentRepo = StudentRepository(firestore: firestore);
-    final quizId = builtinQuizId('q1w1', QuizPhase.post);
+  test(
+    'resolves the built-in question bank and every attempt on this quiz',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final studentRepo = StudentRepository(firestore: firestore);
+      final quizId = builtinQuizId('q1w1', QuizPhase.post);
 
-    await studentRepo.saveStudent(_studentWith('111111', QuizAttempt(
-      id: 'a1', quizId: quizId, studentId: '111111', attemptNumber: 1,
-      score: 100, totalQuestions: 8, correctAnswers: 8,
-      answers: const [0, 0, 0, 0, 0, 0, 0, 0],
-      timestamp: DateTime(2026, 8, 20).toIso8601String(), locked: true,
-    )));
-    await studentRepo.saveStudent(_studentWith('222222', QuizAttempt(
-      id: 'a2', quizId: quizId, studentId: '222222', attemptNumber: 1,
-      score: 0, totalQuestions: 8, correctAnswers: 0,
-      answers: const [1, 1, 1, 1, 1, 1, 1, 1],
-      timestamp: DateTime(2026, 8, 20).toIso8601String(), locked: true,
-    )));
+      await studentRepo.saveStudent(
+        _studentWith(
+          '111111',
+          QuizAttempt(
+            id: 'a1',
+            quizId: quizId,
+            studentId: '111111',
+            attemptNumber: 1,
+            score: 100,
+            totalQuestions: 10,
+            correctAnswers: 10,
+            answers: const [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            timestamp: DateTime(2026, 8, 20).toIso8601String(),
+            locked: true,
+          ),
+        ),
+      );
+      await studentRepo.saveStudent(
+        _studentWith(
+          '222222',
+          QuizAttempt(
+            id: 'a2',
+            quizId: quizId,
+            studentId: '222222',
+            attemptNumber: 1,
+            score: 0,
+            totalQuestions: 10,
+            correctAnswers: 0,
+            answers: const [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            timestamp: DateTime(2026, 8, 20).toIso8601String(),
+            locked: true,
+          ),
+        ),
+      );
 
-    final stream = buildItemAnalysisViewModel(
-      quizId: quizId,
-      quizTitle: 'Q1W1 Post-Test',
-      studentRepository: studentRepo,
-      quizRepository: QuizRepository(firestore: firestore),
-      lessonRepository: LessonRepository(firestore: firestore),
-    );
-    final vm = await stream.first;
+      final stream = buildItemAnalysisViewModel(
+        quizId: quizId,
+        quizTitle: 'Q1W1 Post-Test',
+        studentRepository: studentRepo,
+        quizRepository: QuizRepository(firestore: firestore),
+        lessonRepository: LessonRepository(firestore: firestore),
+      );
+      final vm = await stream.first;
 
-    expect(vm.attemptCount, 2);
-    expect(vm.questions, hasLength(8));
-    expect(vm.results, hasLength(8));
-    expect(vm.results[0].difficultyIndex, closeTo(0.5, 0.0001));
-  });
+      expect(vm.attemptCount, 2);
+      // q1w1's built-in post-test bank is 10 items (every lesson's post-test
+      // is a 10-item bank).
+      expect(vm.questions, hasLength(10));
+      expect(vm.results, hasLength(10));
+      expect(vm.results[0].difficultyIndex, closeTo(0.5, 0.0001));
+    },
+  );
 
   test('ignores attempts on other quizzes', () async {
     final firestore = FakeFirebaseFirestore();
@@ -63,12 +97,23 @@ void main() {
     final postId = builtinQuizId('q1w1', QuizPhase.post);
     final preId = builtinQuizId('q1w1', QuizPhase.pre);
 
-    await studentRepo.saveStudent(_studentWith('111111', QuizAttempt(
-      id: 'a1', quizId: preId, studentId: '111111', attemptNumber: 1,
-      score: 100, totalQuestions: 8, correctAnswers: 8,
-      answers: const [0, 0, 0, 0, 0, 0, 0, 0],
-      timestamp: DateTime(2026, 8, 20).toIso8601String(), locked: false,
-    )));
+    await studentRepo.saveStudent(
+      _studentWith(
+        '111111',
+        QuizAttempt(
+          id: 'a1',
+          quizId: preId,
+          studentId: '111111',
+          attemptNumber: 1,
+          score: 100,
+          totalQuestions: 8,
+          correctAnswers: 8,
+          answers: const [0, 0, 0, 0, 0, 0, 0, 0],
+          timestamp: DateTime(2026, 8, 20).toIso8601String(),
+          locked: false,
+        ),
+      ),
+    );
 
     final stream = buildItemAnalysisViewModel(
       quizId: postId,
@@ -82,130 +127,165 @@ void main() {
     expect(vm.attemptCount, 0);
   });
 
-  test('resolves a teacher-authored quiz\'s real questions via QuizRepository', () async {
-    final firestore = FakeFirebaseFirestore();
-    final studentRepo = StudentRepository(firestore: firestore);
-    final quizRepo = QuizRepository(firestore: firestore);
-    const quizId = 'teacher-quiz-1';
+  test(
+    'resolves a teacher-authored quiz\'s real questions via QuizRepository',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final studentRepo = StudentRepository(firestore: firestore);
+      final quizRepo = QuizRepository(firestore: firestore);
+      const quizId = 'teacher-quiz-1';
 
-    await quizRepo.createQuiz(TeacherQuiz(
-      id: quizId,
-      title: 'Custom Chemistry Quiz',
-      subject: SubjectKey.chemistry,
-      questions: [
-        TeacherQuizQuestion(
-          question: 'What is H2O?',
-          options: const ['Water', 'Oxygen', 'Hydrogen', 'Salt'],
-          correctIndex: 0,
-          hint: 'hint',
-          type: QuestionType.mc,
+      await quizRepo.createQuiz(
+        TeacherQuiz(
+          id: quizId,
+          title: 'Custom Chemistry Quiz',
+          subject: SubjectKey.chemistry,
+          questions: [
+            TeacherQuizQuestion(
+              question: 'What is H2O?',
+              options: const ['Water', 'Oxygen', 'Hydrogen', 'Salt'],
+              correctIndex: 0,
+              hint: 'hint',
+              type: QuestionType.mc,
+            ),
+          ],
+          createdAt: DateTime(2026, 8, 20).toIso8601String(),
         ),
-      ],
-      createdAt: DateTime(2026, 8, 20).toIso8601String(),
-    ));
+      );
 
-    await studentRepo.saveStudent(_studentWith('333333', QuizAttempt(
-      id: 'a3', quizId: quizId, studentId: '333333', attemptNumber: 1,
-      score: 100, totalQuestions: 1, correctAnswers: 1,
-      answers: const [0],
-      timestamp: DateTime(2026, 8, 20).toIso8601String(), locked: true,
-    )));
+      await studentRepo.saveStudent(
+        _studentWith(
+          '333333',
+          QuizAttempt(
+            id: 'a3',
+            quizId: quizId,
+            studentId: '333333',
+            attemptNumber: 1,
+            score: 100,
+            totalQuestions: 1,
+            correctAnswers: 1,
+            answers: const [0],
+            timestamp: DateTime(2026, 8, 20).toIso8601String(),
+            locked: true,
+          ),
+        ),
+      );
 
-    final stream = buildItemAnalysisViewModel(
-      quizId: quizId,
-      quizTitle: 'Custom Chemistry Quiz',
-      studentRepository: studentRepo,
-      quizRepository: quizRepo,
-      lessonRepository: LessonRepository(firestore: firestore),
-    );
-    final vm = await stream.first;
+      final stream = buildItemAnalysisViewModel(
+        quizId: quizId,
+        quizTitle: 'Custom Chemistry Quiz',
+        studentRepository: studentRepo,
+        quizRepository: quizRepo,
+        lessonRepository: LessonRepository(firestore: firestore),
+      );
+      final vm = await stream.first;
 
-    expect(vm.attemptCount, 1);
-    expect(vm.questions, hasLength(1));
-    expect(vm.questions.first.question, 'What is H2O?');
-    expect(vm.results, hasLength(1));
-  });
-
-  test('degrades to an empty question list for a dangling teacher quiz id', () async {
-    final firestore = FakeFirebaseFirestore();
-    final studentRepo = StudentRepository(firestore: firestore);
-    final quizRepo = QuizRepository(firestore: firestore);
-
-    final stream = buildItemAnalysisViewModel(
-      quizId: 'missing-quiz',
-      quizTitle: 'Missing Quiz',
-      studentRepository: studentRepo,
-      quizRepository: quizRepo,
-      lessonRepository: LessonRepository(firestore: firestore),
-    );
-    final vm = await stream.first;
-
-    expect(vm.questions, isEmpty);
-    expect(vm.attemptCount, 0);
-  });
+      expect(vm.attemptCount, 1);
+      expect(vm.questions, hasLength(1));
+      expect(vm.questions.first.question, 'What is H2O?');
+      expect(vm.results, hasLength(1));
+    },
+  );
 
   test(
-      'finds attempts recorded via the real student flow for a teacher-linked quiz '
-      '(regression: attempts recorded under the builtin lesson+phase id must still '
-      'be found when item analysis is opened from the authored quiz\'s own row)',
-      () async {
-    final firestore = FakeFirebaseFirestore();
-    final studentRepo = StudentRepository(firestore: firestore);
-    final lessonRepo = LessonRepository(firestore: firestore);
-    final quizRepo = QuizRepository(firestore: firestore);
-    const quizId = 'teacher-quiz-linked';
-    const lessonId = 'teacher-lesson-1';
+    'degrades to an empty question list for a dangling teacher quiz id',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final studentRepo = StudentRepository(firestore: firestore);
+      final quizRepo = QuizRepository(firestore: firestore);
 
-    await quizRepo.createQuiz(TeacherQuiz(
-      id: quizId,
-      title: 'Linked Post-Test',
-      subject: SubjectKey.chemistry,
-      questions: [
-        TeacherQuizQuestion(
-          question: 'What is H2O?',
-          options: const ['Water', 'Oxygen', 'Hydrogen', 'Salt'],
-          correctIndex: 0,
-          hint: 'hint',
-          type: QuestionType.mc,
+      final stream = buildItemAnalysisViewModel(
+        quizId: 'missing-quiz',
+        quizTitle: 'Missing Quiz',
+        studentRepository: studentRepo,
+        quizRepository: quizRepo,
+        lessonRepository: LessonRepository(firestore: firestore),
+      );
+      final vm = await stream.first;
+
+      expect(vm.questions, isEmpty);
+      expect(vm.attemptCount, 0);
+    },
+  );
+
+  test(
+    'finds attempts recorded via the real student flow for a teacher-linked quiz '
+    '(regression: attempts recorded under the builtin lesson+phase id must still '
+    'be found when item analysis is opened from the authored quiz\'s own row)',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final studentRepo = StudentRepository(firestore: firestore);
+      final lessonRepo = LessonRepository(firestore: firestore);
+      final quizRepo = QuizRepository(firestore: firestore);
+      const quizId = 'teacher-quiz-linked';
+      const lessonId = 'teacher-lesson-1';
+
+      await quizRepo.createQuiz(
+        TeacherQuiz(
+          id: quizId,
+          title: 'Linked Post-Test',
+          subject: SubjectKey.chemistry,
+          questions: [
+            TeacherQuizQuestion(
+              question: 'What is H2O?',
+              options: const ['Water', 'Oxygen', 'Hydrogen', 'Salt'],
+              correctIndex: 0,
+              hint: 'hint',
+              type: QuestionType.mc,
+            ),
+          ],
+          createdAt: DateTime(2026, 8, 20).toIso8601String(),
         ),
-      ],
-      createdAt: DateTime(2026, 8, 20).toIso8601String(),
-    ));
+      );
 
-    // A TeacherLesson linking its post-test to the authored quiz above —
-    // mirrors router.dart's `/quiz/:lessonId/:phase` linked-quiz branch.
-    await lessonRepo.createLesson(TeacherLesson(
-      id: lessonId,
-      title: 'Linked Lesson',
-      subject: SubjectKey.chemistry,
-      linkedQuizId: quizId,
-      createdAt: DateTime(2026, 8, 20).toIso8601String(),
-    ));
+      // A TeacherLesson linking its post-test to the authored quiz above —
+      // mirrors router.dart's `/quiz/:lessonId/:phase` linked-quiz branch.
+      await lessonRepo.createLesson(
+        TeacherLesson(
+          id: lessonId,
+          title: 'Linked Lesson',
+          subject: SubjectKey.chemistry,
+          linkedQuizId: quizId,
+          createdAt: DateTime(2026, 8, 20).toIso8601String(),
+        ),
+      );
 
-    // The real student flow always records the attempt's quizId as the
-    // synthesized builtin lesson+phase id — see router.dart /
-    // quiz_session_controller.dart — never the teacher quiz's own doc id,
-    // even when the questions came from the linked teacher-authored quiz.
-    final recordedQuizId = builtinQuizId(lessonId, QuizPhase.post);
-    await studentRepo.saveStudent(_studentWith('444444', QuizAttempt(
-      id: 'a4', quizId: recordedQuizId, studentId: '444444', attemptNumber: 1,
-      score: 100, totalQuestions: 1, correctAnswers: 1,
-      answers: const [0],
-      timestamp: DateTime(2026, 8, 20).toIso8601String(), locked: true,
-    )));
+      // The real student flow always records the attempt's quizId as the
+      // synthesized builtin lesson+phase id — see router.dart /
+      // quiz_session_controller.dart — never the teacher quiz's own doc id,
+      // even when the questions came from the linked teacher-authored quiz.
+      final recordedQuizId = builtinQuizId(lessonId, QuizPhase.post);
+      await studentRepo.saveStudent(
+        _studentWith(
+          '444444',
+          QuizAttempt(
+            id: 'a4',
+            quizId: recordedQuizId,
+            studentId: '444444',
+            attemptNumber: 1,
+            score: 100,
+            totalQuestions: 1,
+            correctAnswers: 1,
+            answers: const [0],
+            timestamp: DateTime(2026, 8, 20).toIso8601String(),
+            locked: true,
+          ),
+        ),
+      );
 
-    // Item analysis is opened from quizzes_screen.dart's authored-quiz row,
-    // so it's keyed on the teacher quiz's own doc id, not the builtin id.
-    final stream = buildItemAnalysisViewModel(
-      quizId: quizId,
-      quizTitle: 'Linked Post-Test',
-      studentRepository: studentRepo,
-      quizRepository: quizRepo,
-      lessonRepository: lessonRepo,
-    );
-    final vm = await stream.first;
+      // Item analysis is opened from quizzes_screen.dart's authored-quiz row,
+      // so it's keyed on the teacher quiz's own doc id, not the builtin id.
+      final stream = buildItemAnalysisViewModel(
+        quizId: quizId,
+        quizTitle: 'Linked Post-Test',
+        studentRepository: studentRepo,
+        quizRepository: quizRepo,
+        lessonRepository: lessonRepo,
+      );
+      final vm = await stream.first;
 
-    expect(vm.attemptCount, 1);
-    expect(vm.questions, hasLength(1));
-  });
+      expect(vm.attemptCount, 1);
+      expect(vm.questions, hasLength(1));
+    },
+  );
 }

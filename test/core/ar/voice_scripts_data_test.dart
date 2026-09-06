@@ -1,4 +1,5 @@
 import 'package:ar_science_explorer/core/ar/voice_scripts_data.dart';
+import 'package:ar_science_explorer/core/data/curriculum_data.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -10,10 +11,24 @@ void main() {
       expect(onboarding['en']!.first, contains('AR Science Explorer'));
     });
 
-    test('top-level keys are onboarding plus exactly q1w1..q1w5', () {
-      final lessonKeys = kVoiceScripts.keys.where((k) => k != 'onboarding');
-      expect(lessonKeys.toSet(), {'q1w1', 'q1w2', 'q1w3', 'q1w4', 'q1w5'});
-    });
+    test(
+      'every curriculum lesson has a narration script, in both languages',
+      () {
+        // Narration used to exist only for q1w1..q1w5; it now covers the whole
+        // curriculum, so this asserts against the lesson list itself rather
+        // than a hand-written set that would silently rot.
+        final lessonKeys = kVoiceScripts.keys.where((k) => k != 'onboarding');
+        expect(lessonKeys.toSet(), kBuiltInLessons.map((l) => l.id).toSet());
+        for (final entry in kVoiceScripts.entries) {
+          expect(entry.value['en'], isNotEmpty, reason: '${entry.key} en');
+          expect(
+            entry.value['Filipino'],
+            isNotEmpty,
+            reason: '${entry.key} Filipino',
+          );
+        }
+      },
+    );
 
     test('q1w1 has 3 English lines with the exact expected first line', () {
       final q1w1En = kVoiceScripts['q1w1']!['en']!;

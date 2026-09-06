@@ -18,6 +18,9 @@ class ArLabViewModel extends ChangeNotifier {
     required this.summary,
     required this.hasAR,
     required this.markerIndex,
+    this.markerImage,
+    this.quarter,
+    this.week,
     this.contentImageUrls,
     this.contentStatus,
     required this.isRead,
@@ -41,6 +44,27 @@ class ArLabViewModel extends ChangeNotifier {
   /// should be looking for while this lesson's lab is open. `null` when
   /// `hasAR` is false.
   final int? markerIndex;
+
+  /// URL of the printable/reference marker image the teacher uploaded for
+  /// this lesson (`arPayload.markerImage`) — shown to the student in the
+  /// Scan tab's instruction overlay so they know what to point the camera
+  /// at *before* the AR camera has recognized anything. `null` when the
+  /// lesson has no marker image on file.
+  final String? markerImage;
+
+  /// This lesson's curriculum placement — used to build the "Q<quarter>W<week>"
+  /// fragment sent to Unity (`ARSessionManager.SetActiveLesson`) so the
+  /// scanner only accepts this lesson's own marker while its Scan tab is
+  /// open. `null` for a lesson with no curriculum placement (e.g. some
+  /// teacher-authored lessons), in which case no restriction is applied.
+  final int? quarter;
+  final int? week;
+
+  /// The fragment to send Unity for the per-lesson scan restriction, or
+  /// `null` when this lesson has no curriculum placement (no restriction
+  /// applied — every marker scans normally, same as today).
+  String? get activeLessonFragment =>
+      (quarter != null && week != null) ? 'Q${quarter}W$week' : null;
 
   /// This lesson's uploaded slide content, if any — only ever non-null for
   /// a teacher-authored lesson whose merged [Lesson] carries these fields;
@@ -93,13 +117,13 @@ class ArLabViewModel extends ChangeNotifier {
   }
 }
 
-final arLabViewModelProvider =
-    StreamProvider.autoDispose.family<ArLabViewModel, String>((ref, lessonId) {
-  throw UnimplementedError(
-    'arLabViewModelProvider must be overridden at app startup with a '
-    'real stream for the given lessonId.',
-  );
-});
+final arLabViewModelProvider = StreamProvider.autoDispose
+    .family<ArLabViewModel, String>((ref, lessonId) {
+      throw UnimplementedError(
+        'arLabViewModelProvider must be overridden at app startup with a '
+        'real stream for the given lessonId.',
+      );
+    });
 
 Stream<ArLabViewModel> buildArLabViewModel({
   required String studentId,
@@ -130,7 +154,10 @@ Stream<ArLabViewModel> buildArLabViewModel({
 
     final isRead = student?.completedLessonIds.contains(lessonId) ?? false;
     final postQuizId = builtinQuizId(lessonId, QuizPhase.post);
-    final eligibility = await quizAttemptService.checkEligibility(studentId, postQuizId);
+    final eligibility = await quizAttemptService.checkEligibility(
+      studentId,
+      postQuizId,
+    );
 
     return ArLabViewModel(
       lessonId: lessonId,
@@ -138,11 +165,15 @@ Stream<ArLabViewModel> buildArLabViewModel({
       summary: lesson.summary,
       hasAR: lesson.hasAR,
       markerIndex: lesson.arPayload?.modelIndex,
+      markerImage: lesson.arPayload?.markerImage,
+      quarter: lesson.quarter,
+      week: lesson.week,
       contentImageUrls: lesson.contentImageUrls,
       contentStatus: lesson.contentStatus,
       isRead: isRead,
       hasPreTest: preTestLessonIds.contains(lessonId),
-      hasPostTest: postTestLessonIds.contains(lessonId) || lesson.linkedQuizId != null,
+      hasPostTest:
+          postTestLessonIds.contains(lessonId) || lesson.linkedQuizId != null,
       postTestEligible: eligibility.canTake,
       postTestReason: eligibility.reason,
       studentId: studentId,
@@ -150,8 +181,13 @@ Stream<ArLabViewModel> buildArLabViewModel({
       onMarkAsRead: student == null
           ? () async {}
           : () => studentRepository.saveStudent(
-                student.copyWith(completedLessonIds: {...student.completedLessonIds, lessonId}.toList()),
+              student.copyWith(
+                completedLessonIds: {
+                  ...student.completedLessonIds,
+                  lessonId,
+                }.toList(),
               ),
+            ),
       onStartPreTest: onStartPreTest,
       onStartPostTest: onStartPostTest,
     );

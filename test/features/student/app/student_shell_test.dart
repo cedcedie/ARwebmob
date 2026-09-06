@@ -11,7 +11,9 @@ import 'package:ar_science_explorer/features/student/app/router.dart';
 import 'package:ar_science_explorer/features/student/app/student_providers.dart';
 
 void main() {
-  testWidgets('student router starts on Home and can navigate to Learn', (tester) async {
+  testWidgets('student router starts on Home and can navigate to Learn', (
+    tester,
+  ) async {
     final firestore = FakeFirebaseFirestore();
     final quizAttemptService = QuizAttemptService(firestore: firestore);
     final services = StudentServices(
@@ -27,9 +29,7 @@ void main() {
     final router = buildStudentRouter(services: services);
 
     await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp.router(routerConfig: router),
-      ),
+      ProviderScope(child: MaterialApp.router(routerConfig: router)),
     );
     await tester.pumpAndSettle();
 

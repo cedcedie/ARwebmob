@@ -8,21 +8,20 @@ import 'package:ar_science_explorer/core/services/progress_calculator.dart';
 StudentRecord _studentWith({
   List<String> completedLessonIds = const [],
   List<QuizAttempt> quizAttempts = const [],
-}) =>
-    StudentRecord(
-      id: '111111',
-      name: 'Test Student',
-      studentId: '111111',
-      grade: '7',
-      section: 'Rizal',
-      scores: const {'chemistry': null, 'biology': null, 'physics': null},
-      completedLessonIds: completedLessonIds,
-      completedLabExperimentIds: const [],
-      completedQuizIds: const [],
-      unlockedLessonIds: const [],
-      unlockedQuizIds: const [],
-      quizAttempts: quizAttempts,
-    );
+}) => StudentRecord(
+  id: '111111',
+  name: 'Test Student',
+  studentId: '111111',
+  grade: '7',
+  section: 'Rizal',
+  scores: const {'chemistry': null, 'biology': null, 'physics': null},
+  completedLessonIds: completedLessonIds,
+  completedLabExperimentIds: const [],
+  completedQuizIds: const [],
+  unlockedLessonIds: const [],
+  unlockedQuizIds: const [],
+  quizAttempts: quizAttempts,
+);
 
 void main() {
   group('scoreBandFor', () {
@@ -52,14 +51,18 @@ void main() {
 
   group('percentComplete', () {
     test('divides completed count by 24', () {
-      final student = _studentWith(completedLessonIds: ['q1w1', 'q1w2', 'q1w3']);
+      final student = _studentWith(
+        completedLessonIds: ['q1w1', 'q1w2', 'q1w3'],
+      );
       expect(percentComplete(student), closeTo(3 / 24, 0.0001));
     });
   });
 
   group('currentQuarterWeek', () {
     test('derives quarter/week from the next incomplete lesson', () {
-      final student = _studentWith(completedLessonIds: ['q1w1', 'q1w2', 'q1w3', 'q1w4']);
+      final student = _studentWith(
+        completedLessonIds: ['q1w1', 'q1w2', 'q1w3', 'q1w4'],
+      );
       final result = currentQuarterWeek(kBuiltInLessons, student);
       expect(result?.quarter, 1);
       expect(result?.week, 5);
@@ -70,24 +73,52 @@ void main() {
     test('returns the 3 most recent attempts, newest first', () {
       final attempts = [
         QuizAttempt(
-          id: 'a1', quizId: 'builtin-q1w1-post', studentId: '111111', attemptNumber: 1,
-          score: 60, totalQuestions: 5, correctAnswers: 3, answers: const [0, 0, 0, 0, 0],
-          timestamp: DateTime(2026, 8, 1).toIso8601String(), locked: true,
+          id: 'a1',
+          quizId: 'builtin-q1w1-post',
+          studentId: '111111',
+          attemptNumber: 1,
+          score: 60,
+          totalQuestions: 5,
+          correctAnswers: 3,
+          answers: const [0, 0, 0, 0, 0],
+          timestamp: DateTime(2026, 8, 1).toIso8601String(),
+          locked: true,
         ),
         QuizAttempt(
-          id: 'a2', quizId: 'builtin-q1w2-post', studentId: '111111', attemptNumber: 1,
-          score: 80, totalQuestions: 5, correctAnswers: 4, answers: const [0, 0, 0, 0, 0],
-          timestamp: DateTime(2026, 8, 5).toIso8601String(), locked: true,
+          id: 'a2',
+          quizId: 'builtin-q1w2-post',
+          studentId: '111111',
+          attemptNumber: 1,
+          score: 80,
+          totalQuestions: 5,
+          correctAnswers: 4,
+          answers: const [0, 0, 0, 0, 0],
+          timestamp: DateTime(2026, 8, 5).toIso8601String(),
+          locked: true,
         ),
         QuizAttempt(
-          id: 'a3', quizId: 'builtin-q1w3-post', studentId: '111111', attemptNumber: 1,
-          score: 40, totalQuestions: 5, correctAnswers: 2, answers: const [0, 0, 0, 0, 0],
-          timestamp: DateTime(2026, 8, 10).toIso8601String(), locked: true,
+          id: 'a3',
+          quizId: 'builtin-q1w3-post',
+          studentId: '111111',
+          attemptNumber: 1,
+          score: 40,
+          totalQuestions: 5,
+          correctAnswers: 2,
+          answers: const [0, 0, 0, 0, 0],
+          timestamp: DateTime(2026, 8, 10).toIso8601String(),
+          locked: true,
         ),
         QuizAttempt(
-          id: 'a4', quizId: 'builtin-q1w4-post', studentId: '111111', attemptNumber: 1,
-          score: 90, totalQuestions: 5, correctAnswers: 5, answers: const [0, 0, 0, 0, 0],
-          timestamp: DateTime(2026, 8, 15).toIso8601String(), locked: true,
+          id: 'a4',
+          quizId: 'builtin-q1w4-post',
+          studentId: '111111',
+          attemptNumber: 1,
+          score: 90,
+          totalQuestions: 5,
+          correctAnswers: 5,
+          answers: const [0, 0, 0, 0, 0],
+          timestamp: DateTime(2026, 8, 15).toIso8601String(),
+          locked: true,
         ),
       ];
       final student = _studentWith(quizAttempts: attempts);

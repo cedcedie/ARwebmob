@@ -49,7 +49,9 @@ class LearnViewModel {
   final AccessCodeService accessCodeService;
 }
 
-final learnViewModelProvider = StreamProvider.autoDispose<LearnViewModel>((ref) {
+final learnViewModelProvider = StreamProvider.autoDispose<LearnViewModel>((
+  ref,
+) {
   throw UnimplementedError(
     'learnViewModelProvider must be overridden with a real student-scoped '
     'stream at app startup.',
@@ -62,7 +64,9 @@ final learnViewModelProvider = StreamProvider.autoDispose<LearnViewModel>((ref) 
 /// it and rebuild the lesson list for the newly-selected subject — without
 /// this, tapping a tab only moves the `TabBar` indicator and never changes
 /// which lessons are shown (the bug this provider fixes).
-final activeLearnSubjectProvider = StateProvider<SubjectKey>((ref) => SubjectKey.chemistry);
+final activeLearnSubjectProvider = StateProvider<SubjectKey>(
+  (ref) => SubjectKey.chemistry,
+);
 
 /// Builds the real streaming view model. [preTestLessonIds] is the set of
 /// lesson ids that have a non-empty pre-test bank (from
@@ -91,20 +95,24 @@ Stream<LearnViewModel> buildLearnViewModel({
     studentRepository.watchStudent(studentId),
     (teacherLessons, student) {
       final merged = lessonRepository.mergedLessons(teacherLessons);
-      final unlockedIds = student?.unlockedLessonIds.toSet() ?? const <String>{};
-      final completedIds = student?.completedLessonIds.toSet() ?? const <String>{};
+      final unlockedIds =
+          student?.unlockedLessonIds.toSet() ?? const <String>{};
+      final completedIds =
+          student?.completedLessonIds.toSet() ?? const <String>{};
 
       final cards = merged
           .where((l) => l.subject == initialSubject)
-          .map((l) => LessonCardData(
-                lessonId: l.id,
-                title: l.title,
-                week: l.week,
-                summary: l.summary,
-                isUnlocked: l.isUnlockedByDefault || unlockedIds.contains(l.id),
-                hasPreTest: preTestLessonIds.contains(l.id),
-                isCompleted: completedIds.contains(l.id),
-              ))
+          .map(
+            (l) => LessonCardData(
+              lessonId: l.id,
+              title: l.title,
+              week: l.week,
+              summary: l.summary,
+              isUnlocked: l.isUnlockedByDefault || unlockedIds.contains(l.id),
+              hasPreTest: preTestLessonIds.contains(l.id),
+              isCompleted: completedIds.contains(l.id),
+            ),
+          )
           .toList();
 
       return LearnViewModel(

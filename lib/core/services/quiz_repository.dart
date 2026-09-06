@@ -27,19 +27,27 @@ class DisplayQuiz {
 /// than imported directly, since this class has no reason to know about
 /// `curriculum_data.dart`.
 class QuizRepository {
-  QuizRepository({required FirebaseFirestore firestore}) : _firestore = firestore;
+  QuizRepository({required FirebaseFirestore firestore})
+    : _firestore = firestore;
 
   final FirebaseFirestore _firestore;
 
   Stream<List<TeacherQuiz>> watchTeacherQuizzes() {
-    return _firestore.collection('quizzes').snapshots().map(
-          (snapshot) => snapshot.docs.map((doc) => TeacherQuiz.fromJson(doc.data())).toList(),
+    return _firestore
+        .collection('quizzes')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => TeacherQuiz.fromJson(doc.data()))
+              .toList(),
         );
   }
 
   Future<List<TeacherQuiz>> fetchTeacherQuizzes() async {
     final snapshot = await _firestore.collection('quizzes').get();
-    return snapshot.docs.map((doc) => TeacherQuiz.fromJson(doc.data())).toList();
+    return snapshot.docs
+        .map((doc) => TeacherQuiz.fromJson(doc.data()))
+        .toList();
   }
 
   /// One-shot fetch of a single teacher-authored quiz by id, for the
@@ -76,28 +84,36 @@ class QuizRepository {
     required Map<String, List<BuiltInQuestion>> preTestQuestionsByLesson,
     required Map<String, List<BuiltInQuestion>> postTestQuestionsByLesson,
   }) {
-    final lessonTitleById = {for (final lesson in lessons) lesson.id: lesson.title};
+    final lessonTitleById = {
+      for (final lesson in lessons) lesson.id: lesson.title,
+    };
 
     final builtIns = <DisplayQuiz>[
       ...preTestQuestionsByLesson.entries
           .where((entry) => entry.value.isNotEmpty)
-          .map((entry) => _synthesize(
-                lessonId: entry.key,
-                phase: QuizPhase.pre,
-                questions: entry.value,
-                lessonTitleById: lessonTitleById,
-              )),
+          .map(
+            (entry) => _synthesize(
+              lessonId: entry.key,
+              phase: QuizPhase.pre,
+              questions: entry.value,
+              lessonTitleById: lessonTitleById,
+            ),
+          ),
       ...postTestQuestionsByLesson.entries
           .where((entry) => entry.value.isNotEmpty)
-          .map((entry) => _synthesize(
-                lessonId: entry.key,
-                phase: QuizPhase.post,
-                questions: entry.value,
-                lessonTitleById: lessonTitleById,
-              )),
+          .map(
+            (entry) => _synthesize(
+              lessonId: entry.key,
+              phase: QuizPhase.post,
+              questions: entry.value,
+              lessonTitleById: lessonTitleById,
+            ),
+          ),
     ];
 
-    final authored = teacherQuizzes.map((quiz) => DisplayQuiz(quiz: quiz, isBuiltIn: false));
+    final authored = teacherQuizzes.map(
+      (quiz) => DisplayQuiz(quiz: quiz, isBuiltIn: false),
+    );
 
     return [...builtIns, ...authored];
   }
@@ -111,10 +127,18 @@ class QuizRepository {
   /// question order, never from wall-clock time) since `TeacherQuizQuestion`
   /// has no id of its own, and `lessonId` is threaded through from the
   /// caller (the route the student is on), not stored on [TeacherQuiz].
-  List<BuiltInQuestion> questionsFromTeacherQuiz(TeacherQuiz quiz, {required String lessonId}) {
+  List<BuiltInQuestion> questionsFromTeacherQuiz(
+    TeacherQuiz quiz, {
+    required String lessonId,
+  }) {
     return [
       for (var i = 0; i < quiz.questions.length; i++)
-        _fromTeacherQuizQuestion(quiz.questions[i], quiz: quiz, lessonId: lessonId, index: i),
+        _fromTeacherQuizQuestion(
+          quiz.questions[i],
+          quiz: quiz,
+          lessonId: lessonId,
+          index: i,
+        ),
     ];
   }
 
@@ -157,13 +181,15 @@ class QuizRepository {
         createdAt: '',
         phase: phase,
         questions: questions
-            .map((q) => TeacherQuizQuestion(
-                  question: q.question,
-                  options: q.options,
-                  correctIndex: q.correctIndex,
-                  hint: q.hint,
-                  type: q.type,
-                ))
+            .map(
+              (q) => TeacherQuizQuestion(
+                question: q.question,
+                options: q.options,
+                correctIndex: q.correctIndex,
+                hint: q.hint,
+                type: q.type,
+              ),
+            )
             .toList(),
       ),
     );

@@ -37,11 +37,11 @@ class LessonCard extends StatelessWidget {
         trailing: !data.isUnlocked
             ? const Icon(Icons.lock_outline)
             : data.hasPreTest
-                ? TextButton(
-                    onPressed: () => context.push('/quiz/${data.lessonId}/pre'),
-                    child: const Text('Pre-Test'),
-                  )
-                : null,
+            ? TextButton(
+                onPressed: () => context.push('/quiz/${data.lessonId}/pre'),
+                child: const Text('Pre-Test'),
+              )
+            : null,
         onTap: () {
           if (data.isUnlocked) {
             context.push('/lesson/${data.lessonId}');

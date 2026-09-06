@@ -38,6 +38,7 @@ class TeacherShell extends ConsumerWidget {
     'Quizzes',
     'Students',
     'Access Codes',
+    'Teacher Access',
   ];
 
   static const _icons = [
@@ -46,6 +47,7 @@ class TeacherShell extends ConsumerWidget {
     LucideIcons.clipboardList,
     LucideIcons.users,
     LucideIcons.keyRound,
+    LucideIcons.shieldCheck,
   ];
 
   @override

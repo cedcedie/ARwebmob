@@ -14,7 +14,8 @@ class StudentRecord with _$StudentRecord {
     required String studentId,
     required String grade,
     required String section,
-    required Map<String, num?> scores, // keyed by 'chemistry'/'biology'/'physics'
+    required Map<String, num?>
+    scores, // keyed by 'chemistry'/'biology'/'physics'
     required List<String> completedLessonIds,
     required List<String> completedLabExperimentIds,
     required List<String> completedQuizIds,

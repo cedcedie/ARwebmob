@@ -405,8 +405,9 @@ final ThemeData appMaterialThemeDark = ThemeData(
     outline: AppColorsDark.border,
     outlineVariant: AppColorsDark.muted,
   ),
-  textTheme: GoogleFonts.plusJakartaSansTextTheme(ThemeData.dark().textTheme)
-      .apply(bodyColor: AppColorsDark.ink, displayColor: AppColorsDark.ink),
+  textTheme: GoogleFonts.plusJakartaSansTextTheme(
+    ThemeData.dark().textTheme,
+  ).apply(bodyColor: AppColorsDark.ink, displayColor: AppColorsDark.ink),
   dividerColor: AppColorsDark.border,
   cardTheme: const CardThemeData(
     color: AppColorsDark.surface,

@@ -12,7 +12,9 @@ import 'package:ar_science_explorer/features/teacher/auth/teacher_auth_providers
 import 'package:ar_science_explorer/main.dart';
 
 void main() {
-  testWidgets('shows the teacher login on web, the sign-in gate on Android', (tester) async {
+  testWidgets('shows the teacher login on web, the sign-in gate on Android', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       ProviderScope(
         // No user is signed in for this smoke test. Overriding these

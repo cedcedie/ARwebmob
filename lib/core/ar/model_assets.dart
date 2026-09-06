@@ -49,14 +49,17 @@ String? glbAssetForQuarterWeek(int? quarter, int? week) {
 }
 
 String? glbAssetForModelIndex(int? modelIndex) {
-  if (modelIndex == null || modelIndex < 0 || modelIndex >= kGlbAssetsByModelIndex.length) {
+  if (modelIndex == null ||
+      modelIndex < 0 ||
+      modelIndex >= kGlbAssetsByModelIndex.length) {
     return null;
   }
   return kGlbAssetsByModelIndex[modelIndex];
 }
 
 String? resolveGlbPreviewPath({int? quarter, int? week, int? modelIndex}) {
-  return glbAssetForQuarterWeek(quarter, week) ?? glbAssetForModelIndex(modelIndex);
+  return glbAssetForQuarterWeek(quarter, week) ??
+      glbAssetForModelIndex(modelIndex);
 }
 
 bool isFlutterTestEnvironment() {

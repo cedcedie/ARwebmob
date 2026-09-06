@@ -4,6 +4,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/models/lesson.dart';
 import '../../../core/models/subject_key.dart';
 import '../../../core/models/teacher_lesson.dart';
@@ -32,7 +33,10 @@ Color _subjectAccent(BuildContext context, SubjectKey subject) {
     SubjectKey.biology => 'biology',
     SubjectKey.physics => 'physics',
   };
-  return custom[key] as Color;
+  // Fall back to the static palette when the active ShadThemeData carries
+  // no `custom` map (a bare `ShadApp` with no theme, as in widget tests) —
+  // a missing accent must never crash a whole screen.
+  return custom[key] ?? subjectColor(subject);
 }
 
 class LessonsScreen extends ConsumerWidget {
@@ -90,16 +94,15 @@ class _LessonsSkeleton extends StatelessWidget {
     required double height,
   }) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: ColoredBox(color: scheme.muted),
-      ),
-    ).animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(
-      duration: 700.ms,
-      begin: 0.5,
-    );
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: ColoredBox(color: scheme.muted),
+          ),
+        )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .fadeIn(duration: 700.ms, begin: 0.5);
   }
 }
 
@@ -421,21 +424,27 @@ class _LessonsBody extends HookWidget {
                                     ),
                                     DataCell(
                                       row.isBuiltIn
-                                          ? Tooltip(
-                                              message:
-                                                  'Upload content (PDF/PPTX) — '
-                                                  'the lesson itself stays locked',
-                                              child: ShadIconButton.ghost(
-                                                icon: const Icon(
-                                                  LucideIcons.upload,
-                                                ),
-                                                onPressed: () =>
-                                                    BuiltinLessonContentSheet.show(
-                                                      context,
-                                                      lesson: lesson,
-                                                      onUpload: viewModel.onCreateLesson,
+                                          ? Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Tooltip(
+                                                  message:
+                                                      'Upload content (PDF/PPTX) — '
+                                                      'the lesson itself stays locked',
+                                                  child: ShadIconButton.ghost(
+                                                    icon: const Icon(
+                                                      LucideIcons.upload,
                                                     ),
-                                              ),
+                                                    onPressed: () =>
+                                                        BuiltinLessonContentSheet.show(
+                                                          context,
+                                                          lesson: lesson,
+                                                          onUpload: viewModel
+                                                              .onCreateLesson,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ],
                                             )
                                           : Row(
                                               mainAxisSize: MainAxisSize.min,
@@ -446,12 +455,11 @@ class _LessonsBody extends HookWidget {
                                                     icon: const Icon(
                                                       LucideIcons.pencil,
                                                     ),
-                                                    onPressed: () =>
-                                                        _openForm(
-                                                          context,
-                                                          initial:
-                                                              row.teacherLesson,
-                                                        ),
+                                                    onPressed: () => _openForm(
+                                                      context,
+                                                      initial:
+                                                          row.teacherLesson,
+                                                    ),
                                                   ),
                                                 ),
                                                 Tooltip(
@@ -517,10 +525,7 @@ class _EmptyLessonsState extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                'No lessons yet',
-                style: ShadTheme.of(context).textTheme.h4,
-              ),
+              Text('No lessons yet', style: ShadTheme.of(context).textTheme.h4),
               const SizedBox(height: 4),
               Text(
                 'Add your first lesson to get started.',
@@ -572,15 +577,14 @@ class _LessonsCardList extends StatelessWidget {
       itemBuilder: (context, index) {
         final row = rows[index];
         return _LessonCard(
-          row: row,
-          onEdit: onEdit,
-          onArchive: onArchive,
-          onUploadContent: onUploadContent,
-        ).animate().fadeIn(duration: 220.ms, delay: (index * 20).ms).slideY(
-          begin: 0.04,
-          end: 0,
-          duration: 220.ms,
-        );
+              row: row,
+              onEdit: onEdit,
+              onArchive: onArchive,
+              onUploadContent: onUploadContent,
+            )
+            .animate()
+            .fadeIn(duration: 220.ms, delay: (index * 20).ms)
+            .slideY(begin: 0.04, end: 0, duration: 220.ms);
       },
     );
   }
@@ -630,9 +634,9 @@ class _LessonCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             lesson.title,
-                            style: ShadTheme.of(context).textTheme.p.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: ShadTheme.of(
+                              context,
+                            ).textTheme.p.copyWith(fontWeight: FontWeight.w600),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),

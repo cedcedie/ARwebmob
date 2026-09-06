@@ -14,7 +14,7 @@ void main() {
       'subtitle': 'Ancient Greek Atomic Theory (c. 400 BCE)',
       'description':
           'Democritus proposed that all matter consists of tiny, indivisible '
-              'particles called "atomos".',
+          'particles called "atomos".',
       'keyIdeas': [
         'Smallest, indestructible building blocks of matter',
         'Particles in constant, random motion',

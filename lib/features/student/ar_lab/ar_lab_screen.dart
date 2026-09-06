@@ -9,7 +9,11 @@ import 'review_tab.dart';
 import 'scan_tab.dart';
 
 class ArLabScreen extends ConsumerStatefulWidget {
-  const ArLabScreen({super.key, required this.lessonId, this.voiceOverController});
+  const ArLabScreen({
+    super.key,
+    required this.lessonId,
+    this.voiceOverController,
+  });
 
   final String lessonId;
 
@@ -29,7 +33,8 @@ class _ArLabScreenState extends ConsumerState<ArLabScreen> {
   @override
   void initState() {
     super.initState();
-    _voiceOverController = widget.voiceOverController ?? VoiceOverController(tts: FlutterTts());
+    _voiceOverController =
+        widget.voiceOverController ?? VoiceOverController(tts: FlutterTts());
   }
 
   @override
@@ -43,16 +48,22 @@ class _ArLabScreenState extends ConsumerState<ArLabScreen> {
     final asyncViewModel = ref.watch(arLabViewModelProvider(widget.lessonId));
 
     return asyncViewModel.when(
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (error, stack) =>
-          Scaffold(body: Center(child: Text('Could not load this lesson: $error'))),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (error, stack) => Scaffold(
+        body: Center(child: Text('Could not load this lesson: $error')),
+      ),
       data: (vm) => DefaultTabController(
         length: 3,
         child: Scaffold(
           appBar: AppBar(
             title: Text(vm.title),
             bottom: const TabBar(
-              tabs: [Tab(text: 'Scan'), Tab(text: 'Read'), Tab(text: 'Review')],
+              tabs: [
+                Tab(text: 'Scan'),
+                Tab(text: 'Read'),
+                Tab(text: 'Review'),
+              ],
             ),
           ),
           // Swipe navigation is disabled: TabBarView is a PageView under the

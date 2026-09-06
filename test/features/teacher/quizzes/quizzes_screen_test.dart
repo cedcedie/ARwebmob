@@ -53,9 +53,7 @@ Future<void> _pumpQuizzesScreen(
   await tester.pumpWidget(
     ProviderScope(
       overrides: teacherProviderOverridesFor(services: services),
-      child: ShadApp(
-        home: Scaffold(body: const QuizzesScreen()),
-      ),
+      child: ShadApp(home: Scaffold(body: const QuizzesScreen())),
     ),
   );
   await tester.pumpAndSettle();
@@ -67,7 +65,10 @@ void main() {
     await _pumpQuizzesScreen(tester, firestore: firestore);
 
     final firstLesson = kBuiltInLessons.first;
-    expect(find.textContaining('${firstLesson.title} Pre-Test'), findsOneWidget);
+    expect(
+      find.textContaining('${firstLesson.title} Pre-Test'),
+      findsOneWidget,
+    );
     expect(find.text('Built-in'), findsWidgets);
     expect(find.byTooltip('Edit'), findsNothing);
     expect(find.byTooltip('Delete'), findsNothing);
@@ -86,7 +87,9 @@ void main() {
     expect(find.byTooltip('Delete'), findsOneWidget);
   });
 
-  testWidgets('adding a question row appends another editor block', (tester) async {
+  testWidgets('adding a question row appends another editor block', (
+    tester,
+  ) async {
     final firestore = FakeFirebaseFirestore();
     await _pumpQuizzesScreen(tester, firestore: firestore);
 
@@ -107,7 +110,9 @@ void main() {
     expect(find.text('Question 2'), findsOneWidget);
   });
 
-  testWidgets('removing a question row removes its editor block', (tester) async {
+  testWidgets('removing a question row removes its editor block', (
+    tester,
+  ) async {
     final firestore = FakeFirebaseFirestore();
     await _pumpQuizzesScreen(tester, firestore: firestore);
 
@@ -130,7 +135,9 @@ void main() {
     expect(find.text('Question 1'), findsOneWidget);
   });
 
-  testWidgets('incomplete submit is blocked with a validation message', (tester) async {
+  testWidgets('incomplete submit is blocked with a validation message', (
+    tester,
+  ) async {
     final firestore = FakeFirebaseFirestore();
     await _pumpQuizzesScreen(tester, firestore: firestore);
 
@@ -138,9 +145,15 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('quiz-title')));
-    await tester.enterText(find.byKey(const Key('quiz-title')), 'Incomplete Quiz');
+    await tester.enterText(
+      find.byKey(const Key('quiz-title')),
+      'Incomplete Quiz',
+    );
     await tester.tap(find.byKey(const Key('quiz-question-0-text')));
-    await tester.enterText(find.byKey(const Key('quiz-question-0-text')), 'What is science?');
+    await tester.enterText(
+      find.byKey(const Key('quiz-question-0-text')),
+      'What is science?',
+    );
     await tester.tap(find.byKey(const Key('quiz-q0-option-0')));
     await tester.enterText(find.byKey(const Key('quiz-q0-option-0')), 'A');
 
@@ -157,7 +170,9 @@ void main() {
     expect(docs.docs, isEmpty);
   });
 
-  testWidgets('complete submit calls createQuiz with entered shape', (tester) async {
+  testWidgets('complete submit calls createQuiz with entered shape', (
+    tester,
+  ) async {
     final firestore = FakeFirebaseFirestore();
     await _pumpQuizzesScreen(tester, firestore: firestore);
 
@@ -174,11 +189,11 @@ void main() {
     // collision, not a sign enterText below isn't exercising the intended
     // field. `warnIfMissed: false` silences that expected collision here
     // without weakening what the test actually asserts.
-    await tester.tap(
+    await tester.tap(find.byKey(const Key('quiz-title')), warnIfMissed: false);
+    await tester.enterText(
       find.byKey(const Key('quiz-title')),
-      warnIfMissed: false,
+      'Complete Quiz',
     );
-    await tester.enterText(find.byKey(const Key('quiz-title')), 'Complete Quiz');
     await tester.tap(
       find.byKey(const Key('quiz-topic-id')),
       warnIfMissed: false,
@@ -188,7 +203,10 @@ void main() {
       find.byKey(const Key('quiz-question-0-text')),
       warnIfMissed: false,
     );
-    await tester.enterText(find.byKey(const Key('quiz-question-0-text')), 'Pick one');
+    await tester.enterText(
+      find.byKey(const Key('quiz-question-0-text')),
+      'Pick one',
+    );
     await tester.tap(
       find.byKey(const Key('quiz-q0-option-0')),
       warnIfMissed: false,
@@ -213,7 +231,10 @@ void main() {
       find.byKey(const Key('quiz-question-0-hint')),
       warnIfMissed: false,
     );
-    await tester.enterText(find.byKey(const Key('quiz-question-0-hint')), 'First letter');
+    await tester.enterText(
+      find.byKey(const Key('quiz-question-0-hint')),
+      'First letter',
+    );
 
     await tester.scrollUntilVisible(
       find.byKey(const Key('quiz-q0-correct-2')),
@@ -285,32 +306,39 @@ void main() {
     await tester.tap(find.byKey(const Key('quiz-submit')));
     await tester.pumpAndSettle();
 
-    final doc = await firestore.collection('quizzes').doc('quiz-custom-1').get();
+    final doc = await firestore
+        .collection('quizzes')
+        .doc('quiz-custom-1')
+        .get();
     expect(doc.data()!['title'], 'Renamed Quiz');
     expect(find.text('Renamed Quiz'), findsOneWidget);
   });
 
-  testWidgets('deleting a teacher quiz removes it and shows success feedback (item 3)', (
-    tester,
-  ) async {
-    final firestore = FakeFirebaseFirestore();
-    final repo = QuizRepository(firestore: firestore);
-    await repo.createQuiz(_sampleQuiz());
+  testWidgets(
+    'deleting a teacher quiz removes it and shows success feedback (item 3)',
+    (tester) async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = QuizRepository(firestore: firestore);
+      await repo.createQuiz(_sampleQuiz());
 
-    await _pumpQuizzesScreen(tester, firestore: firestore);
-    expect(find.text('Custom Quiz'), findsOneWidget);
+      await _pumpQuizzesScreen(tester, firestore: firestore);
+      expect(find.text('Custom Quiz'), findsOneWidget);
 
-    await _scrollTo(tester, find.byTooltip('Delete'));
-    await tester.tap(find.byTooltip('Delete'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete'));
-    await tester.pumpAndSettle();
+      await _scrollTo(tester, find.byTooltip('Delete'));
+      await tester.tap(find.byTooltip('Delete'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Custom Quiz'), findsNothing);
-    final doc = await firestore.collection('quizzes').doc('quiz-custom-1').get();
-    expect(doc.exists, false);
-    expect(find.text('Quiz deleted'), findsOneWidget);
-  });
+      expect(find.text('Custom Quiz'), findsNothing);
+      final doc = await firestore
+          .collection('quizzes')
+          .doc('quiz-custom-1')
+          .get();
+      expect(doc.exists, false);
+      expect(find.text('Quiz deleted'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'a throwing onDeleteQuiz shows an error toast instead of silently '
@@ -374,9 +402,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('No quizzes yet — add your first quiz to get started.'),
-      findsOneWidget,
-    );
+    expect(find.text('No quizzes yet'), findsOneWidget);
   });
 }

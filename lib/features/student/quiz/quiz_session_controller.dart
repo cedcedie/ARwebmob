@@ -15,18 +15,20 @@ class QuizSessionState {
     required this.hintedQuestionIndices,
     required this.isComplete,
     required this.finalScore,
+    this.isSaving = false,
+    this.saveError,
   });
 
   factory QuizSessionState.initial(int questionCount) => QuizSessionState(
-        questionIndex: 0,
-        selectedAnswer: null,
-        answers: List<int>.filled(questionCount, -1),
-        showResult: false,
-        hintsUsed: 0,
-        hintedQuestionIndices: const {},
-        isComplete: false,
-        finalScore: null,
-      );
+    questionIndex: 0,
+    selectedAnswer: null,
+    answers: List<int>.filled(questionCount, -1),
+    showResult: false,
+    hintsUsed: 0,
+    hintedQuestionIndices: const {},
+    isComplete: false,
+    finalScore: null,
+  );
 
   final int questionIndex;
   final int? selectedAnswer;
@@ -36,6 +38,21 @@ class QuizSessionState {
   final Set<int> hintedQuestionIndices;
   final bool isComplete;
   final int? finalScore;
+
+  /// True while the finished attempt is being written to Firestore. The
+  /// player screen blocks interaction on this: the save is three network
+  /// round-trips, and with no indicator a student on slow school wi-fi
+  /// assumed the app had frozen and hit exit, firing a second concurrent
+  /// save that clobbered the first.
+  final bool isSaving;
+
+  /// Set when saving the attempt failed, so the student is offered a retry
+  /// instead of being stranded. Previously any error here escaped as an
+  /// unhandled async error: `isComplete` never flipped, the results screen
+  /// never came, every option stayed disabled, and — because there is no
+  /// Next/Submit button on the last question — the student had no way
+  /// forward at all and lost the whole attempt.
+  final String? saveError;
 
   QuizSessionState copyWith({
     int? questionIndex,
@@ -47,16 +64,24 @@ class QuizSessionState {
     Set<int>? hintedQuestionIndices,
     bool? isComplete,
     int? finalScore,
+    bool? isSaving,
+    String? saveError,
+    bool clearSaveError = false,
   }) {
     return QuizSessionState(
       questionIndex: questionIndex ?? this.questionIndex,
-      selectedAnswer: clearSelectedAnswer ? null : (selectedAnswer ?? this.selectedAnswer),
+      selectedAnswer: clearSelectedAnswer
+          ? null
+          : (selectedAnswer ?? this.selectedAnswer),
       answers: answers ?? this.answers,
       showResult: showResult ?? this.showResult,
       hintsUsed: hintsUsed ?? this.hintsUsed,
-      hintedQuestionIndices: hintedQuestionIndices ?? this.hintedQuestionIndices,
+      hintedQuestionIndices:
+          hintedQuestionIndices ?? this.hintedQuestionIndices,
       isComplete: isComplete ?? this.isComplete,
       finalScore: finalScore ?? this.finalScore,
+      isSaving: isSaving ?? this.isSaving,
+      saveError: clearSaveError ? null : (saveError ?? this.saveError),
     );
   }
 }
@@ -72,8 +97,11 @@ class QuizSessionController extends StateNotifier<QuizSessionState> {
     required this.subject,
     required this.questions,
     required this.quizAttemptService,
-  })  : assert(questions.isNotEmpty, 'A quiz session requires at least one question'),
-        super(QuizSessionState.initial(questions.length));
+  }) : assert(
+         questions.isNotEmpty,
+         'A quiz session requires at least one question',
+       ),
+       super(QuizSessionState.initial(questions.length));
 
   final String studentId;
   final String quizId;
@@ -106,7 +134,10 @@ class QuizSessionController extends StateNotifier<QuizSessionState> {
     if (state.hintedQuestionIndices.contains(state.questionIndex)) return;
     state = state.copyWith(
       hintsUsed: state.hintsUsed + 1,
-      hintedQuestionIndices: {...state.hintedQuestionIndices, state.questionIndex},
+      hintedQuestionIndices: {
+        ...state.hintedQuestionIndices,
+        state.questionIndex,
+      },
     );
   }
 
@@ -122,38 +153,80 @@ class QuizSessionController extends StateNotifier<QuizSessionState> {
   /// Part 7.3: exiting mid-quiz submits whatever's currently answered, it
   /// does not discard progress. The in-progress question's selection counts
   /// even if `submitAnswer()` was never called for it.
-  Future<void> submitAndExit() async {
+  /// Returns false when the attempt could not be saved, so callers that
+  /// navigate away (the exit dialog) can keep the student on the quiz
+  /// instead of silently dropping their answers.
+  Future<bool> submitAndExit() async {
     final updatedAnswers = [...state.answers];
     if (state.selectedAnswer != null) {
       updatedAnswers[state.questionIndex] = state.selectedAnswer!;
     }
-    await _persistAttempt(updatedAnswers);
+    return _persistAttempt(updatedAnswers);
   }
 
-  Future<void> _persistAttempt(List<int> answers) async {
+  /// Retries a save that previously failed, reusing the answers already
+  /// recorded in state.
+  Future<bool> retrySave() => _persistAttempt(state.answers);
+
+  Future<bool> _persistAttempt(List<int> answers) async {
+    // Re-entrancy guard: two concurrent saves each read the student doc and
+    // then write it back whole, so the slower one silently overwrites the
+    // faster one's attempt.
+    if (state.isSaving) return false;
+
     final correctCount = [
       for (var i = 0; i < questions.length; i++)
         if (answers[i] == questions[i].correctIndex) 1,
     ].length;
-    final score = questions.isEmpty ? 0 : (correctCount / questions.length * 100).round();
+    final score = questions.isEmpty
+        ? 0
+        : (correctCount / questions.length * 100).round();
 
-    final eligibility = await quizAttemptService.checkEligibility(studentId, quizId);
-    final attempt = QuizAttempt(
-      id: 'attempt-$quizId-$studentId-${DateTime.now().millisecondsSinceEpoch}',
-      quizId: quizId,
-      studentId: studentId,
-      attemptNumber: eligibility.attemptCount + 1,
-      score: score,
-      totalQuestions: questions.length,
-      correctAnswers: correctCount,
-      answers: answers,
-      timestamp: DateTime.now().toIso8601String(),
-      locked: !quizId.endsWith('-pre'), // pre-tests never lock, post-tests always do
-    );
+    state = state.copyWith(isSaving: true, clearSaveError: true);
 
-    await quizAttemptService.recordAttempt(studentId: studentId, attempt: attempt, subject: subject);
+    try {
+      final eligibility = await quizAttemptService.checkEligibility(
+        studentId,
+        quizId,
+      );
+      final attempt = QuizAttempt(
+        id: 'attempt-$quizId-$studentId-${DateTime.now().millisecondsSinceEpoch}',
+        quizId: quizId,
+        studentId: studentId,
+        attemptNumber: eligibility.attemptCount + 1,
+        score: score,
+        totalQuestions: questions.length,
+        correctAnswers: correctCount,
+        answers: answers,
+        timestamp: DateTime.now().toIso8601String(),
+        locked: !quizId.endsWith(
+          '-pre',
+        ), // pre-tests never lock, post-tests always do
+      );
 
-    state = state.copyWith(isComplete: true, finalScore: score);
+      await quizAttemptService.recordAttempt(
+        studentId: studentId,
+        attempt: attempt,
+        subject: subject,
+      );
+
+      state = state.copyWith(
+        isComplete: true,
+        finalScore: score,
+        isSaving: false,
+        clearSaveError: true,
+      );
+      return true;
+    } catch (_) {
+      // Deliberately not rethrown: the student's answers are still held in
+      // state, so a retry can succeed once the connection recovers.
+      state = state.copyWith(
+        isSaving: false,
+        saveError:
+            "Couldn't save your answers. Check your connection and try again.",
+      );
+      return false;
+    }
   }
 }
 
@@ -194,12 +267,14 @@ class QuizSessionKey {
     required this.studentId,
     required this.quizId,
     required this.quizAttemptService,
-  })  : subject = SubjectKey.chemistry,
-        questions = const [];
+  }) : subject = SubjectKey.chemistry,
+       questions = const [];
 
   @override
   bool operator ==(Object other) =>
-      other is QuizSessionKey && other.studentId == studentId && other.quizId == quizId;
+      other is QuizSessionKey &&
+      other.studentId == studentId &&
+      other.quizId == quizId;
 
   @override
   int get hashCode => Object.hash(studentId, quizId);
@@ -232,11 +307,11 @@ class QuizSessionKey {
 /// fix).
 final quizSessionControllerProvider = StateNotifierProvider.autoDispose
     .family<QuizSessionController, QuizSessionState, QuizSessionKey>(
-  (ref, key) => QuizSessionController(
-    studentId: key.studentId,
-    quizId: key.quizId,
-    subject: key.subject,
-    questions: key.questions,
-    quizAttemptService: key.quizAttemptService,
-  ),
-);
+      (ref, key) => QuizSessionController(
+        studentId: key.studentId,
+        quizId: key.quizId,
+        subject: key.subject,
+        questions: key.questions,
+        quizAttemptService: key.quizAttemptService,
+      ),
+    );

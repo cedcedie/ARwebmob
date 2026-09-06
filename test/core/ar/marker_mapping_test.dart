@@ -35,12 +35,15 @@ void main() {
       expect(markerAssetForLesson(lesson), '/markers/Q3W8.jpg');
     });
 
-    test('fallback scheme matches the explicit-override scheme (root-relative, no '
-        'assets/ prefix) so both agree', () {
-      final lesson = _lesson(id: 'q2w5', quarter: 2, week: 5);
-      expect(markerAssetForLesson(lesson), startsWith('/markers/'));
-      expect(markerAssetForLesson(lesson), isNot(startsWith('assets/')));
-    });
+    test(
+      'fallback scheme matches the explicit-override scheme (root-relative, no '
+      'assets/ prefix) so both agree',
+      () {
+        final lesson = _lesson(id: 'q2w5', quarter: 2, week: 5);
+        expect(markerAssetForLesson(lesson), startsWith('/markers/'));
+        expect(markerAssetForLesson(lesson), isNot(startsWith('assets/')));
+      },
+    );
 
     test('returns the explicit markerImage override as-is when present', () {
       final lesson = _lesson(
@@ -61,7 +64,10 @@ void main() {
 
   group('lessonForTrackableName', () {
     test('finds q1w1 from a mixed-case trackable name', () {
-      final found = lessonForTrackableName(kBuiltInLessons, 'DemocritusAtomQ1W1');
+      final found = lessonForTrackableName(
+        kBuiltInLessons,
+        'DemocritusAtomQ1W1',
+      );
       expect(found?.id, 'q1w1');
     });
 
@@ -75,7 +81,10 @@ void main() {
     });
 
     test('returns null when the trackable name has no Q<n>W<n> pattern', () {
-      expect(lessonForTrackableName(kBuiltInLessons, 'SomeNameWithNoPattern'), isNull);
+      expect(
+        lessonForTrackableName(kBuiltInLessons, 'SomeNameWithNoPattern'),
+        isNull,
+      );
     });
 
     test('finds q2w1 from the spelled-out Vuforia database target name '

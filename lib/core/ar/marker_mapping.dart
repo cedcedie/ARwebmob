@@ -22,7 +22,10 @@ String markerAssetForLesson(Lesson lesson) {
 /// same lesson. Case-insensitive because trackable/GameObject names in the
 /// Unity scene are inconsistently cased. Returns null if no quarter/week
 /// pattern is found in the name, or if no lesson matches the extracted values.
-Lesson? lessonForTrackableName(List<Lesson> orderedLessons, String trackableName) {
+Lesson? lessonForTrackableName(
+  List<Lesson> orderedLessons,
+  String trackableName,
+) {
   final match = RegExp(
     r'q(?:uarter)?\s*(\d+)\s*w(?:eek)?\s*(\d+)',
     caseSensitive: false,

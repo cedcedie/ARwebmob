@@ -46,7 +46,10 @@ void main() {
 void _authServiceTests() {
   group('AuthService.signInStudent', () {
     test('signs in with the constructed email for a raw id', () async {
-      final mockUser = MockUser(uid: 'uid-123456', email: '123456@arscience.school');
+      final mockUser = MockUser(
+        uid: 'uid-123456',
+        email: '123456@arscience.school',
+      );
       final mockAuth = MockFirebaseAuth(mockUser: mockUser, signedIn: false);
       final authService = AuthService(firebaseAuth: mockAuth);
 
@@ -60,7 +63,10 @@ void _authServiceTests() {
     });
 
     test('accepts a literal email input unchanged', () async {
-      final mockUser = MockUser(uid: 'uid-123456', email: '123456@arscience.school');
+      final mockUser = MockUser(
+        uid: 'uid-123456',
+        email: '123456@arscience.school',
+      );
       final mockAuth = MockFirebaseAuth(mockUser: mockUser, signedIn: false);
       final authService = AuthService(firebaseAuth: mockAuth);
 
@@ -75,7 +81,10 @@ void _authServiceTests() {
 
   group('AuthService.signInTeacher', () {
     test('signs in with the email as given, no transformation', () async {
-      final mockUser = MockUser(uid: 'uid-teacher', email: 'teacher@school.edu');
+      final mockUser = MockUser(
+        uid: 'uid-teacher',
+        email: 'teacher@school.edu',
+      );
       final mockAuth = MockFirebaseAuth(mockUser: mockUser, signedIn: false);
       final authService = AuthService(firebaseAuth: mockAuth);
 
@@ -91,7 +100,10 @@ void _authServiceTests() {
 
   group('AuthService.signOut and authStateChanges', () {
     test('signOut clears the current user', () async {
-      final mockUser = MockUser(uid: 'uid-123456', email: '123456@arscience.school');
+      final mockUser = MockUser(
+        uid: 'uid-123456',
+        email: '123456@arscience.school',
+      );
       final mockAuth = MockFirebaseAuth(mockUser: mockUser, signedIn: true);
       final authService = AuthService(firebaseAuth: mockAuth);
 
@@ -101,7 +113,10 @@ void _authServiceTests() {
     });
 
     test('authStateChanges emits the signed-in user', () async {
-      final mockUser = MockUser(uid: 'uid-123456', email: '123456@arscience.school');
+      final mockUser = MockUser(
+        uid: 'uid-123456',
+        email: '123456@arscience.school',
+      );
       final mockAuth = MockFirebaseAuth(mockUser: mockUser, signedIn: true);
       final authService = AuthService(firebaseAuth: mockAuth);
 

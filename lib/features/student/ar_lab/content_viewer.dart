@@ -32,7 +32,8 @@ class ContentViewer extends StatefulWidget {
   State<ContentViewer> createState() => _ContentViewerState();
 }
 
-bool _isPdfUrl(String url) => url.toLowerCase().split('?').first.endsWith('.pdf');
+bool _isPdfUrl(String url) =>
+    url.toLowerCase().split('?').first.endsWith('.pdf');
 
 class _ContentViewerState extends State<ContentViewer> {
   final _controller = PageController();
@@ -54,9 +55,15 @@ class _ContentViewerState extends State<ContentViewer> {
         padding: EdgeInsets.all(16),
         child: Row(
           children: [
-            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
             SizedBox(width: 12),
-            Expanded(child: Text("Processing your teacher's uploaded content...")),
+            Expanded(
+              child: Text("Processing your teacher's uploaded content..."),
+            ),
           ],
         ),
       );
@@ -70,7 +77,8 @@ class _ContentViewerState extends State<ContentViewer> {
         padding: const EdgeInsets.all(16),
         child: OutlinedButton.icon(
           key: const Key('content-viewer-open-pdf'),
-          onPressed: () => (widget.launchUrl ?? _defaultLaunchUrl)(Uri.parse(urls.first)),
+          onPressed: () =>
+              (widget.launchUrl ?? _defaultLaunchUrl)(Uri.parse(urls.first)),
           icon: const Icon(Icons.picture_as_pdf_outlined),
           label: const Text('View lesson content (PDF)'),
         ),
@@ -106,5 +114,7 @@ class _ContentViewerState extends State<ContentViewer> {
   }
 }
 
-Future<bool> _defaultLaunchUrl(Uri uri) =>
-    url_launcher.launchUrl(uri, mode: url_launcher.LaunchMode.externalApplication);
+Future<bool> _defaultLaunchUrl(Uri uri) => url_launcher.launchUrl(
+  uri,
+  mode: url_launcher.LaunchMode.externalApplication,
+);

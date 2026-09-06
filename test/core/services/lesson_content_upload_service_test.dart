@@ -16,18 +16,21 @@ class _FakeStorageUploader implements StorageUploader {
 }
 
 void main() {
-  test('uploads to lessons/{lessonId}/{fileName} and returns the download URL', () async {
-    final fakeUploader = _FakeStorageUploader();
-    final service = LessonContentUploadService(uploader: fakeUploader);
+  test(
+    'uploads to lessons/{lessonId}/{fileName} and returns the download URL',
+    () async {
+      final fakeUploader = _FakeStorageUploader();
+      final service = LessonContentUploadService(uploader: fakeUploader);
 
-    final url = await service.uploadLessonContent(
-      lessonId: 'teacher-1',
-      fileName: 'slides.pptx',
-      bytes: Uint8List.fromList([1, 2, 3]),
-    );
+      final url = await service.uploadLessonContent(
+        lessonId: 'teacher-1',
+        fileName: 'slides.pptx',
+        bytes: Uint8List.fromList([1, 2, 3]),
+      );
 
-    expect(fakeUploader.lastPath, 'lessons/teacher-1/slides.pptx');
-    expect(fakeUploader.lastBytes, [1, 2, 3]);
-    expect(url, 'https://fake-storage.example/lessons/teacher-1/slides.pptx');
-  });
+      expect(fakeUploader.lastPath, 'lessons/teacher-1/slides.pptx');
+      expect(fakeUploader.lastBytes, [1, 2, 3]);
+      expect(url, 'https://fake-storage.example/lessons/teacher-1/slides.pptx');
+    },
+  );
 }

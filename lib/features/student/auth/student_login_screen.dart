@@ -24,7 +24,10 @@ class StudentLoginScreen extends HookConsumerWidget {
     final authState = ref.watch(studentAuthViewModelProvider);
     final auth = ref.read(studentAuthViewModelProvider.notifier);
     final idController = useTextEditingController(text: authState.idOrEmail);
-    final passwordController = useTextEditingController(text: authState.password);
+    final passwordController = useTextEditingController(
+      text: authState.password,
+    );
+    final obscurePassword = useState(true);
 
     Future<void> onSubmit() async {
       auth.idOrEmail = idController.text;
@@ -34,6 +37,7 @@ class StudentLoginScreen extends HookConsumerWidget {
 
     return MaterialApp(
       title: 'AR Science Explorer',
+      debugShowCheckedModeBanner: false,
       theme: studentTheme,
       home: Scaffold(
         body: SafeArea(
@@ -148,7 +152,8 @@ class StudentLoginScreen extends HookConsumerWidget {
                                   controller: idController,
                                   decoration: const InputDecoration(
                                     labelText: 'Student ID',
-                                    hintText: '12-3456 or name@arscience.school',
+                                    hintText:
+                                        '12-3456 or name@arscience.school',
                                     prefixIcon: Icon(Icons.badge_outlined),
                                   ),
                                   keyboardType: TextInputType.text,
@@ -159,11 +164,23 @@ class StudentLoginScreen extends HookConsumerWidget {
                                 const SizedBox(height: 12),
                                 TextField(
                                   controller: passwordController,
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'Password',
-                                    prefixIcon: Icon(Icons.lock_outline),
+                                    prefixIcon: const Icon(Icons.lock_outline),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        obscurePassword.value
+                                            ? Icons.visibility_outlined
+                                            : Icons.visibility_off_outlined,
+                                      ),
+                                      tooltip: obscurePassword.value
+                                          ? 'Show password'
+                                          : 'Hide password',
+                                      onPressed: () => obscurePassword.value =
+                                          !obscurePassword.value,
+                                    ),
                                   ),
-                                  obscureText: true,
+                                  obscureText: obscurePassword.value,
                                   textInputAction: TextInputAction.done,
                                   onChanged: (value) => auth.password = value,
                                   onSubmitted: (_) => onSubmit(),

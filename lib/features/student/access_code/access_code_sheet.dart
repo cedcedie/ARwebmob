@@ -113,10 +113,7 @@ class _AccessCodeSheetState extends State<AccessCodeSheet> {
             onPressed: _loading ? null : _submit,
             child: Text(_loading ? 'Applying...' : 'Apply Code'),
           ),
-          if (_message != null) ...[
-            const SizedBox(height: 8),
-            Text(_message!),
-          ],
+          if (_message != null) ...[const SizedBox(height: 8), Text(_message!)],
         ],
       ),
     );

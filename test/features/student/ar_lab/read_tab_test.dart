@@ -69,25 +69,27 @@ void main() {
     },
   );
 
-  testWidgets(
-    'shows "Read" chip instead of the button when isRead is true',
-    (tester) async {
-      final vm = _buildViewModel(isRead: true);
+  testWidgets('shows "Read" chip instead of the button when isRead is true', (
+    tester,
+  ) async {
+    final vm = _buildViewModel(isRead: true);
 
-      await tester.pumpWidget(_wrap(ReadTab(vm: vm)));
+    await tester.pumpWidget(_wrap(ReadTab(vm: vm)));
 
-      expect(find.text('Read'), findsOneWidget);
-      expect(find.byType(FilledButton), findsNothing);
-      expect(find.byType(Chip), findsOneWidget);
-    },
-  );
+    expect(find.text('Read'), findsOneWidget);
+    expect(find.byType(FilledButton), findsNothing);
+    expect(find.byType(Chip), findsOneWidget);
+  });
 
   testWidgets(
     'renders uploaded lesson content via ContentViewer when present',
     (tester) async {
       final vm = _buildViewModel(
         isRead: false,
-        contentImageUrls: ['https://example.com/slide1.png', 'https://example.com/slide2.png'],
+        contentImageUrls: [
+          'https://example.com/slide1.png',
+          'https://example.com/slide2.png',
+        ],
         contentStatus: 'ready',
       );
 

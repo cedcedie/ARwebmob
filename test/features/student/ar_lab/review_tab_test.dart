@@ -43,14 +43,18 @@ Widget _wrap(Widget child) {
   final router = GoRouter(
     initialLocation: '/',
     routes: [
-      GoRoute(path: '/', builder: (context, state) => Scaffold(body: child)),
+      GoRoute(
+        path: '/',
+        builder: (context, state) => Scaffold(body: child),
+      ),
       GoRoute(
         path: '/quiz/:lessonId/:phase',
         builder: (context, state) => const Scaffold(body: Text('Quiz screen')),
       ),
       GoRoute(
         path: '/progress',
-        builder: (context, state) => const Scaffold(body: Text('Progress screen')),
+        builder: (context, state) =>
+            const Scaffold(body: Text('Progress screen')),
       ),
     ],
   );
@@ -71,7 +75,10 @@ void main() {
 
       await tester.pumpWidget(_wrap(ReviewTab(vm: vm)));
 
-      final buttonFinder = find.widgetWithText(OutlinedButton, 'Start Post-Test');
+      final buttonFinder = find.widgetWithText(
+        OutlinedButton,
+        'Start Post-Test',
+      );
       expect(buttonFinder, findsOneWidget);
 
       final button = tester.widget<OutlinedButton>(buttonFinder);
@@ -89,7 +96,10 @@ void main() {
     'disables the button and shows postTestReason when postTestEligible is false',
     (tester) async {
       const reason = 'Complete the lesson first.';
-      final vm = _buildViewModel(postTestEligible: false, postTestReason: reason);
+      final vm = _buildViewModel(
+        postTestEligible: false,
+        postTestReason: reason,
+      );
 
       await tester.pumpWidget(_wrap(ReviewTab(vm: vm)));
 
@@ -111,7 +121,10 @@ void main() {
       await tester.pumpWidget(_wrap(ReviewTab(vm: vm)));
 
       expect(find.text('Start Post-Test'), findsNothing);
-      final buttonFinder = find.widgetWithText(OutlinedButton, 'No Post-Test for this lesson');
+      final buttonFinder = find.widgetWithText(
+        OutlinedButton,
+        'No Post-Test for this lesson',
+      );
       expect(buttonFinder, findsOneWidget);
 
       final button = tester.widget<OutlinedButton>(buttonFinder);

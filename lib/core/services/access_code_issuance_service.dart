@@ -26,8 +26,8 @@ class AccessCodeIssuanceService {
   AccessCodeIssuanceService({
     required FirebaseFirestore firestore,
     required QuizAttemptService quizAttemptService,
-  })  : _firestore = firestore,
-        _quizAttemptService = quizAttemptService;
+  }) : _firestore = firestore,
+       _quizAttemptService = quizAttemptService;
 
   final FirebaseFirestore _firestore;
   final QuizAttemptService _quizAttemptService;
@@ -53,6 +53,11 @@ class AccessCodeIssuanceService {
       'subjects': subjects,
       'usedByStudentIds': <String>[],
       'isUsed': false,
+      // The teacher codes table reads this for its "Issued At" column. It
+      // was never written before, so that column showed "—" for every
+      // subject/lesson code (only auto-generated retake codes, which carry
+      // their own `generatedAt`, ever displayed a real time).
+      'createdAt': DateTime.now().toIso8601String(),
     };
     if (lessonIds != null && lessonIds.isNotEmpty) {
       data['lessonIds'] = lessonIds;
@@ -74,6 +79,8 @@ class AccessCodeIssuanceService {
       'targetStudentId': studentId,
       'usedByStudentIds': <String>[],
       'isUsed': false,
+      // See issueSubjectCode — powers the codes table's "Issued At" column.
+      'createdAt': DateTime.now().toIso8601String(),
     });
     return code;
   }
@@ -87,7 +94,10 @@ class AccessCodeIssuanceService {
     required String studentId,
   }) async {
     final quizId = builtinQuizId(lessonId, QuizPhase.post);
-    final eligibility = await _quizAttemptService.checkEligibility(studentId, quizId);
+    final eligibility = await _quizAttemptService.checkEligibility(
+      studentId,
+      quizId,
+    );
     if (eligibility.attemptCount < 1) {
       throw StateError(
         'Cannot issue a retake code: student $studentId has no recorded '
@@ -109,21 +119,78 @@ class AccessCodeIssuanceService {
     return code;
   }
 
+  /// Invalidates every outstanding code in both collections by setting
+  /// `isArchived: true`, and reports how many docs it touched.
+  ///
+  /// Called by "reset progress for all" (client feedback, UAT): wiping every
+  /// student's progress while leaving previously handed-out codes live left
+  /// teachers with a pile of stale codes they couldn't tell apart from
+  /// current ones. Archived codes are rejected at redemption by
+  /// `AccessCodeService.redeem` and shown as "archived" in the codes table,
+  /// so this is a genuine invalidation, not just a label. Archiving rather
+  /// than deleting keeps the audit trail of what was issued.
+  ///
+  /// Batched (Firestore caps a batch at 500 ops) to scale past one
+  /// classroom's worth of codes.
+  Future<int> archiveAllCodes() async {
+    var archived = 0;
+    const batchLimit = 500;
+
+    for (final collection in [_unlockCodes, _quizUnlockCodes]) {
+      final snapshot = await collection.get();
+      final live = snapshot.docs
+          .where((doc) => (doc.data()['isArchived'] as bool? ?? false) == false)
+          .toList();
+      for (var i = 0; i < live.length; i += batchLimit) {
+        final batch = _firestore.batch();
+        for (final doc in live.skip(i).take(batchLimit)) {
+          batch.update(doc.reference, {'isArchived': true});
+        }
+        await batch.commit();
+      }
+      archived += live.length;
+    }
+
+    return archived;
+  }
+
+  /// Permanently removes a subject/lesson code from `/unlockCodes`.
+  ///
+  /// Distinct from archiving on purpose. Archiving invalidates a code but
+  /// keeps it in the table as a record of what was handed out; deleting is
+  /// for codes that should never have existed — a typo, a test code, a
+  /// batch issued to the wrong section — which otherwise accumulate in the
+  /// table forever with no way to clear them.
+  Future<void> deleteUnlockCode(String code) {
+    return _unlockCodes.doc(code.trim().toUpperCase()).delete();
+  }
+
+  /// Permanently removes a retake code from `/quizUnlockCodes`.
+  ///
+  /// Keyed by document id, not by the code string: retake code documents
+  /// use auto-generated ids and the code itself is only a field, so two
+  /// codes could in principle collide on the string but never on the id.
+  Future<void> deleteRetakeCode(String docId) {
+    return _quizUnlockCodes.doc(docId).delete();
+  }
+
   /// Streams `/unlockCodes` docs (subject + lesson codes) for the teacher's
   /// codes table, each map annotated with its doc id under `'id'`.
   Stream<List<Map<String, dynamic>>> watchIssuedUnlockCodes() {
     return _unlockCodes.snapshots().map(
-          (snapshot) => snapshot.docs
-              .map((doc) => <String, dynamic>{...doc.data(), 'id': doc.id})
-              .toList(),
-        );
+      (snapshot) => snapshot.docs
+          .map((doc) => <String, dynamic>{...doc.data(), 'id': doc.id})
+          .toList(),
+    );
   }
 
   /// Streams `/quizUnlockCodes` docs (retake codes) as typed models.
   Stream<List<QuizUnlockCode>> watchIssuedRetakeCodes() {
     return _quizUnlockCodes.snapshots().map(
-          (snapshot) => snapshot.docs.map((doc) => QuizUnlockCode.fromJson(doc.data())).toList(),
-        );
+      (snapshot) => snapshot.docs
+          .map((doc) => QuizUnlockCode.fromJson(doc.data()))
+          .toList(),
+    );
   }
 
   /// Resolves the code to write to `/unlockCodes/{code}`. A teacher-supplied
@@ -137,7 +204,9 @@ class AccessCodeIssuanceService {
       final code = customCode.trim().toUpperCase();
       final existing = await _unlockCodes.doc(code).get();
       if (existing.exists) {
-        throw StateError('Code "$code" already exists. Choose a different code.');
+        throw StateError(
+          'Code "$code" already exists. Choose a different code.',
+        );
       }
       return code;
     }

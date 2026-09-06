@@ -60,30 +60,35 @@ void main() {
     testWidgets('accepts a literal email unformatted', (tester) async {
       await _pumpScreen(tester, _TrackingAuthService());
 
-      await tester.enterText(find.byType(TextField).first, 'student@arscience.school');
+      await tester.enterText(
+        find.byType(TextField).first,
+        'student@arscience.school',
+      );
       await tester.pump();
 
       expect(find.text('student@arscience.school'), findsOneWidget);
     });
 
-    testWidgets('submitting calls AuthService.signInStudent with the normalized value',
-        (tester) async {
-      final authService = _TrackingAuthService();
-      await _pumpScreen(tester, authService);
+    testWidgets(
+      'submitting calls AuthService.signInStudent with the normalized value',
+      (tester) async {
+        final authService = _TrackingAuthService();
+        await _pumpScreen(tester, authService);
 
-      await tester.enterText(find.byType(TextField).first, '123456');
-      await tester.enterText(find.byType(TextField).last, 'secret');
-      await tester.pump();
+        await tester.enterText(find.byType(TextField).first, '123456');
+        await tester.enterText(find.byType(TextField).last, 'secret');
+        await tester.pump();
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+        await tester.pumpAndSettle();
 
-      expect(authService.signInStudentCallCount, 1);
-      // The field shows the dash-formatted display value; AuthService is
-      // responsible for stripping it back down to digits before building
-      // the student's email (see auth_service_test.dart).
-      expect(authService.lastIdOrEmail, '12-3456');
-      expect(authService.lastPassword, 'secret');
-    });
+        expect(authService.signInStudentCallCount, 1);
+        // The field shows the dash-formatted display value; AuthService is
+        // responsible for stripping it back down to digits before building
+        // the student's email (see auth_service_test.dart).
+        expect(authService.lastIdOrEmail, '12-3456');
+        expect(authService.lastPassword, 'secret');
+      },
+    );
   });
 }

@@ -14,7 +14,8 @@ class QuizAttempt with _$QuizAttempt {
     required int totalQuestions,
     required int correctAnswers,
     required List<int> answers, // selected option index per question, in order
-    required String timestamp, // ISO string, kept as string to match Firestore exactly
+    required String
+    timestamp, // ISO string, kept as string to match Firestore exactly
     int? timeSpentSeconds,
     required bool locked,
   }) = _QuizAttempt;

@@ -5,6 +5,7 @@ import '../../../core/services/access_code_issuance_service.dart';
 import '../../../core/services/lesson_repository.dart';
 import '../../../core/services/quiz_attempt_service.dart';
 import '../../../core/services/quiz_repository.dart';
+import '../../../core/services/student_account_service.dart';
 import '../../../core/services/student_repository.dart';
 import '../access_codes/access_codes_providers.dart';
 import '../lessons/lessons_providers.dart';
@@ -20,6 +21,7 @@ class TeacherServices {
     required this.studentRepository,
     required this.accessCodeIssuanceService,
     required this.quizAttemptService,
+    this.studentAccountService,
   });
 
   final LessonRepository lessonRepository;
@@ -27,11 +29,18 @@ class TeacherServices {
   final StudentRepository studentRepository;
   final AccessCodeIssuanceService accessCodeIssuanceService;
   final QuizAttemptService quizAttemptService;
+
+  /// Provisions the Firebase Auth login for a newly added student. Null in
+  /// widget tests (and anywhere Firebase isn't initialized), in which case
+  /// Add Student falls back to writing the roster row only.
+  final StudentAccountService? studentAccountService;
 }
 
 /// Every `ProviderScope` override the teacher screens need once services are
 /// constructed at app startup.
-List<Override> teacherProviderOverridesFor({required TeacherServices services}) {
+List<Override> teacherProviderOverridesFor({
+  required TeacherServices services,
+}) {
   return [
     lessonsViewModelProvider.overrideWith(
       (ref) => buildLessonsViewModel(
@@ -52,6 +61,8 @@ List<Override> teacherProviderOverridesFor({required TeacherServices services}) 
         includeArchived: includeArchived,
         onToggleIncludeArchived: (value) =>
             ref.read(studentsIncludeArchivedProvider.notifier).state = value,
+        accessCodeIssuanceService: services.accessCodeIssuanceService,
+        studentAccountService: services.studentAccountService,
       );
     }),
     accessCodesViewModelProvider.overrideWith(
@@ -85,9 +96,13 @@ Override itemAnalysisOverrideFor(
 }
 
 /// Convenience factory for tests and app startup.
-TeacherServices teacherServicesFromFirestore(FirebaseFirestore firestore) {
+TeacherServices teacherServicesFromFirestore(
+  FirebaseFirestore firestore, {
+  StudentAccountService? studentAccountService,
+}) {
   final quizAttemptService = QuizAttemptService(firestore: firestore);
   return TeacherServices(
+    studentAccountService: studentAccountService,
     lessonRepository: LessonRepository(firestore: firestore),
     quizRepository: QuizRepository(firestore: firestore),
     studentRepository: StudentRepository(firestore: firestore),

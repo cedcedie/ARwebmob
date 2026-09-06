@@ -16,14 +16,21 @@ void main() {
       quizTitle: 'Q1W1 Post-Test',
       questions: [
         BuiltInQuestion(
-          id: 'q0', subject: SubjectKey.chemistry, lessonId: 'q1w1',
-          question: 'What is H2O?', options: const ['Water', 'Oxygen', 'Hydrogen', 'Salt'],
-          correctIndex: 0, hint: 'hint', type: QuestionType.mc,
+          id: 'q0',
+          subject: SubjectKey.chemistry,
+          lessonId: 'q1w1',
+          question: 'What is H2O?',
+          options: const ['Water', 'Oxygen', 'Hydrogen', 'Salt'],
+          correctIndex: 0,
+          hint: 'hint',
+          type: QuestionType.mc,
         ),
       ],
       results: const [
         QuestionItemAnalysis(
-          questionIndex: 0, difficultyIndex: 0.75, discriminationIndex: 0.3,
+          questionIndex: 0,
+          difficultyIndex: 0.75,
+          discriminationIndex: 0.3,
           distractorRates: {1: 0.15, 2: 0.1},
         ),
       ],
@@ -32,15 +39,37 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [itemAnalysisViewModelProvider('quiz-1').overrideWith((ref) => Stream.value(vm))],
-        child: const MaterialApp(home: ItemAnalysisScreen(quizId: 'quiz-1', quizTitle: 'Q1W1 Post-Test')),
+        overrides: [
+          itemAnalysisViewModelProvider(
+            'quiz-1',
+          ).overrideWith((ref) => Stream.value(vm)),
+        ],
+        // ShadApp, not MaterialApp: the screen reads ShadTheme.of(context).
+        child: const ShadApp(
+          home: ItemAnalysisScreen(
+            quizId: 'quiz-1',
+            quizTitle: 'Q1W1 Post-Test',
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('20'), findsWidgets); // attempt count shown somewhere
+    expect(
+      find.textContaining('20'),
+      findsWidgets,
+    ); // attempt count shown somewhere
     expect(find.textContaining('What is H2O?'), findsOneWidget);
-    expect(find.textContaining('75%'), findsWidgets); // difficulty index rendered as a percent
+    expect(
+      find.textContaining('75%'),
+      findsWidgets,
+    ); // difficulty index rendered as a percent
+
+    // UAT feedback: teachers want the headcount, not just the percentage.
+    expect(
+      find.textContaining('15 of 20 students answered correctly'),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -57,14 +86,20 @@ void main() {
             }),
           ],
           child: const ShadApp(
-            home: ItemAnalysisScreen(quizId: 'quiz-1', quizTitle: 'Q1W1 Post-Test'),
+            home: ItemAnalysisScreen(
+              quizId: 'quiz-1',
+              quizTitle: 'Q1W1 Post-Test',
+            ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Exception'), findsNothing);
-      expect(find.textContaining("Couldn't load item analysis"), findsOneWidget);
+      expect(
+        find.textContaining("Couldn't load item analysis"),
+        findsOneWidget,
+      );
       expect(find.text('Retry'), findsOneWidget);
       expect(attempt, 1);
 

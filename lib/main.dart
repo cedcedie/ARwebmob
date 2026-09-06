@@ -11,6 +11,7 @@ import 'core/services/access_code_service.dart';
 import 'core/services/lesson_repository.dart';
 import 'core/services/quiz_attempt_service.dart';
 import 'core/services/quiz_repository.dart';
+import 'core/services/student_account_service.dart';
 import 'core/services/student_repository.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/student_theme.dart';
@@ -87,7 +88,18 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
     if (_teacherServices != null && _servicesTeacherEmail == teacherEmail) {
       return _teacherServices!;
     }
-    final services = teacherServicesFromFirestore(FirebaseFirestore.instance);
+    final services = teacherServicesFromFirestore(
+      FirebaseFirestore.instance,
+      // Lets Add Student provision the student's Firebase Auth login with
+      // the password the teacher types, without disturbing the teacher's
+      // own session (see StudentAccountService).
+      studentAccountService: StudentAccountService(
+        studentRepository: StudentRepository(
+          firestore: FirebaseFirestore.instance,
+        ),
+        firebaseOptions: DefaultFirebaseOptions.currentPlatform,
+      ),
+    );
     _servicesTeacherEmail = teacherEmail;
     _teacherServices = services;
     _teacherRouter = buildTeacherRouter(services: services);
@@ -160,6 +172,7 @@ class _ArScienceExplorerAppState extends State<ArScienceExplorerApp> {
           overrides: studentProviderOverridesFor(studentId, services: services),
           child: MaterialApp.router(
             title: 'AR Science Explorer',
+            debugShowCheckedModeBanner: false,
             theme: studentTheme,
             routerConfig: _studentRouter!,
           ),

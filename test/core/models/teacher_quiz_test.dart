@@ -31,18 +31,21 @@ void main() {
     expect(quiz.phase, QuizPhase.post);
   });
 
-  test('BuiltInQuestion round-trips a tf question using the 4-slot convention', () {
-    final question = BuiltInQuestion.fromJson(const {
-      'id': 'q1w1-tf-1',
-      'subject': 'chemistry',
-      'question': 'Atoms are indivisible.',
-      'options': ['True', 'False', '-', '-'],
-      'correctIndex': 0,
-      'hint': 'Think about what "atomos" means.',
-      'type': 'tf',
-    });
+  test(
+    'BuiltInQuestion round-trips a tf question using the 4-slot convention',
+    () {
+      final question = BuiltInQuestion.fromJson(const {
+        'id': 'q1w1-tf-1',
+        'subject': 'chemistry',
+        'question': 'Atoms are indivisible.',
+        'options': ['True', 'False', '-', '-'],
+        'correctIndex': 0,
+        'hint': 'Think about what "atomos" means.',
+        'type': 'tf',
+      });
 
-    expect(question.type, QuestionType.tf);
-    expect(question.options, ['True', 'False', '-', '-']);
-  });
+      expect(question.type, QuestionType.tf);
+      expect(question.options, ['True', 'False', '-', '-']);
+    },
+  );
 }
