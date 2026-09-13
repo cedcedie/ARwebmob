@@ -208,6 +208,7 @@ void main() {
       'chemistry': null,
       'biology': null,
       'physics': null,
+      'earthScience': null,
     });
     expect(created!.completedLessonIds, isEmpty);
     expect(created!.quizAttempts, isEmpty);

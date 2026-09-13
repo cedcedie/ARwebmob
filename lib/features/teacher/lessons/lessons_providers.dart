@@ -28,6 +28,7 @@ class LessonsViewModel {
     required this.onCreateLesson,
     required this.onUpdateLesson,
     required this.onArchiveLesson,
+    required this.onArchiveBuiltInLesson,
     required this.fetchLessonById,
   });
 
@@ -36,6 +37,14 @@ class LessonsViewModel {
   final Future<void> Function(TeacherLesson lesson) onCreateLesson;
   final Future<void> Function(TeacherLesson lesson) onUpdateLesson;
   final Future<void> Function(String lessonId) onArchiveLesson;
+
+  /// Soft-deletes a built-in lesson (hides it from students) without ever
+  /// touching the compiled curriculum entry itself, and independent of
+  /// student-progress resets -- see `LessonRepository.archiveBuiltInLesson`.
+  /// Reversible via `LessonRepository.restoreBuiltInLesson` (no UI for that
+  /// yet -- clear `isArchived` on the `/lessons/{id}` doc directly if a
+  /// mistaken delete needs undoing).
+  final Future<void> Function(Lesson builtIn) onArchiveBuiltInLesson;
 
   /// Re-fetches a single lesson doc's current Firestore state — passed to
   /// `LessonForm` so it can check for an already-completed server-side
@@ -69,8 +78,15 @@ Stream<LessonsViewModel> buildLessonsViewModel({
           (lesson) => DisplayLesson(
             lesson: lesson,
             isBuiltIn: builtInIds.contains(lesson.id),
+            // A built-in row's "teacherLesson" is synthesized from its
+            // current *effective* (already-merged) values rather than the
+            // raw override doc, so opening the edit form pre-fills with
+            // what's actually shown today -- the built-in's own defaults
+            // when no override exists yet, or the override's values once
+            // one does. Submitting without changing anything is therefore
+            // a safe no-op, never a silent reset to blank fields.
             teacherLesson: builtInIds.contains(lesson.id)
-                ? null
+                ? _teacherLessonFromMergedBuiltIn(lesson)
                 : teacherById[lesson.id],
           ),
         )
@@ -84,9 +100,33 @@ Stream<LessonsViewModel> buildLessonsViewModel({
       onCreateLesson: lessonRepository.createLesson,
       onUpdateLesson: lessonRepository.updateLesson,
       onArchiveLesson: lessonRepository.archiveLesson,
+      onArchiveBuiltInLesson: lessonRepository.archiveBuiltInLesson,
       fetchLessonById: lessonRepository.fetchLessonById,
     );
   });
+}
+
+/// Builds the `TeacherLesson` used to pre-fill `LessonForm` when editing a
+/// built-in row -- taken from [lesson]'s already-merged, currently-effective
+/// values (see `buildLessonsViewModel`) rather than the raw override doc, so
+/// a teacher who opens the form and immediately hits save writes back
+/// exactly what's already showing, not a blank reset.
+TeacherLesson _teacherLessonFromMergedBuiltIn(Lesson lesson) {
+  return TeacherLesson(
+    id: lesson.id,
+    title: lesson.title,
+    subject: lesson.subject,
+    summary: lesson.summary,
+    steps: lesson.steps,
+    quarter: lesson.quarter,
+    week: lesson.week,
+    linkedQuizId: lesson.linkedQuizId,
+    pdfUrl: lesson.pdfUrl,
+    contentImageUrls: lesson.contentImageUrls,
+    contentStatus: lesson.contentStatus,
+    hasAR: lesson.hasAR,
+    arPayload: lesson.arPayload,
+  );
 }
 
 String subjectKeyLabel(SubjectKey subject) {
@@ -97,5 +137,7 @@ String subjectKeyLabel(SubjectKey subject) {
       return 'Biology';
     case SubjectKey.physics:
       return 'Physics';
+    case SubjectKey.earthScience:
+      return 'Earth Science';
   }
 }

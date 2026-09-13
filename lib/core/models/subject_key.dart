@@ -1,7 +1,8 @@
 enum SubjectKey {
   chemistry,
   biology,
-  physics;
+  physics,
+  earthScience;
 
   static SubjectKey fromFirestore(String value) {
     return SubjectKey.values.firstWhere(

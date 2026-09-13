@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/access_code_service.dart';
 import '../access_code/access_code_sheet.dart';
 import 'learn_providers.dart';
+import 'marker_viewer_screen.dart';
 
 class LessonCard extends StatelessWidget {
   const LessonCard({
@@ -36,12 +37,22 @@ class LessonCard extends StatelessWidget {
         ),
         trailing: !data.isUnlocked
             ? const Icon(Icons.lock_outline)
-            : data.hasPreTest
-            ? TextButton(
-                onPressed: () => context.push('/quiz/${data.lessonId}/pre'),
-                child: const Text('Pre-Test'),
-              )
-            : null,
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (data.markerImage != null)
+                    IconButton(
+                      tooltip: 'View & download AR marker',
+                      icon: const Icon(Icons.qr_code_2_outlined),
+                      onPressed: () => _showMarker(context),
+                    ),
+                  if (data.hasPreTest)
+                    TextButton(
+                      onPressed: () => context.push('/quiz/${data.lessonId}/pre'),
+                      child: const Text('Pre-Test'),
+                    ),
+                ],
+              ),
         onTap: () {
           if (data.isUnlocked) {
             context.push('/lesson/${data.lessonId}');
@@ -49,6 +60,17 @@ class LessonCard extends StatelessWidget {
             _showAccessCodeSheet(context);
           }
         },
+      ),
+    );
+  }
+
+  void _showMarker(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MarkerViewerScreen(
+          lessonTitle: data.title,
+          markerImage: data.markerImage!,
+        ),
       ),
     );
   }

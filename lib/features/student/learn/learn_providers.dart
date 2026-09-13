@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 
+import '../../../core/ar/marker_mapping.dart';
 import '../../../core/models/student_record.dart';
 import '../../../core/models/subject_key.dart';
 import '../../../core/models/teacher_lesson.dart';
@@ -19,6 +20,7 @@ class LessonCardData {
     required this.isUnlocked,
     required this.hasPreTest,
     required this.isCompleted,
+    this.markerImage,
   });
 
   final String lessonId;
@@ -28,6 +30,11 @@ class LessonCardData {
   final bool isUnlocked;
   final bool hasPreTest;
   final bool isCompleted;
+
+  /// The lesson's AR marker (a bundled `/markers/QxWy.jpg` asset for
+  /// built-in lessons, or a teacher-uploaded Storage URL), or `null` when
+  /// the lesson has no marker to view/download. See `marker_mapping.dart`.
+  final String? markerImage;
 }
 
 class LearnViewModel {
@@ -111,6 +118,7 @@ Stream<LearnViewModel> buildLearnViewModel({
               isUnlocked: l.isUnlockedByDefault || unlockedIds.contains(l.id),
               hasPreTest: preTestLessonIds.contains(l.id),
               isCompleted: completedIds.contains(l.id),
+              markerImage: l.hasAR ? markerAssetForLesson(l) : null,
             ),
           )
           .toList();

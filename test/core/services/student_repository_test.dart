@@ -155,4 +155,41 @@ void main() {
       expect(result.quizAttempts, student.quizAttempts);
     },
   );
+
+  test(
+    'resetAllProgress clears every subject\'s score (including a newly '
+    'added one) and every activity list, without touching name/id/grade',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = StudentRepository(firestore: firestore);
+      final student = StudentRecord.fromJson({
+        ..._sampleStudent().toJson(),
+        'scores': {
+          'chemistry': 85,
+          'biology': 90,
+          'physics': 78,
+          'earthScience': 60,
+        },
+      });
+      await repo.saveStudent(student);
+
+      await repo.resetAllProgress();
+
+      final result = await repo.getStudent('123456');
+      expect(result, isNotNull);
+      expect(result!.scores, {
+        'chemistry': null,
+        'biology': null,
+        'physics': null,
+        'earthScience': null,
+      });
+      expect(result.completedLessonIds, isEmpty);
+      expect(result.unlockedLessonIds, isEmpty);
+      expect(result.quizAttempts, isEmpty);
+      // Identity fields must survive a progress reset untouched.
+      expect(result.name, student.name);
+      expect(result.grade, student.grade);
+      expect(result.section, student.section);
+    },
+  );
 }

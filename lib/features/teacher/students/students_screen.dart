@@ -1007,6 +1007,12 @@ class _ScoreChips extends StatelessWidget {
         ),
         _subjectChip(context, 'Bio', scores['biology'], SubjectKey.biology),
         _subjectChip(context, 'Phys', scores['physics'], SubjectKey.physics),
+        _subjectChip(
+          context,
+          'Earth',
+          scores['earthScience'],
+          SubjectKey.earthScience,
+        ),
       ],
     );
   }

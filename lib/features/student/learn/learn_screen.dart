@@ -10,6 +10,7 @@ const _subjectOrder = [
   SubjectKey.chemistry,
   SubjectKey.biology,
   SubjectKey.physics,
+  SubjectKey.earthScience,
 ];
 
 class _EmptySubject extends StatelessWidget {

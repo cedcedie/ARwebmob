@@ -74,46 +74,97 @@ class LessonRepository {
     });
   }
 
+  /// Soft-deletes a *built-in* lesson by setting `isArchived: true` on its
+  /// `/lessons/{id}` override doc -- unlike [archiveLesson] this must
+  /// tolerate the doc not existing yet (a built-in only ever gets a Firestore
+  /// doc once a teacher first edits/uploads content for it), so it's a
+  /// merged `set` seeded with the id/title/subject `TeacherLesson` requires,
+  /// rather than an `update` that would throw NOT_FOUND on a fresh doc.
+  /// The compiled `kBuiltInLessons` entry itself is never touched -- this
+  /// only ever hides the lesson from `mergedLessons` (see `includeArchived`)
+  /// and is fully reversible by clearing the same field, so it's independent
+  /// of (and unaffected by) `StudentRepository.resetAllProgress`, which only
+  /// ever touches `/students/{id}` docs.
+  Future<void> archiveBuiltInLesson(Lesson builtIn) async {
+    await _firestore.collection('lessons').doc(builtIn.id).set({
+      'id': builtIn.id,
+      'title': builtIn.title,
+      'subject': builtIn.subject.firestoreValue,
+      'isArchived': true,
+    }, SetOptions(merge: true));
+  }
+
+  /// Restores a previously-archived built-in lesson (clears `isArchived`)
+  /// without disturbing any other override field a teacher may have set.
+  Future<void> restoreBuiltInLesson(String lessonId) async {
+    await _firestore.collection('lessons').doc(lessonId).set({
+      'isArchived': false,
+    }, SetOptions(merge: true));
+  }
+
   List<Lesson> mergedLessons(
     List<TeacherLesson> teacherLessons, {
     bool includeArchived = false,
   }) {
     final builtInIds = kBuiltInLessons.map((l) => l.id).toSet();
 
-    // A Firestore doc sharing a built-in's id is normally fully discarded
-    // (the built-in curriculum's identity -- title, subject, AR mapping --
-    // is authoritative and must never be silently overwritten). But
-    // built-ins have no way to carry teacher-uploaded PDF/PPTX content of
-    // their own, since that upload flow always writes through this same
-    // /lessons/{id} doc -- so as a narrow, deliberate exception, ONLY
-    // contentImageUrls/contentStatus get overlaid from a matching doc onto
-    // the built-in Lesson, leaving every other field exactly as the
-    // built-in curriculum defines it. See lessons_screen.dart's "Upload
-    // Content" action on built-in rows, which writes only those two
-    // fields (plus the id/title/subject required to satisfy TeacherLesson
-    // itself) for exactly this purpose.
+    // A Firestore doc sharing a built-in's id lets a teacher override that
+    // lesson's own copy -- title/summary/steps/quarter/week/linkedQuizId/
+    // pdfUrl/content, plus archiving it -- while the compiled
+    // `kBuiltInLessons` entry itself never changes (so "the curriculum can
+    // be edited" without ever losing the original if an override is later
+    // cleared). See lessons_screen.dart's per-row Edit/Archive actions on
+    // built-in rows.
     //
-    // markerImage gets the same narrow overlay treatment, for the same
-    // reason: a teacher can print/re-print an AR marker for a built-in
-    // lesson (LessonForm's "Upload AR marker image" action), but the
-    // built-in's modelIndex/detectionMode/anchorHint/lessonSteps stay
-    // authoritative — only the marker image itself is teacher-replaceable.
+    // The one deliberately narrow exception is `arPayload`: only its
+    // `modelIndex` and `markerImage` are teacher-overridable (a lesson can
+    // be repointed at a different bundled 3D model, or get a reprinted
+    // marker) -- `detectionMode`/`anchorHint`/`lessonSteps`/`title`/
+    // `subtitle`/`description`/`keyIdeas` always stay the built-in's own
+    // curated AR copy. `LessonForm` doesn't populate those richer fields
+    // when it constructs an override's `arPayload` (it has no UI for them),
+    // so overlaying that object wholesale would silently blank out the
+    // curated post-scan description every time a teacher merely changed a
+    // built-in's model index or any other field.
     final contentOverridesByLessonId = {
       for (final tl in teacherLessons)
         if (builtInIds.contains(tl.id)) tl.id: tl,
     };
-    final builtIns = kBuiltInLessons.map((lesson) {
-      final override = contentOverridesByLessonId[lesson.id];
-      if (override == null) return lesson;
-      final overrideMarkerImage = override.arPayload?.markerImage;
-      return lesson.copyWith(
-        contentImageUrls: override.contentImageUrls,
-        contentStatus: override.contentStatus,
-        arPayload: overrideMarkerImage == null || lesson.arPayload == null
-            ? lesson.arPayload
-            : lesson.arPayload!.copyWith(markerImage: overrideMarkerImage),
-      );
-    });
+    final builtIns = kBuiltInLessons
+        .where((lesson) {
+          final override = contentOverridesByLessonId[lesson.id];
+          return includeArchived || override?.isArchived != true;
+        })
+        .map((lesson) {
+          final override = contentOverridesByLessonId[lesson.id];
+          if (override == null) return lesson;
+          final overrideMarkerImage = override.arPayload?.markerImage;
+          final mergedArPayload = override.arPayload == null
+              ? (overrideMarkerImage == null || lesson.arPayload == null
+                    ? lesson.arPayload
+                    : lesson.arPayload!.copyWith(
+                        markerImage: overrideMarkerImage,
+                      ))
+              : (lesson.arPayload?.copyWith(
+                      modelIndex: override.arPayload!.modelIndex,
+                      markerImage:
+                          overrideMarkerImage ?? lesson.arPayload?.markerImage,
+                    ) ??
+                    override.arPayload);
+          return lesson.copyWith(
+            title: override.title,
+            summary: override.summary ?? lesson.summary,
+            steps: override.steps ?? lesson.steps,
+            quarter: override.quarter ?? lesson.quarter,
+            week: override.week ?? lesson.week,
+            linkedQuizId: override.linkedQuizId ?? lesson.linkedQuizId,
+            pdfUrl: override.pdfUrl ?? lesson.pdfUrl,
+            contentImageUrls: override.contentImageUrls,
+            contentStatus: override.contentStatus,
+            hasAR: override.hasAR ?? lesson.hasAR,
+            arPayload: mergedArPayload,
+          );
+        });
 
     final appended = teacherLessons
         .where((tl) => !builtInIds.contains(tl.id))

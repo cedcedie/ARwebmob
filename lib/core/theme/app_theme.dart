@@ -61,6 +61,10 @@ abstract final class AppColors {
 
   /// Physics — an indigo-blue.
   static const physics = Color(0xFF4457E8);
+
+  /// Earth Science — a cosmic violet, clear of chemistry/biology/physics'
+  /// amber/green/indigo hues on every side.
+  static const earthScience = Color(0xFF8E44AD);
 }
 
 /// Returns the named accent color for a given [SubjectKey].
@@ -76,6 +80,8 @@ Color subjectColor(SubjectKey subject) {
       return AppColors.biology;
     case SubjectKey.physics:
       return AppColors.physics;
+    case SubjectKey.earthScience:
+      return AppColors.earthScience;
   }
 }
 
@@ -108,6 +114,7 @@ abstract final class AppColorsDark {
   static const chemistry = Color(0xFFF0913F);
   static const biology = Color(0xFF35C784);
   static const physics = Color(0xFF7C8CFF);
+  static const earthScience = Color(0xFFB07CE0);
 }
 
 const _kBrandRadius = BorderRadius.all(Radius.circular(8));
@@ -141,6 +148,7 @@ final ShadColorScheme appShadColorScheme = ShadColorScheme(
     'chemistry': AppColors.chemistry,
     'biology': AppColors.biology,
     'physics': AppColors.physics,
+    'earthScience': AppColors.earthScience,
   },
 );
 
@@ -367,6 +375,7 @@ final ShadColorScheme appShadColorSchemeDark = ShadColorScheme(
     'chemistry': AppColorsDark.chemistry,
     'biology': AppColorsDark.biology,
     'physics': AppColorsDark.physics,
+    'earthScience': AppColorsDark.earthScience,
   },
 );
 

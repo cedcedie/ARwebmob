@@ -329,5 +329,7 @@ String subjectKeyLabel(SubjectKey subject) {
       return 'Biology';
     case SubjectKey.physics:
       return 'Physics';
+    case SubjectKey.earthScience:
+      return 'Earth Science';
   }
 }

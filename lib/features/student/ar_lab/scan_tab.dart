@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_embed_unity/flutter_embed_unity.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/ar/marker_mapping.dart';
 import '../../../core/ar/voice_scripts_data.dart';
 import '../../../core/models/lesson.dart';
 import '../../../core/services/voice_over_controller.dart';
@@ -310,16 +311,30 @@ class _InstructionOverlay extends StatelessWidget {
             if (markerImage != null) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  markerImage!,
-                  height: 96,
-                  fit: BoxFit.contain,
-                  // A broken/unreachable marker-image URL should never block
-                  // the actual instruction text below it — just drop the
-                  // thumbnail silently.
-                  errorBuilder: (context, error, stackTrace) =>
-                      const SizedBox.shrink(),
-                ),
+                child:
+                    // A teacher-uploaded marker is a real Firebase Storage
+                    // URL; the built-in curriculum's marker is a bundled
+                    // asset (`/markers/QxWy.jpg`) -- `Image.network` can
+                    // never resolve the latter (no scheme/host), so it must
+                    // go through `Image.asset` instead.
+                    isNetworkMarker(markerImage!)
+                    ? Image.network(
+                        markerImage!,
+                        height: 96,
+                        fit: BoxFit.contain,
+                        // A broken/unreachable marker-image URL should
+                        // never block the actual instruction text below it
+                        // -- just drop the thumbnail silently.
+                        errorBuilder: (context, error, stackTrace) =>
+                            const SizedBox.shrink(),
+                      )
+                    : Image.asset(
+                        markerAssetPath(markerImage!),
+                        height: 96,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const SizedBox.shrink(),
+                      ),
               ),
               const SizedBox(height: 12),
             ],

@@ -178,7 +178,12 @@ StudentRecord blankStudentRecord({
     studentId: studentId,
     grade: grade,
     section: section,
-    scores: const {'chemistry': null, 'biology': null, 'physics': null},
+    scores: const {
+      'chemistry': null,
+      'biology': null,
+      'physics': null,
+      'earthScience': null,
+    },
     completedLessonIds: const [],
     completedLabExperimentIds: const [],
     completedQuizIds: const [],

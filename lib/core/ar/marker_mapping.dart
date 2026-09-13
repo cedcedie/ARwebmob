@@ -12,6 +12,20 @@ String markerAssetForLesson(Lesson lesson) {
   return '/markers/Q${lesson.quarter}W${lesson.week}.jpg';
 }
 
+/// Whether [marker] (an `arPayload.markerImage`/`markerAssetForLesson` value)
+/// is a real network URL -- true for a teacher-uploaded marker (a Firebase
+/// Storage download URL), false for the built-in curriculum's bundled
+/// `/markers/QxWy.jpg` scheme.
+bool isNetworkMarker(String marker) =>
+    marker.startsWith('http://') || marker.startsWith('https://');
+
+/// Resolves a built-in `/markers/QxWy.jpg` value to the actual pubspec asset
+/// path (`assets/markers/QxWy.jpg`) that `Image.asset`/`rootBundle.load`
+/// expect. Only meaningful when [isNetworkMarker] is false -- a network URL
+/// is used as-is.
+String markerAssetPath(String marker) =>
+    marker.startsWith('/') ? 'assets$marker' : 'assets/$marker';
+
 /// Extracts a quarter/week pair from a Vuforia trackable name and finds the
 /// matching lesson. `trackableName` is `ObserverBehaviour.TargetName` --
 /// Vuforia's ImageTarget database entry name -- which in this project's

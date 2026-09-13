@@ -95,7 +95,12 @@ class StudentRepository {
   Future<void> resetAllProgress() async {
     final snapshot = await _students.get();
     const resetFields = {
-      'scores': {'chemistry': null, 'biology': null, 'physics': null},
+      'scores': {
+        'chemistry': null,
+        'biology': null,
+        'physics': null,
+        'earthScience': null,
+      },
       'completedLessonIds': <String>[],
       'completedLabExperimentIds': <String>[],
       'completedQuizIds': <String>[],

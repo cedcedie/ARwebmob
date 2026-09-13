@@ -21,6 +21,17 @@ Future<void> _scrollTo(WidgetTester tester, Finder finder) async {
   );
 }
 
+/// Finds the last widget with [tooltip] -- now that built-in rows carry the
+/// same Edit/Archive actions as teacher-authored ones, a bare
+/// `find.byTooltip(...)` matches one per row and is ambiguous for `tap()`.
+/// `LessonRepository.mergedLessons` always orders built-ins first with
+/// teacher-authored lessons appended after (see its class doc comment), so
+/// for a test that creates exactly one teacher-authored lesson, its action
+/// button is reliably the last match -- this doesn't need to inspect
+/// DataTable2's internal row widgets (which aren't `DataRow`s in the actual
+/// widget tree, unlike the standard `DataTable`).
+Finder _lastAction(String tooltip) => find.byTooltip(tooltip).last;
+
 Future<void> _pumpLessonsScreen(
   WidgetTester tester, {
   required FakeFirebaseFirestore firestore,
@@ -36,17 +47,29 @@ Future<void> _pumpLessonsScreen(
 }
 
 void main() {
-  testWidgets('built-in lessons are non-editable and show a Built-in badge', (
-    tester,
-  ) async {
-    final firestore = FakeFirebaseFirestore();
-    await _pumpLessonsScreen(tester, firestore: firestore);
+  testWidgets(
+    'built-in lessons show a Built-in badge and are editable/archivable '
+    '(the curriculum can be customized per-teacher without ever mutating '
+    'kBuiltInLessons itself)',
+    (tester) async {
+      final firestore = FakeFirebaseFirestore();
+      await _pumpLessonsScreen(tester, firestore: firestore);
 
-    expect(find.text(kBuiltInLessons.first.title), findsOneWidget);
-    expect(find.text('Built-in'), findsWidgets);
-    expect(find.byTooltip('Edit'), findsNothing);
-    expect(find.byTooltip('Archive'), findsNothing);
-  });
+      expect(find.text(kBuiltInLessons.first.title), findsOneWidget);
+      expect(find.text('Built-in'), findsWidgets);
+      // The first row (a built-in, already visible without scrolling) now
+      // carries the same Edit/Archive actions a teacher-authored row does,
+      // plus its own "Upload Content" action.
+      expect(find.byTooltip('Edit'), findsWidgets);
+      expect(find.byTooltip('Archive'), findsWidgets);
+      expect(
+        find.byTooltip(
+          'Upload content (PDF/PPTX) — the lesson itself stays locked',
+        ),
+        findsWidgets,
+      );
+    },
+  );
 
   testWidgets('teacher-authored lessons are editable', (tester) async {
     final firestore = FakeFirebaseFirestore();
@@ -65,9 +88,11 @@ void main() {
     await _pumpLessonsScreen(tester, firestore: firestore);
 
     expect(find.text('Teacher Volcano Lab'), findsOneWidget);
-    await _scrollTo(tester, find.byTooltip('Edit'));
-    expect(find.byTooltip('Edit'), findsOneWidget);
-    expect(find.byTooltip('Archive'), findsOneWidget);
+    final editButton = _lastAction('Edit');
+    final archiveButton = _lastAction('Archive');
+    await _scrollTo(tester, editButton);
+    expect(editButton, findsOneWidget);
+    expect(archiveButton, findsOneWidget);
   });
 
   testWidgets('Add Lesson opens the form dialog', (tester) async {
@@ -172,8 +197,9 @@ void main() {
 
       await _pumpLessonsScreen(tester, firestore: firestore);
 
-      await _scrollTo(tester, find.byTooltip('Edit'));
-      await tester.tap(find.byTooltip('Edit'));
+      final editButton = _lastAction('Edit');
+      await _scrollTo(tester, editButton);
+      await tester.tap(editButton);
       await tester.pumpAndSettle();
 
       expect(find.text('Edit lesson'), findsOneWidget);
@@ -342,8 +368,9 @@ void main() {
     await _pumpLessonsScreen(tester, firestore: firestore);
     expect(find.text('Archive Me'), findsOneWidget);
 
-    await _scrollTo(tester, find.byTooltip('Archive'));
-    await tester.tap(find.byTooltip('Archive'));
+    final archiveButton = _lastAction('Archive');
+    await _scrollTo(tester, archiveButton);
+    await tester.tap(archiveButton);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Archive'));
     await tester.pumpAndSettle();
@@ -394,6 +421,7 @@ void main() {
         onArchiveLesson: (_) async {
           throw Exception('boom');
         },
+        onArchiveBuiltInLesson: (_) async {},
         fetchLessonById: (_) async => null,
       );
 
@@ -435,6 +463,7 @@ void main() {
       onCreateLesson: (_) async {},
       onUpdateLesson: (_) async {},
       onArchiveLesson: (_) async {},
+      onArchiveBuiltInLesson: (_) async {},
       fetchLessonById: (_) async => null,
     );
 

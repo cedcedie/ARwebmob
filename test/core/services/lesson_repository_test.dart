@@ -29,26 +29,118 @@ void main() {
   );
 
   test(
-    'mergedLessons dedupes by id, built-in wins over a same-id teacher lesson',
+    'mergedLessons dedupes by id, never appending a second entry for a '
+    'built-in id',
     () {
       final firestore = FakeFirebaseFirestore();
       final repo = LessonRepository(firestore: firestore);
 
-      // A teacher lesson that collides with a built-in id should not create a
-      // duplicate entry or shadow the built-in's real content.
+      // A teacher-authored doc sharing a built-in's id overrides that one
+      // row in place (see the next test) -- it must never appear as a
+      // second, separate entry alongside the built-in.
       final colliding = TeacherLesson(
         id: 'q1w1',
-        title: 'Should not appear',
+        title: 'Edited via the teacher UI',
         subject: SubjectKey.chemistry,
       );
 
       final merged = repo.mergedLessons([colliding]);
 
       expect(merged.length, kBuiltInLessons.length);
-      expect(
-        merged.where((l) => l.id == 'q1w1').single.title,
-        kBuiltInLessons.firstWhere((l) => l.id == 'q1w1').title,
+      expect(merged.where((l) => l.id == 'q1w1'), hasLength(1));
+    },
+  );
+
+  test(
+    'mergedLessons lets a teacher-authored doc override a built-in lesson\'s '
+    'own fields (the Lessons screen\'s Edit action on a built-in row), while '
+    'never touching kBuiltInLessons itself',
+    () {
+      final firestore = FakeFirebaseFirestore();
+      final repo = LessonRepository(firestore: firestore);
+      final original = kBuiltInLessons.firstWhere((l) => l.id == 'q1w1');
+
+      final edited = TeacherLesson(
+        id: 'q1w1',
+        title: 'Renamed by a teacher',
+        subject: SubjectKey.chemistry,
+        summary: 'A rewritten summary',
       );
+
+      final merged = repo.mergedLessons([edited]);
+      final result = merged.firstWhere((l) => l.id == 'q1w1');
+
+      expect(result.title, 'Renamed by a teacher');
+      expect(result.summary, 'A rewritten summary');
+      // The compiled curriculum constant is never mutated -- clearing the
+      // override (or simply never creating one) always falls back to it.
+      expect(
+        kBuiltInLessons.firstWhere((l) => l.id == 'q1w1').title,
+        original.title,
+      );
+    },
+  );
+
+  test(
+    'mergedLessons hides a built-in lesson once its override is archived, '
+    'and includes it again with includeArchived: true',
+    () {
+      final firestore = FakeFirebaseFirestore();
+      final repo = LessonRepository(firestore: firestore);
+
+      final archivedOverride = TeacherLesson(
+        id: 'q1w1',
+        title: kBuiltInLessons.first.title,
+        subject: SubjectKey.chemistry,
+        isArchived: true,
+      );
+
+      final visible = repo.mergedLessons([archivedOverride]);
+      expect(visible.any((l) => l.id == 'q1w1'), isFalse);
+      expect(visible.length, kBuiltInLessons.length - 1);
+
+      final withArchived = repo.mergedLessons(
+        [archivedOverride],
+        includeArchived: true,
+      );
+      expect(withArchived.any((l) => l.id == 'q1w1'), isTrue);
+      expect(withArchived.length, kBuiltInLessons.length);
+    },
+  );
+
+  test(
+    'archiveBuiltInLesson creates the override doc when none exists yet',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = LessonRepository(firestore: firestore);
+      final builtIn = kBuiltInLessons.first;
+
+      await repo.archiveBuiltInLesson(builtIn);
+
+      final doc = await firestore.collection('lessons').doc(builtIn.id).get();
+      expect(doc.data()!['isArchived'], isTrue);
+      expect(doc.data()!['title'], builtIn.title);
+
+      final merged = repo.mergedLessons([
+        TeacherLesson.fromJson(doc.data()!),
+      ]);
+      expect(merged.any((l) => l.id == builtIn.id), isFalse);
+    },
+  );
+
+  test(
+    'restoreBuiltInLesson clears isArchived without disturbing other fields',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      final repo = LessonRepository(firestore: firestore);
+      final builtIn = kBuiltInLessons.first;
+
+      await repo.archiveBuiltInLesson(builtIn);
+      await repo.restoreBuiltInLesson(builtIn.id);
+
+      final doc = await firestore.collection('lessons').doc(builtIn.id).get();
+      expect(doc.data()!['isArchived'], isFalse);
+      expect(doc.data()!['title'], builtIn.title);
     },
   );
 

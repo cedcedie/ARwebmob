@@ -32,6 +32,7 @@ Color _subjectAccent(BuildContext context, SubjectKey subject) {
     SubjectKey.chemistry => 'chemistry',
     SubjectKey.biology => 'biology',
     SubjectKey.physics => 'physics',
+    SubjectKey.earthScience => 'earthScience',
   };
   // Fall back to the static palette when the active ShadThemeData carries
   // no `custom` map (a bare `ShadApp` with no theme, as in widget tests) —
@@ -164,13 +165,21 @@ class _LessonsBody extends HookWidget {
     );
   }
 
-  Future<void> _confirmArchive(BuildContext context, String lessonId) async {
+  Future<void> _confirmArchive(BuildContext context, DisplayLesson row) async {
     final confirmed = await showShadDialog<bool>(
       context: context,
       builder: (context) => ShadDialog.alert(
         title: const Text('Archive lesson?'),
-        description: const Text(
-          'Archived lessons disappear from this list but remain referenced elsewhere.',
+        description: Text(
+          row.isBuiltIn
+              // A built-in lesson can't actually be deleted (it's compiled
+              // into the app), only hidden from students — and, crucially,
+              // this is independent of any "reset progress" action, which
+              // only ever touches student records, never lesson data.
+              ? 'This hides "${row.lesson.title}" from students. It stays '
+                    'part of the curriculum and won\'t affect any student\'s '
+                    'existing scores or progress.'
+              : 'Archived lessons disappear from this list but remain referenced elsewhere.',
         ),
         actions: [
           ShadButton.outline(
@@ -191,7 +200,11 @@ class _LessonsBody extends HookWidget {
     // all, so a failed archive silently did nothing and a successful one
     // gave no confirmation either.
     try {
-      await viewModel.onArchiveLesson(lessonId);
+      if (row.isBuiltIn) {
+        await viewModel.onArchiveBuiltInLesson(row.lesson);
+      } else {
+        await viewModel.onArchiveLesson(row.lesson.id);
+      }
       if (!context.mounted) return;
       ShadToaster.of(
         context,
@@ -341,7 +354,7 @@ class _LessonsBody extends HookWidget {
                           rows: displayRows,
                           onEdit: (lesson) =>
                               _openForm(context, initial: lesson),
-                          onArchive: (id) => _confirmArchive(context, id),
+                          onArchive: (row) => _confirmArchive(context, row),
                           onUploadContent: (lesson) =>
                               BuiltinLessonContentSheet.show(
                                 context,
@@ -423,60 +436,54 @@ class _LessonsBody extends HookWidget {
                                           : const Text('—'),
                                     ),
                                     DataCell(
-                                      row.isBuiltIn
-                                          ? Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Tooltip(
-                                                  message:
-                                                      'Upload content (PDF/PPTX) — '
-                                                      'the lesson itself stays locked',
-                                                  child: ShadIconButton.ghost(
-                                                    icon: const Icon(
-                                                      LucideIcons.upload,
-                                                    ),
-                                                    onPressed: () =>
-                                                        BuiltinLessonContentSheet.show(
-                                                          context,
-                                                          lesson: lesson,
-                                                          onUpload: viewModel
-                                                              .onCreateLesson,
-                                                        ),
-                                                  ),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (row.isBuiltIn)
+                                            Tooltip(
+                                              message:
+                                                  'Upload content (PDF/PPTX) — '
+                                                  'the lesson itself stays locked',
+                                              child: ShadIconButton.ghost(
+                                                icon: const Icon(
+                                                  LucideIcons.upload,
                                                 ),
-                                              ],
-                                            )
-                                          : Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Tooltip(
-                                                  message: 'Edit',
-                                                  child: ShadIconButton.ghost(
-                                                    icon: const Icon(
-                                                      LucideIcons.pencil,
-                                                    ),
-                                                    onPressed: () => _openForm(
+                                                onPressed: () =>
+                                                    BuiltinLessonContentSheet.show(
                                                       context,
-                                                      initial:
-                                                          row.teacherLesson,
+                                                      lesson: lesson,
+                                                      onUpload: viewModel
+                                                          .onCreateLesson,
                                                     ),
-                                                  ),
-                                                ),
-                                                Tooltip(
-                                                  message: 'Archive',
-                                                  child: ShadIconButton.ghost(
-                                                    icon: const Icon(
-                                                      LucideIcons.archive,
-                                                    ),
-                                                    onPressed: () =>
-                                                        _confirmArchive(
-                                                          context,
-                                                          lesson.id,
-                                                        ),
-                                                  ),
-                                                ),
-                                              ],
+                                              ),
                                             ),
+                                          Tooltip(
+                                            message: 'Edit',
+                                            child: ShadIconButton.ghost(
+                                              icon: const Icon(
+                                                LucideIcons.pencil,
+                                              ),
+                                              onPressed: () => _openForm(
+                                                context,
+                                                initial: row.teacherLesson,
+                                              ),
+                                            ),
+                                          ),
+                                          Tooltip(
+                                            message: 'Archive',
+                                            child: ShadIconButton.ghost(
+                                              icon: const Icon(
+                                                LucideIcons.archive,
+                                              ),
+                                              onPressed: () =>
+                                                  _confirmArchive(
+                                                    context,
+                                                    row,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 );
@@ -566,7 +573,7 @@ class _LessonsCardList extends StatelessWidget {
 
   final List<DisplayLesson> rows;
   final void Function(TeacherLesson? lesson) onEdit;
-  final void Function(String lessonId) onArchive;
+  final void Function(DisplayLesson row) onArchive;
   final void Function(Lesson lesson) onUploadContent;
 
   @override
@@ -600,7 +607,7 @@ class _LessonCard extends StatelessWidget {
 
   final DisplayLesson row;
   final void Function(TeacherLesson? lesson) onEdit;
-  final void Function(String lessonId) onArchive;
+  final void Function(DisplayLesson row) onArchive;
   final void Function(Lesson lesson) onUploadContent;
 
   @override
@@ -641,11 +648,10 @@ class _LessonCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (!row.isBuiltIn)
-                          _LessonCardMenu(
-                            onEdit: () => onEdit(row.teacherLesson),
-                            onArchive: () => onArchive(lesson.id),
-                          ),
+                        _LessonCardMenu(
+                          onEdit: () => onEdit(row.teacherLesson),
+                          onArchive: () => onArchive(row),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),

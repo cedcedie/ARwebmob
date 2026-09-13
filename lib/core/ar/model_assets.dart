@@ -27,6 +27,13 @@ const Map<String, String> kGlbAssetByQuarterWeek = {
   'Q3W6': 'assets/models/jeepney.glb',
   'Q3W7': 'assets/models/thermometer.glb',
   'Q3W8': 'assets/models/spoon.glb',
+  'Q4W1': 'assets/models/FaultBlockDiagram_Q4W1.glb',
+  'Q4W2': 'assets/models/EarthCrossSection_Q4W2.glb',
+  'Q4W3': 'assets/models/TsunamiWave_Q4W3.glb',
+  'Q4W5': 'assets/models/AtmosphereLayers_Q4W5.glb',
+  'Q4W6': 'assets/models/weather_vane.glb',
+  'Q4W7': 'assets/models/solar_system_model_orrery.glb',
+  'Q4W8': 'assets/models/ocean_currents.glb',
 };
 
 /// Fallback when only [modelIndex] is known — not unique per lesson (Phase 3

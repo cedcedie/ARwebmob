@@ -30,4 +30,17 @@ include(":app")
 
 // flutter_embed_unity (Phase 3 AR Lab): the exported Unity Android library,
 // linked into the app module's dependencies in app/build.gradle.kts.
+//
+// Unity's own export nests the real AAR-producing library module one level
+// deeper than the outer project it generates (unityLibrary/unityLibrary/ —
+// the one whose build.gradle actually does `apply plugin:
+// 'com.android.library'` — vs. the outer unityLibrary/ wrapper, which is
+// just Unity's standalone-Android-Studio-project plugin-management shell
+// and has no `android {}` block of its own). Without this projectDir
+// remap, Gradle defaults :unityLibrary's directory to the outer wrapper,
+// which produces zero buildable variants ("No matching variant of project
+// :unityLibrary was found... No variants exist"). Every fresh Unity
+// Android export needs this same remap (it's a one-time settings.gradle.kts
+// fix, not something re-export touches).
 include(":unityLibrary")
+project(":unityLibrary").projectDir = file("unityLibrary/unityLibrary")

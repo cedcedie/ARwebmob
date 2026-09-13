@@ -481,6 +481,7 @@ Color _subjectAccent(BuildContext context, SubjectKey subject) {
     SubjectKey.chemistry => 'chemistry',
     SubjectKey.biology => 'biology',
     SubjectKey.physics => 'physics',
+    SubjectKey.earthScience => 'earthScience',
   };
   // Fall back to the static palette when the active ShadThemeData carries
   // no `custom` map (a bare `ShadApp` with no theme, as in widget tests) —
