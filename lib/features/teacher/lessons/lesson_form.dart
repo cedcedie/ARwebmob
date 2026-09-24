@@ -10,6 +10,7 @@ import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:model_viewer_plus/model_viewer_plus.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
+import '../../../core/ar/existing_models.dart';
 import '../../../core/ar/model_assets.dart';
 import '../../../core/models/ar_payload.dart';
 import '../../../core/models/subject_key.dart';
@@ -64,6 +65,7 @@ class LessonFormState extends State<LessonForm> {
   final _formKey = GlobalKey<FormBuilderState>();
   late List<String> _steps;
   int? _modelIndex;
+  String? _markerImage;
   int? _quarter;
   int? _week;
   String? _uploadedContentUrl;
@@ -78,6 +80,7 @@ class LessonFormState extends State<LessonForm> {
     _steps = [...?initial?.steps];
     if (_steps.isEmpty) _steps = [''];
     _modelIndex = initial?.arPayload?.modelIndex ?? initial?.arModelIndex;
+    _markerImage = initial?.arPayload?.markerImage;
     _quarter = initial?.quarter;
     _week = initial?.week;
     // Derived exactly once, here, for the lifetime of this form session —
@@ -90,11 +93,13 @@ class LessonFormState extends State<LessonForm> {
         initial?.id ?? 'teacher-${DateTime.now().millisecondsSinceEpoch}';
   }
 
-  String? get _previewPath => resolveGlbPreviewPath(
-    quarter: _quarter,
-    week: _week,
-    modelIndex: _modelIndex,
-  );
+  String? get _previewPath =>
+      existingModelForMarker(_markerImage)?.glbAsset ??
+      resolveGlbPreviewPath(
+        quarter: _quarter,
+        week: _week,
+        modelIndex: _modelIndex,
+      );
 
   Future<void> _pickAndUploadContent() async {
     // Guard against a double-tap firing a second, concurrent upload while
@@ -119,23 +124,23 @@ class LessonFormState extends State<LessonForm> {
       } else {
         final result = await FilePicker.platform.pickFiles(
           type: FileType.custom,
-          allowedExtensions: ['pptx', 'pdf'],
+          allowedExtensions: ['pdf'],
           withData: true,
         );
         final file = result?.files.single;
-        if (file?.bytes == null) {
+        final bytes = file?.bytes;
+        if (file == null || bytes == null) {
           uploadResult = null;
         } else {
-          final isConversionNeeded = file!.extension?.toLowerCase() == 'pptx';
           final service = LessonContentUploadService(
-            uploader: FirebaseStorageUploader(),
+            uploader: SupabaseStorageUploader(),
           );
           final url = await service.uploadLessonContent(
             lessonId: _lessonId,
             fileName: file.name,
-            bytes: file.bytes!,
+            bytes: bytes,
           );
-          uploadResult = (url: url, isConversionNeeded: isConversionNeeded);
+          uploadResult = (url: url, isConversionNeeded: false);
         }
       }
 
@@ -176,7 +181,10 @@ class LessonFormState extends State<LessonForm> {
     final quarter = int.tryParse('${values['quarter'] ?? ''}');
     final week = int.tryParse('${values['week'] ?? ''}');
     final linkedQuizId = values['linkedQuizId'] as String?;
-    final modelIndexRaw = int.tryParse('${values['modelIndex'] ?? ''}');
+    final modelIndexRaw = _modelIndex;
+    final pickedModel = existingModelForMarker(_markerImage);
+    final markerChanged =
+        _markerImage != widget.initial?.arPayload?.markerImage;
     final steps = _steps
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
@@ -222,11 +230,13 @@ class LessonFormState extends State<LessonForm> {
               modelIndex: modelIndexRaw,
               detectionMode:
                   widget.initial?.arPayload?.detectionMode ?? 'marker',
-              anchorHint:
-                  widget.initial?.arPayload?.anchorHint ??
-                  'Scan the lesson marker.',
+              anchorHint: markerChanged || widget.initial?.arPayload == null
+                  ? (pickedModel == null
+                        ? 'Scan the lesson marker.'
+                        : 'Scan the ${pickedModel.lessonId.toUpperCase()} marker.')
+                  : widget.initial!.arPayload!.anchorHint,
               lessonSteps: steps.isEmpty ? const ['View the 3D model'] : steps,
-              markerImage: widget.initial?.arPayload?.markerImage,
+              markerImage: _markerImage,
             ),
       hasAR: modelIndexRaw != null || widget.initial?.hasAR == true,
       isArchived: widget.initial?.isArchived ?? false,
@@ -384,17 +394,35 @@ class LessonFormState extends State<LessonForm> {
             const SizedBox(height: 20),
             _SectionLabel('AR & content'),
             const SizedBox(height: 12),
-            FormBuilderTextField(
-              name: 'modelIndex',
-              initialValue: _modelIndex?.toString(),
+            DropdownButtonFormField<String?>(
+              key: const Key('lesson-model'),
+              initialValue: existingModelForMarker(_markerImage)?.markerImage,
+              isExpanded: true,
               decoration: const InputDecoration(
-                labelText: 'AR model index (optional)',
+                labelText: '3D model (optional)',
                 helperText:
-                    'Read-only preview — does not change the Unity mapping.',
+                    'Pick a model that is already in the app. Students scan '
+                    'that model\'s marker to see it in 3D.',
               ),
-              keyboardType: TextInputType.number,
-              onChanged: (value) =>
-                  setState(() => _modelIndex = int.tryParse(value ?? '')),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('None'),
+                ),
+                ...kExistingModels.map(
+                  (model) => DropdownMenuItem<String?>(
+                    value: model.markerImage,
+                    child: Text(model.label, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+              ],
+              onChanged: (value) {
+                final model = existingModelForMarker(value);
+                setState(() {
+                  _markerImage = model?.markerImage;
+                  _modelIndex = model?.modelIndex;
+                });
+              },
             ),
             const SizedBox(height: 12),
             ShadButton.outline(
@@ -416,7 +444,7 @@ class LessonFormState extends State<LessonForm> {
                 _isUploadingContent
                     ? 'Uploading...'
                     : (_uploadedContentUrl == null
-                          ? 'Upload PPTX or PDF'
+                          ? 'Upload PDF'
                           : 'Content uploaded'),
               ),
             ),

@@ -10,6 +10,7 @@ import '../../../core/models/student_record.dart';
 import '../../../core/models/subject_key.dart';
 import '../../../core/quiz_id.dart';
 import '../../../core/services/access_code_issuance_service.dart';
+import '../../../core/services/lesson_repository.dart';
 import '../../../core/services/quiz_attempt_service.dart';
 import '../../../core/services/student_repository.dart';
 
@@ -101,13 +102,25 @@ Stream<AccessCodesViewModel> buildAccessCodesViewModel({
   required StudentRepository studentRepository,
   required QuizAttemptService quizAttemptService,
   List<Lesson>? lessons,
+  LessonRepository? lessonRepository,
 }) {
-  final resolvedLessons = lessons ?? kBuiltInLessons;
-  return _combineLatest3(
+  // Teacher-authored lessons live in Firestore, so they must be streamed in
+  // and merged with the built-ins; otherwise the lesson picker only ever
+  // offers the compiled curriculum and a teacher can't issue a code for a
+  // lesson they just added.
+  final lessonsStream = lessonRepository != null
+      ? lessonRepository.watchTeacherLessons().map(
+          (teacherLessons) => sortLessonsByName(
+            lessonRepository.mergedLessons(teacherLessons),
+          ),
+        )
+      : Stream.value(sortLessonsByName(lessons ?? kBuiltInLessons));
+  return _combineLatest4(
     issuanceService.watchIssuedUnlockCodes(),
     issuanceService.watchIssuedRetakeCodes(),
     studentRepository.watchAllStudents(includeArchived: true),
-    (unlockCodes, retakeCodes, students) {
+    lessonsStream,
+    (unlockCodes, retakeCodes, students, resolvedLessons) {
       final issuedCodes = [
         ...unlockCodes.map(
           (doc) => _rowFromUnlockCode(doc, resolvedLessons, students),
@@ -260,24 +273,29 @@ SubjectKey? _subjectFromFirestoreValueOrNull(String value) {
   }
 }
 
-Stream<T> _combineLatest3<A, B, C, T>(
+Stream<T> _combineLatest4<A, B, C, D, T>(
   Stream<A> streamA,
   Stream<B> streamB,
   Stream<C> streamC,
-  T Function(A, B, C) combiner,
+  Stream<D> streamD,
+  T Function(A, B, C, D) combiner,
 ) {
   A? lastA;
   B? lastB;
   C? lastC;
+  D? lastD;
   late StreamSubscription<A> subA;
   late StreamSubscription<B> subB;
   late StreamSubscription<C> subC;
+  late StreamSubscription<D> subD;
 
   final controller = StreamController<T>();
 
   void maybeEmit() {
-    if (lastA != null && lastB != null && lastC != null) {
-      controller.add(combiner(lastA as A, lastB as B, lastC as C));
+    if (lastA != null && lastB != null && lastC != null && lastD != null) {
+      controller.add(
+        combiner(lastA as A, lastB as B, lastC as C, lastD as D),
+      );
     }
   }
 
@@ -300,11 +318,16 @@ Stream<T> _combineLatest3<A, B, C, T>(
     lastC = value;
     maybeEmit();
   }, onError: controller.addError);
+  subD = streamD.listen((value) {
+    lastD = value;
+    maybeEmit();
+  }, onError: controller.addError);
 
   controller.onCancel = () async {
     await subA.cancel();
     await subB.cancel();
     await subC.cancel();
+    await subD.cancel();
   };
 
   return controller.stream;
@@ -332,4 +355,36 @@ String subjectKeyLabel(SubjectKey subject) {
     case SubjectKey.earthScience:
       return 'Earth Science';
   }
+}
+
+/// Built-in lessons are recognised by their short id (q1w6); a teacher-added
+/// lesson's id is an opaque `teacher-<timestamp>`, so it is shown by title.
+String lessonPickerLabel(Lesson lesson) =>
+    lesson.id.startsWith('teacher-') && lesson.title.trim().isNotEmpty
+    ? lesson.title.trim()
+    : lesson.id;
+
+/// Orders lessons by their picker label in natural order, so q1w8 < q1w9 <
+/// q2w1 and an added "Q1W9" sits between them rather than at the bottom.
+List<Lesson> sortLessonsByName(List<Lesson> lessons) {
+  final sorted = [...lessons];
+  sorted.sort(
+    (a, b) => _naturalCompare(lessonPickerLabel(a), lessonPickerLabel(b)),
+  );
+  return sorted;
+}
+
+int _naturalCompare(String a, String b) {
+  final chunk = RegExp(r'\d+|\D+');
+  final left = chunk.allMatches(a.toLowerCase()).map((m) => m[0]!).toList();
+  final right = chunk.allMatches(b.toLowerCase()).map((m) => m[0]!).toList();
+  for (var i = 0; i < left.length && i < right.length; i++) {
+    final x = left[i];
+    final y = right[i];
+    final nx = int.tryParse(x);
+    final ny = int.tryParse(y);
+    final result = nx != null && ny != null ? nx.compareTo(ny) : x.compareTo(y);
+    if (result != 0) return result;
+  }
+  return left.length.compareTo(right.length);
 }

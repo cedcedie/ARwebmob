@@ -570,7 +570,7 @@ class _SubjectCodeForm extends HookWidget {
           children: subjectLessons.map((lesson) {
             final selected = selectedLessonIds.value.contains(lesson.id);
             return FilterChip(
-              label: Text(lesson.id),
+              label: Text(lessonPickerLabel(lesson)),
               selected: selected,
               onSelected: (value) {
                 final next = {...selectedLessonIds.value};
@@ -680,7 +680,10 @@ class _LessonCodeForm extends HookWidget {
               .map(
                 (lesson) => DropdownMenuItem(
                   value: lesson.id,
-                  child: Text(lesson.id, overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    lessonPickerLabel(lesson),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               )
               .toList(),
@@ -820,7 +823,10 @@ class _RetakeCodeForm extends HookWidget {
               .map(
                 (lesson) => DropdownMenuItem(
                   value: lesson.id,
-                  child: Text(lesson.id, overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    lessonPickerLabel(lesson),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               )
               .toList(),

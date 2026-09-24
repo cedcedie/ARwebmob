@@ -1,9 +1,12 @@
-import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:convert';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:http/http.dart' as http;
 
 import '../models/student_record.dart';
 import 'auth_service.dart' show studentEmailFromRawId;
+import 'lesson_content_upload_service.dart' show supabaseAnonKey, supabaseUrl;
 import 'student_repository.dart';
 
 /// Creates the *login* for a student, not just their roster row.
@@ -24,14 +27,16 @@ class StudentAccountService {
   StudentAccountService({
     required this.studentRepository,
     required FirebaseOptions firebaseOptions,
-    FirebaseFunctions? functions,
+    http.Client? httpClient,
+    FirebaseAuth? auth,
   }) : _options = firebaseOptions,
-       _functions =
-           functions ?? FirebaseFunctions.instanceFor(region: 'us-central1');
+       _http = httpClient ?? http.Client(),
+       _auth = auth ?? FirebaseAuth.instance;
 
   final StudentRepository studentRepository;
   final FirebaseOptions _options;
-  final FirebaseFunctions _functions;
+  final http.Client _http;
+  final FirebaseAuth _auth;
 
   /// Name of the throwaway app used for provisioning. Reused across calls —
   /// `Firebase.initializeApp` throws `duplicate-app` if the same name is
@@ -95,8 +100,9 @@ class StudentAccountService {
   ///
   /// No client SDK can set another account's password, and the synthetic
   /// `<id>@arscience.school` addresses have no mailbox for a reset email to
-  /// reach, so this goes through the `setStudentPassword` callable function,
-  /// which re-checks that the caller is an allowlisted teacher server-side.
+  /// reach, so this goes through the `set-student-password` Supabase Edge
+  /// Function (supabase/functions), which re-checks that the caller is an
+  /// allowlisted teacher server-side using their Firebase ID token.
   Future<void> resetPassword({
     required String studentId,
     required String newPassword,
@@ -106,7 +112,7 @@ class StudentAccountService {
         'Password must be at least $minPasswordLength characters.',
       );
     }
-    await _callFunction('setStudentPassword', {
+    await _callPasswordService({
       'studentId': studentId,
       'newPassword': newPassword,
     });
@@ -154,21 +160,48 @@ class StudentAccountService {
   /// Calls a callable function and turns its failure modes into messages a
   /// teacher can act on. A raw `FirebaseFunctionsException` surfaces as
   /// "[firebase_functions/internal] ...", which tells them nothing.
-  Future<void> _callFunction(String name, Map<String, dynamic> payload) async {
+  Future<void> _callPasswordService(Map<String, dynamic> payload) async {
+    if (supabaseAnonKey.isEmpty) {
+      throw StateError(
+        'The password service is not configured (missing SUPABASE_ANON_KEY '
+        'at build time).',
+      );
+    }
+    final idToken = await _auth.currentUser?.getIdToken();
+    if (idToken == null) throw StateError('Sign in first.');
+
+    final http.Response response;
     try {
-      await _functions.httpsCallable(name).call<dynamic>(payload);
-    } on FirebaseFunctionsException catch (error) {
-      final message = error.message;
-      if (message != null && message.isNotEmpty) {
-        throw StateError(message);
-      }
-      if (error.code == 'unavailable' || error.code == 'not-found') {
-        throw StateError(
-          'The password service is unavailable. It may not be deployed yet — '
-          'ask your developer to deploy the Cloud Functions.',
-        );
-      }
-      throw StateError('That did not work. Please try again.');
+      response = await _http
+          .post(
+            Uri.parse('$supabaseUrl/functions/v1/set-student-password'),
+            headers: {
+              'apikey': supabaseAnonKey,
+              'Authorization': 'Bearer $supabaseAnonKey',
+              'x-firebase-token': idToken,
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 30));
+    } catch (_) {
+      throw StateError(
+        'Could not reach the password service. Check your connection and try '
+        'again.',
+      );
+    }
+    if (response.statusCode == 404 && response.body.contains('NOT_FOUND')) {
+      throw StateError(
+        'The password service is unavailable. It may not be deployed yet — '
+        'ask your developer to deploy it.',
+      );
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String? message;
+      try {
+        message = (jsonDecode(response.body) as Map)['error'] as String?;
+      } catch (_) {}
+      throw StateError(message ?? 'That did not work. Please try again.');
     }
   }
 

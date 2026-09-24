@@ -442,7 +442,7 @@ class _LessonsBody extends HookWidget {
                                           if (row.isBuiltIn)
                                             Tooltip(
                                               message:
-                                                  'Upload content (PDF/PPTX) — '
+                                                  'Upload content (PDF) — '
                                                   'the lesson itself stays locked',
                                               child: ShadIconButton.ghost(
                                                 icon: const Icon(
@@ -686,7 +686,7 @@ class _LessonCard extends StatelessWidget {
                           const ShadBadge(child: Text('Built-in')),
                           Tooltip(
                             message:
-                                'Upload content (PDF/PPTX) — the lesson '
+                                'Upload content (PDF) — the lesson '
                                 'itself stays locked',
                             child: ShadIconButton.ghost(
                               icon: const Icon(LucideIcons.upload, size: 16),

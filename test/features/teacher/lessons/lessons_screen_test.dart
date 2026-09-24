@@ -64,7 +64,7 @@ void main() {
       expect(find.byTooltip('Archive'), findsWidgets);
       expect(
         find.byTooltip(
-          'Upload content (PDF/PPTX) — the lesson itself stays locked',
+          'Upload content (PDF) — the lesson itself stays locked',
         ),
         findsWidgets,
       );
@@ -105,6 +105,54 @@ void main() {
     expect(find.text('Add lesson'), findsOneWidget);
     expect(find.byKey(const Key('lesson-title')), findsOneWidget);
   });
+
+  testWidgets(
+    'picking an existing 3D model saves its marker and model index on the lesson',
+    (tester) async {
+      final firestore = FakeFirebaseFirestore();
+      await _pumpLessonsScreen(tester, firestore: firestore);
+
+      await tester.tap(find.text('Add Lesson'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('lesson-title')));
+      await tester.enterText(find.byKey(const Key('lesson-title')), 'Faults');
+      await tester.tap(find.byKey(const Key('lesson-summary')));
+      await tester.enterText(find.byKey(const Key('lesson-summary')), 'About');
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('lesson-model')),
+        50,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.byKey(const Key('lesson-model')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Q1W1 ·').last);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining(
+          'Model preview: assets/models/democritus_atom.glb',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('lesson-submit')),
+        50,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.byKey(const Key('lesson-submit')));
+      await tester.pumpAndSettle();
+
+      final saved = (await firestore.collection('lessons').get()).docs.single
+          .data();
+      final payload = saved['arPayload'] as Map<String, dynamic>;
+      expect(payload['markerImage'], '/markers/Q1W1.jpg');
+      expect(payload['modelIndex'], 0);
+      expect(saved['hasAR'], true);
+    },
+  );
 
   testWidgets('submitting a valid form calls createLesson', (tester) async {
     final firestore = FakeFirebaseFirestore();

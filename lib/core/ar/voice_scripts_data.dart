@@ -11,11 +11,18 @@
 //     lib/core/data/curriculum_data.dart, which in several weeks (notably q3w1)
 //     describe different content than the module actually teaches.
 //
-// PENDING CLIENT REVIEW: the q1w6-q3w8 scripts have not yet been signed off by
-// the client. The Filipino lines in particular need a native-speaker pass
-// before students hear them; they were drafted to match the Taglish register of
-// the ported q1w1-q1w5 entries (English technical terms kept inside Filipino
-// sentences) but have not been reviewed by a Filipino science teacher.
+//   * q4w1, q4w2, q4w3, q4w5, q4w6, q4w7, q4w8 (Earth Science, q4w4 does not
+//     exist) were likewise drafted in-repo, from this same file's own
+//     objectives/learningCompetencies/keyIdeas for each lesson in
+//     lib/core/data/curriculum_data.dart, not from the MATATAG module PDFs
+//     directly (unlike q1w6-q3w8, which were drafted from the modules).
+//
+// PENDING CLIENT REVIEW: the q1w6-q3w8 and q4w1-q4w8 scripts have not yet
+// been signed off by the client. The Filipino lines in particular need a
+// native-speaker pass before students hear them; they were drafted to match
+// the Taglish register of the ported q1w1-q1w5 entries (English technical
+// terms kept inside Filipino sentences) but have not been reviewed by a
+// Filipino science teacher.
 //
 // Format rules if you add or edit entries: the key is the lesson id, each
 // lesson holds 'en' and 'Filipino' lists, and each list is spoken aloud by
@@ -327,6 +334,104 @@ const Map<String, Map<String, List<String>>> kVoiceScripts = {
       'May tatlong paraan ng paglipat ng init. Ito ay ang conduction, convection, at radiation.',
       'Sa conduction, ang init ay dumadaan sa materyal sa pamamagitan ng direktang dikit. Kapag ang isang dulo ng kutsarang bakal ay inilagay sa apoy, mas mabilis na gumagalaw ang mga atom ng kutsara at mas malakas silang nagbabanggaan, kaya ang init at ang pagtaas ng temperatura ay naglalakbay sa kabilang dulo ng kutsara.',
       'Sa convection, ang init ay dala ng gumagalaw na likido o gas, dahil ang mainit na tubig ay mas magaan o less dense kaya pumapaitaas, samantalang ang mas siksik na malamig na tubig ay lumulubog, kaya ang mga cooling appliance ay inilalagay sa mataas na bahagi ng silid. Sa radiation, ang init ay naglalakbay bilang mga alon na hindi nangangailangan ng materyal na daanan, at ang kulay ng isang ibabaw ay nakakaapekto sa kung paano nito tinatanggap at pinapakawalan ang init na iyon.',
+    ],
+  },
+  'q4w1': {
+    'en': [
+      'The Philippines sits along the Pacific Ring of Fire, where many of the world\'s earthquakes happen. Movements along faults in the crust are what cause them.',
+      'A fault is a fracture in the Earth\'s crust where rock has slipped. Geologists classify faults by the angle of the fault plane and the direction that the rock has moved.',
+      'In a normal fault, the hanging wall slips down relative to the footwall. In a reverse fault, the crust is squeezed together and the hanging wall is pushed up instead.',
+      'Knowing which fault types are active near your community helps you recognize earthquake risk and identify safe locations.',
+    ],
+    'Filipino': [
+      'Ang Pilipinas ay nasa Pacific Ring of Fire, kung saan nangyayari ang karamihan sa mga lindol sa mundo. Ang paggalaw sa mga fault sa crust ang sanhi nito.',
+      'Ang fault ay isang bitak sa crust ng Earth kung saan nadulas ang bato. Inuuri ng mga geologist ang mga fault ayon sa anggulo ng fault plane at ang direksyon ng paggalaw ng bato.',
+      'Sa normal fault, ang hanging wall ay bumababa kumpara sa footwall. Sa reverse fault, ang crust ay naiipit at ang hanging wall ay itinutulak pataas.',
+      'Ang pag-alam kung aling mga uri ng fault ang aktibo malapit sa iyong komunidad ay tumutulong sa iyo na makilala ang panganib ng lindol at ang mga ligtas na lokasyon.',
+    ],
+  },
+  'q4w2': {
+    'en': [
+      'Every earthquake has a focus, the point underground where the rupture begins, and an epicenter, the point on the surface directly above it.',
+      'The magnitude of an earthquake measures the energy released at the source, while intensity describes how strongly the shaking is felt in a particular place.',
+      'A community closer to the epicenter usually experiences more intense shaking than one farther away, even for the same earthquake.',
+      'PHIVOLCS FaultFinder is a reliable tool students can use to check how close their own community is to a known fault system.',
+    ],
+    'Filipino': [
+      'Bawat lindol ay may focus, ang punto sa ilalim ng lupa kung saan nagsimula ang biyak, at epicenter, ang punto sa ibabaw na eksaktong nasa itaas nito.',
+      'Ang magnitude ng lindol ay sumusukat sa enerhiyang inilabas sa pinagmulan, habang ang intensity naman ay naglalarawan kung gaano kalakas ang naramdamang pag-uga sa isang partikular na lugar.',
+      'Ang komunidad na mas malapit sa epicenter ay kadalasang nakakaranas ng mas matinding pag-uga kaysa sa mas malayo, kahit parehong lindol.',
+      'Ang PHIVOLCS FaultFinder ay isang mapagkakatiwalaang kasangkapan na magagamit ng mga estudyante upang malaman kung gaano kalapit ang kanilang komunidad sa isang kilalang fault system.',
+    ],
+  },
+  'q4w3': {
+    'en': [
+      'Earthquakes release energy as seismic waves that travel both through the Earth and along its surface.',
+      'When an earthquake happens underwater, it can displace a huge volume of ocean water and generate a tsunami.',
+      'A tsunami keeps its wall-of-water shape and power over long distances, growing taller and steeper as it reaches shallow water near the shore.',
+      'Coastal communities need to recognize the risk a tsunami poses and know how to respond quickly after a strong undersea earthquake.',
+    ],
+    'Filipino': [
+      'Ang mga lindol ay naglalabas ng enerhiya bilang seismic waves na naglalakbay parehong papasok sa Earth at sa ibabaw nito.',
+      'Kapag ang lindol ay nangyari sa ilalim ng tubig, maaari nitong maipagpatuloy ang malaking dami ng tubig-dagat at makalikha ng tsunami.',
+      'Ang tsunami ay pinapanatili ang hugis at lakas nito bilang pader ng tubig sa mahabang distansya, lumalaki at lumalalim habang papalapit sa baybayin.',
+      'Kailangang makilala ng mga komunidad sa baybayin ang panganib na dala ng tsunami at malaman kung paano mabilis na tutugon matapos ang isang malakas na lindol sa dagat.',
+    ],
+  },
+  'q4w5': {
+    'en': [
+      'Sunlight is Earth\'s main external source of energy, and it interacts differently with each layer of the atmosphere on its way down.',
+      'The troposphere, closest to the ground, is where weather and clouds happen. The stratosphere above it holds the ozone layer that blocks harmful ultraviolet rays.',
+      'Farther out, the mesosphere, thermosphere, and exosphere get thinner and less dense the higher you go.',
+      'Different cloud types form depending on temperature and altitude, and they are a direct result of how solar energy moves through these layers.',
+    ],
+    'Filipino': [
+      'Ang sikat ng araw ang pangunahing panlabas na pinagmumulan ng enerhiya ng Earth, at iba-iba ang pakikipag-ugnayan nito sa bawat layer ng atmosphere habang bumababa ito.',
+      'Ang troposphere, ang pinakamalapit sa lupa, ay kung saan nangyayari ang panahon at mga ulap. Ang stratosphere sa ibabaw nito ay naglalaman ng ozone layer na humaharang sa mapaminsalang ultraviolet rays.',
+      'Sa mas malayo, ang mesosphere, thermosphere, at exosphere ay lalong nagiging manipis at hindi siksik habang lumalaki ang taas.',
+      'Iba\'t ibang uri ng ulap ang nabubuo depende sa temperatura at altitude, at direktang resulta ito ng paggalaw ng enerhiya ng araw sa mga layer na ito.',
+    ],
+  },
+  'q4w6': {
+    'en': [
+      'When warm, moist air rises and cools, the water vapor inside it condenses and forms clouds.',
+      'The Intertropical Convergence Zone, or ITCZ, is the belt near the equator where trade winds from the north and south converge, and it shifts position with the seasons.',
+      'The Philippines experiences two main monsoons. Habagat, the southwest monsoon, brings heavy rain, while Amihan, the northeast monsoon, brings cooler, drier weather.',
+      'Both monsoons and the ITCZ are ultimately driven by how solar energy heats the atmosphere unevenly across the globe.',
+    ],
+    'Filipino': [
+      'Kapag ang mainit at basang hangin ay umaakyat at lumalamig, ang singaw ng tubig sa loob nito ay nagiging kondensado at bumubuo ng mga ulap.',
+      'Ang Intertropical Convergence Zone, o ITCZ, ay ang bahagi malapit sa equator kung saan nagtatagpo ang mga trade wind mula hilaga at timog, at gumagalaw ang posisyon nito ayon sa panahon.',
+      'Ang Pilipinas ay nakakaranas ng dalawang pangunahing monsoon. Ang Habagat, ang southwest monsoon, ay nagdadala ng malakas na ulan, habang ang Amihan, ang northeast monsoon, ay nagdadala ng mas malamig at tuyong panahon.',
+      'Ang parehong monsoon at ang ITCZ ay pinapatakbo ng kung paano hindi pantay na pinaiinit ng enerhiya ng araw ang atmosphere sa buong mundo.',
+    ],
+  },
+  'q4w7': {
+    'en': [
+      'Earth rotates on its axis once a day, giving us day and night, and revolves around the Sun once a year.',
+      'Earth\'s axis stays tilted at about twenty three and a half degrees as it orbits, and that tilt is what causes the seasons.',
+      'The hemisphere tilted toward the Sun receives more direct sunlight and experiences summer, while the hemisphere tilted away experiences winter.',
+      'Areas near the equator stay tilted only slightly toward or away from the Sun all year, so they experience almost equal daylight in every season.',
+    ],
+    'Filipino': [
+      'Ang Earth ay umiikot sa sarili nitong axis minsan sa isang araw, kaya may araw at gabi, at umiikot sa paligid ng Araw minsan sa isang taon.',
+      'Ang axis ng Earth ay nananatiling nakahilig ng humigit-kumulang dalawampu\'t tatlo at kalahating degrees habang umuurbit ito, at ang paghilig na iyon ang sanhi ng mga panahon.',
+      'Ang hemisphere na nakaharap sa Araw ay tumatanggap ng mas direktang sikat ng araw at nakakaranas ng tag-init, habang ang hemisphere na nakatalikod ay nakakaranas ng taglamig.',
+      'Ang mga lugar malapit sa equator ay bahagya lamang ang paghilig papalapit o palayo sa Araw sa buong taon, kaya halos pantay ang haba ng araw sa bawat panahon.',
+    ],
+  },
+  'q4w8': {
+    'en': [
+      'Climate in a region is shaped not only by solar energy but also by topography, the shape of the land.',
+      'When moist air is forced up a mountain\'s windward slope, it cools and drops its rain there. The leeward slope on the other side stays drier because most of the moisture has already fallen.',
+      'Land heats up and cools down faster than the sea. That difference in temperature drives land breezes at night and sea breezes during the day.',
+      'Ocean currents move warm and cool water around the globe, helping distribute heat and shape the climate of coastal regions like the Philippines.',
+    ],
+    'Filipino': [
+      'Ang klima sa isang rehiyon ay hinuhubog hindi lamang ng enerhiya ng araw kundi pati na rin ng topograpiya, ang hugis ng lupa.',
+      'Kapag ang basang hangin ay itinutulak pataas sa windward slope ng bundok, ito ay lumalamig at pinapaulan doon. Ang leeward slope sa kabilang panig ay nananatiling tuyo dahil karamihan sa halumigmig ay naunang bumagsak.',
+      'Ang lupa ay mas mabilis na uminit at lumamig kaysa sa dagat. Ang pagkakaibang iyon sa temperatura ang nagtutulak sa land breeze sa gabi at sea breeze sa araw.',
+      'Ang mga ocean current ay naglilipat ng mainit at malamig na tubig sa buong mundo, tumutulong ipamahagi ang init at hinuhubog ang klima ng mga lugar sa baybayin tulad ng Pilipinas.',
     ],
   },
 };

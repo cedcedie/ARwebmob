@@ -3,10 +3,10 @@
 // Built-in lessons are locked from full editing on purpose (their title,
 // subject, and AR marker mapping are the authoritative curriculum -- see
 // LessonRepository.mergedLessons' doc comment) -- but that also meant a
-// built-in could never carry a teacher-uploaded PDF/PPTX, since built-ins
+// built-in could never carry a teacher-uploaded PDF, since built-ins
 // have no real content of their own beyond the AR payload. This is a
 // narrower, purpose-built sheet: it can ONLY set a built-in lesson's
-// content (PDF/PPTX), nothing else about the lesson is touched or even
+// content (PDF), nothing else about the lesson is touched or even
 // editable here.
 import 'dart:typed_data';
 
@@ -88,23 +88,23 @@ class _BuiltinLessonContentSheetState extends State<BuiltinLessonContentSheet> {
       } else {
         final picked = await FilePicker.platform.pickFiles(
           type: FileType.custom,
-          allowedExtensions: ['pptx', 'pdf'],
+          allowedExtensions: ['pdf'],
           withData: true,
         );
         final file = picked?.files.single;
-        if (file?.bytes == null) {
+        final bytes = file?.bytes;
+        if (file == null || bytes == null) {
           result = null;
         } else {
-          final isConversionNeeded = file!.extension?.toLowerCase() == 'pptx';
           final service = LessonContentUploadService(
-            uploader: FirebaseStorageUploader(),
+            uploader: SupabaseStorageUploader(),
           );
           final url = await service.uploadLessonContent(
             lessonId: widget.lesson.id,
             fileName: file.name,
-            bytes: file.bytes!,
+            bytes: bytes,
           );
-          result = (url: url, isConversionNeeded: isConversionNeeded);
+          result = (url: url, isConversionNeeded: false);
         }
       }
 
@@ -147,7 +147,7 @@ class _BuiltinLessonContentSheetState extends State<BuiltinLessonContentSheet> {
     return ShadDialog(
       title: Text('Upload content — ${widget.lesson.title}'),
       description: const Text(
-        'Only this lesson\'s content (PDF/PPTX) is affected — its title, '
+        'Only this lesson\'s content (PDF) is affected — its title, '
         'subject, and AR mapping stay exactly as the built-in curriculum '
         'defines them.',
       ),

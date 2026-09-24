@@ -70,6 +70,7 @@ List<Override> teacherProviderOverridesFor({
         issuanceService: services.accessCodeIssuanceService,
         studentRepository: services.studentRepository,
         quizAttemptService: services.quizAttemptService,
+        lessonRepository: services.lessonRepository,
       ),
     ),
   ];

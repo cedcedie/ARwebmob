@@ -86,10 +86,13 @@ class LearnScreen extends ConsumerWidget {
               indicatorColor: vm.activeSubject.accentColor,
               labelColor: vm.activeSubject.accentColor,
               unselectedLabelColor: AppColors.inkMuted,
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
               tabs: const [
                 Tab(text: 'Chemistry'),
                 Tab(text: 'Biology'),
                 Tab(text: 'Physics'),
+                Tab(text: 'Earth Science'),
               ],
             ),
             Expanded(

@@ -38,3 +38,6 @@ scripts/node_modules/
 
 # JVM crash dumps from Gradle/Unity builds
 hs_err_pid*.log
+
+# Local Supabase public key, injected with --dart-define-from-file
+supabase.env.json
